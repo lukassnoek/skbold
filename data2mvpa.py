@@ -20,32 +20,29 @@ import numpy as np
 import nibabel as nib
 import glob
 import cPickle
-
-from mvp_utils import convert_labels2numeric, sort_numbered_list, \
-    extract_class_vector, transform2mni
+import h5py
+from mvp_utils import sort_numbered_list, extract_class_vector, transform2mni
 
 from transformers import Subject
 from os.path import join as opj
-from itertools import chain, izip
 
 __author__ = "Lukas Snoek"
 
 
-def glm2mvpa(sub_path, mask, mask_threshold, remove_class, grouping,
-                        normalize_to_mni, beta2tstat):
+def glm2mvpa(sub_path, mask, mask_threshold=0, remove_class=[],
+             normalize_to_mni=False, beta2tstat=True):
     """
+    Per subject, loads in first-level single-trial beta-estimates (FSL COPEs),
+    optionally transforms these to MNI-space and converts them to t-statistics,
+    and saves them as a trials x voxels array.
 
     Args:
-        sub_path:
-        mask:
-        mask_threshold:
-        remove_class:
-        grouping:
-        normalize_to_mni:
-        beta2tstat:
-
-    Returns:
-
+        sub_path: path to first-level directory
+        mask: mask to index COPEs with (e.g. all grey matter)
+        mask_threshold: minimum threshold for probabilistic mask
+        remove_class: list of strings corresponding to regressors to omit
+        normalize_to_mni: whether to transform COPEs to MNI152 space
+        beta2tstat: whether to convert betas to t-statistics (b/sqrt(cope)).
     """
 
     # Load mask, create index
@@ -55,18 +52,18 @@ def glm2mvpa(sub_path, mask, mask_threshold, remove_class, grouping,
     mask_index = mask_vol.get_data().ravel() > mask_threshold
     n_features = np.sum(mask_index)
 
-    n_feat = len(glob.glob(opj(os.path.dirname(sub_path), '*.feat')))
-
     mat_dir = opj(os.path.dirname(sub_path), 'mvp_data')
     if not os.path.exists(mat_dir):
         os.makedirs(mat_dir)
 
-    # Extract class vector (see definition below) & convert to numeric
+    n_feat = len(glob.glob(opj(os.path.dirname(sub_path), '*.feat')))
+    n_converted = len(glob.glob(opj(mat_dir, '*header*')))
+
+    # Extract class vector (class_labels)
     class_labels, remove_idx = extract_class_vector(sub_path, remove_class)
-    y = convert_labels2numeric(class_labels, grouping) # idea: use LabelEncoder!
 
     sub_name = os.path.basename(os.path.dirname(sub_path))
-    print 'Processing %s ...' % sub_name
+    print 'Processing %s (run %i / %i)...' % (sub_name, n_converted + 1, n_feat),
 
     # Generate and sort paths to stat files (COPEs/tstats)
     if normalize_to_mni:
@@ -74,11 +71,11 @@ def glm2mvpa(sub_path, mask, mask_threshold, remove_class, grouping,
     else:
         stat_dir = opj(sub_path, 'reg_standard')
 
-    copes = glob.glob(opj(stat_dir,'cope*.nii.gz'))
+    copes = glob.glob(opj(stat_dir, 'cope*.nii.gz'))
     copes = sort_numbered_list(copes)
     _ = [copes.pop(idx) for idx in sorted(remove_idx, reverse=True)]
 
-    varcopes = glob.glob(opj(stat_dir,'varcope*.nii.gz'))
+    varcopes = glob.glob(opj(stat_dir, 'varcope*.nii.gz'))
     varcopes = sort_numbered_list(varcopes)
     _ = [varcopes.pop(idx) for idx in sorted(remove_idx, reverse=True)]
 
@@ -107,16 +104,16 @@ def glm2mvpa(sub_path, mask, mask_threshold, remove_class, grouping,
         for i_trial, varcope in enumerate(varcopes):
             var = nib.load(varcope).get_data()
             var_sq = np.sqrt(var.ravel()[mask_index])
-            mvp_data[i_trial,] = np.divide(mvp_data[i_trial,], var_sq)
+            mvp_data[i_trial, :] = np.divide(mvp_data[i_trial, :], var_sq)
 
     mvp_data[np.isnan(mvp_data)] = 0
 
-    # Initializing mvp_mat object, which will be saved as a pickle file
-    to_save = Subject(mvp_data, y, sub_name, mask_name, mask_index,
-                      mask_shape, mask_threshold, class_labels)
+    # Initializing Subject object, which will be saved as a pickle file
+    to_save = Subject(class_labels, sub_name, mask_name, mask_index,
+                      mask_shape, mask_threshold)
 
-    fn_header = opj(mat_dir, '%s_header.cPickle' % sub_name)
-    fn_data = opj(mat_dir, '%s_data.hdf5' % sub_name)
+    fn_header = opj(mat_dir, '%s_header_run%i.cPickle' % (sub_name, n_converted+1))
+    fn_data = opj(mat_dir, '%s_data_run%i.hdf5' % (sub_name, n_converted+1))
 
     with open(fn_header, 'wb') as handle:
         cPickle.dump(to_save, handle)
@@ -125,66 +122,33 @@ def glm2mvpa(sub_path, mask, mask_threshold, remove_class, grouping,
     h5f.create_dataset('data', data=mvp_data)
     h5f.close()
 
-    print 'Done processing %s.' % sub_name
+    print ' done.'
 
+    # Merge if necessary
+    if n_feat == (n_converted+1) and n_feat > 1:
 
-def merge_runs():
-    """
-    Merges mvp_mat objects from multiple runs. 
-    Incomplete; assumes only two runs for now.
-    """
+        run_headers = glob.glob(opj(mat_dir, '*cPickle*'))
+        run_data = glob.glob(opj(mat_dir, '*hdf5*'))
 
-    header_paths = sorted(glob.glob(opj(os.getcwd(),'mvp_mats','*cPickle*')))
-    header_paths = zip(header_paths[::2], header_paths[1::2])
+        for i in xrange(len(run_data)):
 
-    data_paths = sorted(glob.glob(opj(os.getcwd(),'mvp_mats','*hdf5*')))
-    data_paths = zip(data_paths[::2], data_paths[1::2])
+            if i == 0:
+                data = h5py.File(run_data[i], 'r')
+                data = data['data']
+                hdr = cPickle.load(open(run_headers[i]))
+            else:
+                tmp = h5py.File(run_data[i])
+                data = np.vstack((data, tmp['data']))
+                tmp = cPickle.load(open(run_headers[i]))
+                hdr.class_labels.extend(tmp.class_labels)
 
-    sub_paths = zip(header_paths, data_paths)
-    n_sub = len(sub_paths)
+        fn_header = opj(mat_dir, '%s_header_merged.cPickle' % sub_name)
+        fn_data = opj(mat_dir, '%s_data_merged.hdf5' % sub_name)
 
-    for header, data in sub_paths:
-        run1_h = cPickle.load(open(header[0]))
-        run2_h = cPickle.load(open(header[1]))
+        with open(fn_header, 'wb') as handle:
+            cPickle.dump(hdr, handle)
 
-        run1_d = h5py.File(data[0],'r')
-        run2_d = h5py.File(data[1],'r')
-
-        merged_grouping = run1_h.grouping
-        merged_mask_index = run1_h.mask_index
-        merged_mask_shape = run1_h.mask_shape
-        merged_mask_name = run1_h.mask_name
-        merged_mask_threshold = run1_h.mask_threshold
-        merged_name = run1_h.subject_name.split('-')[0]
-
-        merged_data = np.empty((run1_d['data'].shape[0] +
-                                run2_d['data'].shape[0],
-                                run1_d['data'].shape[1]))
-
-        merged_data[::2,:] = run1_d['data'][:]
-        merged_data[1::2,:] = run2_d['data'][:]
-
-        merged_class_labels = list(chain.from_iterable(izip(run1_h.class_labels,
-                                                            run2_h.class_labels)))
-
-        merged_num_labels = list(chain.from_iterable(izip(run1_h.num_labels,
-                                                          run2_h.num_labels)))
-
-        to_save = Subject(merged_data, merged_name, merged_mask_name,
-                            merged_mask_index, merged_mask_shape,
-                            merged_mask_threshold, merged_class_labels,
-                            np.asarray(merged_num_labels), merged_grouping)
-
-        fn = opj(os.getcwd(), 'mvp_mats', merged_name + '_header_merged.cPickle')
-        with open(fn, 'wb') as handle:
-            cPickle.dump(to_save, handle)
-
-        fn = opj(os.getcwd(), 'mvp_mats', merged_name + '_data_merged.hdf5')
-        h5f = h5py.File(fn, 'w')
-        h5f.create_dataset('data', data=merged_data)
+        h5f = h5py.File(fn_data, 'w')
+        h5f.create_dataset('data', data=data)
         h5f.close()
 
-        print "Merged subject %s " % merged_name
-
-    #os.system('rm %s' % opj(os.getcwd(), 'mvp_mats', '*WIPPM*.cPickle'))
-    #os.system('rm %s' % opj(os.getcwd(), 'mvp_mats', '*WIPPM*.hdf5'))
