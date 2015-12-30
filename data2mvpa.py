@@ -31,24 +31,21 @@ from itertools import chain, izip
 __author__ = "Lukas Snoek"
 
 
-def create_subject_mats(sub_path, mask, mask_threshold, remove_class, grouping,
+def glm2mvpa(sub_path, mask, mask_threshold, remove_class, grouping,
                         normalize_to_mni, beta2tstat):
-    """ 
-    Creates subject-specific mvp matrices, initializes them as an
-    mvp_mat object and saves them as a cpickle file.
-    
-    Args: 
-    firstlevel_dir  = directory with individual firstlevel data
-    mask            = mask to index constrasts, either 'fstat' or a specific 
-                      ROI. The exact name should be given 
-                      (e.g. 'graymatter.nii.gz').
-    subject_stem    = project-specific subject-prefix
-    mask_threshold  = min. threshold of probabilistic FSL mask
-    remove_class    = list with strings to match trials/classes to which need
-                      to be removed (e.g. noise regressors)
-   
+    """
+
+    Args:
+        sub_path:
+        mask:
+        mask_threshold:
+        remove_class:
+        grouping:
+        normalize_to_mni:
+        beta2tstat:
+
     Returns:
-    Nothing, but creates a dir ('mvp_mats') with individual pickle files.
+
     """
 
     # Load mask, create index
@@ -116,19 +113,17 @@ def create_subject_mats(sub_path, mask, mask_threshold, remove_class, grouping,
 
     # Initializing mvp_mat object, which will be saved as a pickle file
     to_save = Subject(mvp_data, y, sub_name, mask_name, mask_index,
-                        mask_shape, mask_threshold, class_labels)
+                      mask_shape, mask_threshold, class_labels)
 
     fn_header = opj(mat_dir, '%s_header.cPickle' % sub_name)
-    #fn_data = opj(mat_dir, '%s_data.hdf5' % sub_name)
-    fn_data = opj(mat_dir, '%s_data.npy' % sub_name)
+    fn_data = opj(mat_dir, '%s_data.hdf5' % sub_name)
 
     with open(fn_header, 'wb') as handle:
         cPickle.dump(to_save, handle)
 
-    np.save(fn_data, to_save)
-    #h5f = h5py.File(fn_data, 'w')
-    #h5f.create_dataset('data', data=mvp_data)
-    #h5f.close()
+    h5f = h5py.File(fn_data, 'w')
+    h5f.create_dataset('data', data=mvp_data)
+    h5f.close()
 
     print 'Done processing %s.' % sub_name
 
