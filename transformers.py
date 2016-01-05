@@ -8,6 +8,7 @@ import numpy as np
 import nibabel as nib
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.feature_selection import f_classif
+from scipy.ndimage.measurements import label
 
 __author__ = 'Lukas Snoek'
 
@@ -17,8 +18,8 @@ class Subject:
     Contains meta data about single-trial fMRI-BOLD data.
     """
 
-    def __init__(self, class_labels, subject_name, mask_name, mask_index, mask_shape,
-                 mask_threshold):
+    def __init__(self, class_labels, subject_name, mask_name, mask_index,
+                 mask_shape, mask_threshold):
 
         # Meta-data
         self.subject_name = subject_name
@@ -154,7 +155,56 @@ class ClusterThreshold(BaseEstimator, TransformerMixin):
     Will implement a cluster-average feature selection as described in
     my master thesis (github.com/lukassnoek/MSc_thesis).
     """
-    pass
+
+    def __init__(self, cutoff, min_cluster_size, mask_shape, mask_idx):
+        self.cutoff = cutoff
+        self.min_cluster_size = min_cluster_size
+        self.mask_shape = mask_shape
+        self.mask_idx = mask_idx
+        self.f_ = None
+        self.idx_ = None
+        self.cl_idx_ = None
+
+    def fit(self, X, y):
+        f, _ = f_classif(X, y)
+        self.f_ = f
+        self.idx_ = f > self.cutoff
+
+        # X_fs = univariate feature values in wholebrain space
+        X_fs = np.zeros(self.mask_shape).ravel()
+        X_fs[self.mask_idx] = self.f_
+        X_fs = X_fs.reshape(self.mask_idx)
+
+        clustered, num_clust = label(X_fs > self.cutoff)
+        values, counts = np.unique(clustered.ravel(), return_counts=True)
+        n_clust = np.argmax(np.sort(counts)[::-1] < self.min_cluster_size)
+
+        # Sort and trim
+        cluster_nrs = values[counts.argsort()[::-1][:n_clust]]
+        cluster_nrs = np.delete(cluster_nrs, 0)
+
+        # cl_idx holds indices per cluster
+        cl_idx = np.zeros((X_fs.size, len(cluster_nrs)))
+
+        # Update cl_idx until cluster-size < cluster_min
+        for j, clt in enumerate(cluster_nrs):
+            cl_idx[:, j] = (clustered == clt).ravel()[self.mask_idx]
+
+        self.cl_idx_ = cl_idx
+
+        return self
+
+    def transform(self, X):
+
+        # X_cl = clustered version of X
+        X_cl = np.zeros((X.shape[0], self.cl_idx_.shape[1]))
+        n_clust = X_cl.shape[1]
+
+        for j in xrange(n_clust):
+            idx = self.cl_idx_[:, j]
+            X_cl[:, j] = np.mean(X[:, idx], axis=1)
+
+        return X_cl
 
 
 class AveragePatterns(BaseEstimator, TransformerMixin):
