@@ -19,18 +19,18 @@ import os
 import numpy as np
 import nibabel as nib
 import glob
-import cPickle
+import pickle
 import h5py
 import pandas as pd
 from mvp_utils import sort_numbered_list
-
+#from nipype.interfaces import fsl
 from transformers import Subject
 from os.path import join as opj
 
 __author__ = "Lukas Snoek"
 
 
-def extract_class_vector(sub_path, ignore):
+def extract_class_vector(sub_path, ignore=[]):
     """
     Extracts class-name of each trial and returns a vector of class labels.
 
@@ -90,7 +90,7 @@ def transform2mni(stat_paths, varcopes, sub_path):
     """
 
     os.chdir(sub_path)
-    print "Transforming COPES to MNI for %s." % sub_path
+    print("Transforming COPES to MNI for %s." % sub_path)
     ref_file = opj(sub_path, 'reg', 'standard.nii.gz')
     field_file = opj(sub_path, 'reg', 'example_func2standard_warp.nii.gz')
     out_dir = opj(sub_path, 'reg_standard')
@@ -161,7 +161,7 @@ def glm2mvpa(sub_path, mask, mask_threshold=0, remove_class=[],
     class_labels, remove_idx = extract_class_vector(sub_path, remove_class)
 
     sub_name = os.path.basename(os.path.dirname(sub_path))
-    print 'Processing %s (run %i / %i)...' % (sub_name, n_converted + 1, n_feat),
+    print('Processing %s (run %i / %i)...' % (sub_name, n_converted + 1, n_feat)),
 
     # Generate and sort paths to stat files (COPEs/tstats)
     if normalize_to_mni:
@@ -207,44 +207,44 @@ def glm2mvpa(sub_path, mask, mask_threshold=0, remove_class=[],
     mvp_data[np.isnan(mvp_data)] = 0
 
     # Initializing Subject object, which will be saved as a pickle file
-    to_save = Subject(class_labels, sub_name, mask_name, mask_index,
+    hdr = Subject(class_labels, sub_name, mask_name, mask_index,
                       mask_shape, mask_threshold)
 
-    fn_header = opj(mat_dir, '%s_header_run%i.cPickle' % (sub_name, n_converted+1))
+    fn_header = opj(mat_dir, '%s_header_run%i.pickle' % (sub_name, n_converted+1))
     fn_data = opj(mat_dir, '%s_data_run%i.hdf5' % (sub_name, n_converted+1))
 
     with open(fn_header, 'wb') as handle:
-        cPickle.dump(to_save, handle)
+        pickle.dump(hdr, handle)
 
     h5f = h5py.File(fn_data, 'w')
     h5f.create_dataset('data', data=mvp_data)
     h5f.close()
 
-    print ' done.'
+    print(' done.')
 
     # Merge if necessary
     if n_feat == (n_converted+1) and n_feat > 1:
 
-        run_headers = glob.glob(opj(mat_dir, '*cPickle*'))
+        run_headers = glob.glob(opj(mat_dir, '*pickle*'))
         run_data = glob.glob(opj(mat_dir, '*hdf5*'))
 
-        for i in xrange(len(run_data)):
+        for i in range(len(run_data)):
 
             if i == 0:
                 data = h5py.File(run_data[i], 'r')
                 data = data['data']
-                hdr = cPickle.load(open(run_headers[i]))
+                hdr = pickle.load(open(run_headers[i], 'rb'))
             else:
                 tmp = h5py.File(run_data[i])
                 data = np.vstack((data, tmp['data']))
-                tmp = cPickle.load(open(run_headers[i]))
+                tmp = pickle.load(open(run_headers[i], 'rb'))
                 hdr.class_labels.extend(tmp.class_labels)
 
-        fn_header = opj(mat_dir, '%s_header_merged.cPickle' % sub_name)
+        fn_header = opj(mat_dir, '%s_header_merged.pickle' % sub_name)
         fn_data = opj(mat_dir, '%s_data_merged.hdf5' % sub_name)
 
         with open(fn_header, 'wb') as handle:
-            cPickle.dump(hdr, handle)
+            pickle.dump(hdr, handle)
 
         h5f = h5py.File(fn_data, 'w')
         h5f.create_dataset('data', data=data)
