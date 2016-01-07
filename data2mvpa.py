@@ -231,12 +231,14 @@ def glm2mvpa(sub_path, mask, mask_threshold=0, remove_class=[],
         for i in range(len(run_data)):
 
             if i == 0:
-                data = h5py.File(run_data[i], 'r')
-                data = data['data']
+                h5f = h5py.File(run_data[i], 'r')
+                data = h5f['data'][:]
+                h5f.close()
                 hdr = pickle.load(open(run_headers[i], 'rb'))
             else:
                 tmp = h5py.File(run_data[i])
-                data = np.vstack((data, tmp['data']))
+                data = np.vstack((data, tmp['data'][:]))
+                tmp.close()
                 tmp = pickle.load(open(run_headers[i], 'rb'))
                 hdr.class_labels.extend(tmp.class_labels)
 
@@ -250,3 +252,26 @@ def glm2mvpa(sub_path, mask, mask_threshold=0, remove_class=[],
         h5f.create_dataset('data', data=data)
         h5f.close()
 
+
+def load_mvp_object(mvp_dir, identifier):
+    """
+    Loads the header (pickle) and data (hdf5) within a
+    directory and creates a Subject object.
+
+    Args:
+        mvp_dir: path to directory with header/data
+        identifier: substring to identify data to load in
+
+    Returns:
+        mvp: Subject instance with valid .X and .y attributes
+    """
+
+    data_path = glob.glob(opj(mvp_dir, '*%s*.hdf5' % identifier))
+    hdr_path = glob.glob(opj(mvp_dir, '*%s*.pickle' % identifier))
+
+    mvp = pickle.load(open(hdr_path[0], 'rb'))
+    h5f = h5py.File(data_path[0], 'r')
+    mvp.X = h5f['data'][:]
+    h5f.close()
+
+    return mvp
