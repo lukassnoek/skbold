@@ -4,7 +4,6 @@ import glob
 import os
 import pandas as pd
 from os.path import join as opj
-import nipype.interfaces.fsl as fsl
 
 
 def sort_numbered_list(stat_list):
