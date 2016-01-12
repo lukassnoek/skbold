@@ -3,12 +3,12 @@ Module with transformer-classes following the scikit-learn API
 Rewritten code from my MSc thesis project (github.com/lukassnoek/MSc_thesis)
 """
 
-from __future__ import division
 import numpy as np
 import nibabel as nib
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.feature_selection import f_classif
 from scipy.ndimage.measurements import label
+from itertools import combinations
 
 __author__ = 'Lukas Snoek'
 
@@ -18,11 +18,13 @@ class Subject:
     Contains meta data about single-trial fMRI-BOLD data.
     """
 
-    def __init__(self, class_labels, subject_name, mask_name, mask_index,
-                 mask_shape, mask_threshold):
+    def __init__(self, class_labels, subject_name, run_name, mask_name,
+                 mask_index, mask_shape, mask_threshold):
 
         # Meta-data
         self.subject_name = subject_name
+        # self.path ? --> derive subject name and run_name from this path
+        self.run_name = run_name
         self.class_labels = class_labels
         self.class_names = np.unique(self.class_labels)
 
@@ -37,6 +39,7 @@ class Subject:
         self.mask_threshold = mask_threshold
 
         # Information about condition/class
+        self.n_trials = len(self.class_labels)
         self.n_class = len(self.class_names)
         self.n_inst = [np.sum(cls == class_labels) for cls in self.class_names]
 
@@ -46,7 +49,7 @@ class Subject:
 
 class AverageSubject(Subject):
     """
-    Will initalize a Subject object which contains the class-average patterns
+    Will initialize a Subject object which contains the class-average patterns
     of a series of subjects, instead of a set of within-subject single-trial
     patterns.
     """
@@ -150,6 +153,55 @@ class AnovaCutoff(BaseEstimator, TransformerMixin):
         return X[:, self.idx_]
 
 
+class MeanEuclideanTransformer(BaseEstimator, TransformerMixin):
+    """
+    Selects features based on mean Euclidean distance between mean patterns.
+    """
+
+    def __init__(self, zvalue):
+        self.zvalue = zvalue
+        self.idx_ = None
+        self.zvalues_ = None
+
+    def fit(self, X, y):
+        """ Performs feature selection on array of n_samples, n_features
+        Args:
+            X: array with n_samples, n_features
+            y: labels for n_samples
+        """
+
+        n_class = np.unique(y).shape[0]
+        n_features = X.shape[1]
+
+        av_patterns = np.zeros((n_class, n_features))
+
+        # Calculate mean patterns
+        for i in range(n_class):
+            av_patterns[i, :] = np.mean(X[y == np.unique(y)[i], :], axis=0)
+
+        # Create difference vectors, z-score standardization, absolute
+        comb = list(combinations(range(1, n_class + 1), 2))
+        diff_patterns = np.zeros((len(comb), n_features))
+        for i, cb in enumerate(comb):
+            tmp = av_patterns[cb[0] - 1] - av_patterns[cb[1] - 1, :]
+            diff_patterns[i, :] = np.abs((tmp - tmp.mean()) / tmp.std())
+
+        mean_diff = np.mean(diff_patterns, axis=0)
+        self.idx_ = mean_diff > self.zvalue
+        self.zvalues_ = mean_diff
+        return self
+
+    def transform(self, X):
+        """ Transforms n_samples, n_features array """
+        return X[:, self.idx_]
+
+
+
+class FeaturesToContrastTransformer(BaseEstimator, TransformerMixin):
+    pass
+
+
+
 class ClusterThreshold(BaseEstimator, TransformerMixin):
     """
     Will implement a cluster-average feature selection as described in
@@ -217,7 +269,23 @@ class AveragePatterns(BaseEstimator, TransformerMixin):
     """
     Reduces the set of features to its average.
     """
-    pass
+
+    def __init__(self, method='mean'):
+        self.method = method
+
+    def fit(self):
+        return self
+
+    def transform(self, X):
+
+        if self.method == 'mean':
+            X = np.mean(X, axis=1)
+        elif self.method == 'median':
+            X = np.median(X, axis=1)
+        else:
+            raise ValueError('Invalid method: choose mean or median.')
+
+        return X
 
 
 if __name__ == '__main__':
