@@ -1,6 +1,7 @@
 """
-Module with transformer-classes following the scikit-learn API
-Rewritten code from my MSc thesis project (github.com/lukassnoek/MSc_thesis)
+Module with transformer-classes following the scikit-learn API.
+Contains rewritten code from my MSc thesis project
+(github.com/lukassnoek/MSc_thesis).
 """
 
 import numpy as np
@@ -10,8 +11,6 @@ from sklearn.feature_selection import f_classif
 from scipy.ndimage.measurements import label
 from itertools import combinations
 
-__author__ = 'Lukas Snoek'
-
 
 class Subject:
     """
@@ -19,7 +18,7 @@ class Subject:
     """
 
     def __init__(self, class_labels, subject_name, run_name, mask_name,
-                 mask_index, mask_shape, mask_threshold):
+                 mask_index, mask_shape, mask_threshold, pix_dim, affine):
 
         # Meta-data
         self.subject_name = subject_name
@@ -27,6 +26,8 @@ class Subject:
         self.run_name = run_name
         self.class_labels = class_labels
         self.class_names = np.unique(self.class_labels)
+        self.pix_dim = pix_dim
+        self.affine = affine
 
         # Primary data
         self.X = None  # should be set in pipeline from hdf5 file
@@ -57,6 +58,7 @@ class AverageSubject(Subject):
     def __init__(self):
         pass
 
+
 class ConcatenatedSubject(Subject):
     """
     Will initialize a Subject object which contains a set of single-trial
@@ -67,13 +69,11 @@ class ConcatenatedSubject(Subject):
     def __init__(self):
         pass
 
-
 """
 PRE-SPLIT TRANSFORMERS.
 These classes transform the entire dataset, before the train/set split,
 because they're not data-driven and thus do not need to be cross-validated.
 """
-
 
 class AverageRegionTransformer(BaseEstimator, TransformerMixin):
     """

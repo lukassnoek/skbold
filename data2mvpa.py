@@ -24,10 +24,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from mvp_utils import sort_numbered_list
 #from nipype.interfaces import fsl
-from transformers import Subject
 from os.path import join as opj
-
-__author__ = "Lukas Snoek"
 
 
 def transform2mni(stat_paths, varcopes, sub_path):
@@ -116,6 +113,9 @@ class DataHandler(object):
 
     def write_4D_nifti(self):
 
+        sub_name = os.path.basename(os.path.dirname(self.mvp_dir))
+
+        print("Creating 4D nifti for %s" % sub_name)
         self.shape = '4D'
         mvp = self.load()
         img = nib.Nifti1Image(mvp.X, np.eye(4))
@@ -250,8 +250,11 @@ class Fsl2mvp(object):
 
         # Load in data (COPEs)
         for i, path in enumerate(copes):
-            cope = nib.load(path).get_data().ravel()
-            mvp_data[i, :] = cope[mask_index]
+            cope_img = nib.load(path)
+            mvp_data[i, :] = cope_img.get_data().ravel()[mask_index]
+
+        pix_dim = cope_img.header['pixdim']
+        affine = cope_img.get_affine()
 
         if self.beta2tstat:
             for i_trial, varcope in enumerate(varcopes):
@@ -263,7 +266,7 @@ class Fsl2mvp(object):
 
         # Initializing Subject object, which will be saved as a pickle file
         hdr = Subject(self.class_labels, sub_name, run_name, mask_name, mask_index,
-                      mask_shape, self.mask_threshold)
+                      mask_shape, self.mask_threshold, pix_dim, affine)
 
         fn_header = opj(mat_dir, '%s_header_run%i.pickle' % (self.sub_name, n_converted+1))
         fn_data = opj(mat_dir, '%s_data_run%i.hdf5' % (self.sub_name, n_converted+1))

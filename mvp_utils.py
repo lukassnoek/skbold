@@ -32,43 +32,6 @@ def sort_numbered_list(stat_list):
     return sorted_list
 
 
-def convert_labels2numeric(class_labels, grouping):
-    """
-    Converts class labels (list of strings) to numeric numpy row vector.
-    Groups string labels based on grouping, which is useful in factorial
-    designs.
-
-    Args:
-        class_labels: list of strings (returned from extract_class_labels())
-        grouping: list of strings that indicate grouping
-
-    Returns:
-        num_labels: numeric labels corresponding to class_labels
-    """
-
-    if len(grouping) == 0:
-        grouping = np.unique(class_labels)
-
-    num_labels = np.zeros(len(class_labels))
-    for i, group in enumerate(grouping):
-
-        if type(group) == list:
-            matches = []
-            for g in group:
-                matches.append(fnmatch.filter(class_labels, '*%s*' % g))
-            matches = [x for y in matches for x in y]
-        else:
-            matches = fnmatch.filter(class_labels, '*%s*' % group)
-            matches = list(set(matches))
-
-        for match in matches:
-            for k, lab in enumerate(class_labels):
-                if match == lab:
-                    num_labels[k] = i + 1
-
-    return np.array(num_labels)
-
-
 class MvpResults(object):
     """ Contains info about model performance across iterations
     """
@@ -145,6 +108,7 @@ class MvpResults(object):
         with open(filename, 'wb') as handle:
             pickle.dump(self, handle)
 
+        # write meta-data (analysis parameters and stuff)
 
 class MvpAverageResults(object):
     """
