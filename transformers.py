@@ -4,70 +4,23 @@ Contains rewritten code from my MSc thesis project
 (github.com/lukassnoek/MSc_thesis).
 """
 
+from __future__ import print_function, division
+from mvp_utils import sort_numbered_list
 import numpy as np
 import nibabel as nib
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.feature_selection import f_classif
 from scipy.ndimage.measurements import label
 from itertools import combinations
+from os.path import join as opj
+from nipype.interfaces import fsl
+import os
+import glob
+import shutil
+import pandas as pd
+import cPickle
+import h5py
 
-
-class Subject:
-    """
-    Contains meta data about single-trial fMRI-BOLD data.
-    """
-
-    def __init__(self, class_labels, subject_name, run_name, mask_name,
-                 mask_index, mask_shape, mask_threshold, pix_dim, affine):
-
-        # Meta-data
-        self.subject_name = subject_name
-        # self.path ? --> derive subject name and run_name from this path
-        self.run_name = run_name
-        self.class_labels = class_labels
-        self.class_names = np.unique(self.class_labels)
-        self.pix_dim = pix_dim
-        self.affine = affine
-
-        # Primary data
-        self.X = None  # should be set in pipeline from hdf5 file
-        self.y = None  # should be set in pipeline using LabelEncoder
-
-        # Mask info
-        self.mask_name = mask_name              # Name of nifti-file
-        self.mask_index = mask_index            # index relative to MNI
-        self.mask_shape = mask_shape            # shape of mask (usually mni)
-        self.mask_threshold = mask_threshold
-
-        # Information about condition/class
-        self.n_trials = len(self.class_labels)
-        self.n_class = len(self.class_names)
-        self.n_inst = [np.sum(cls == class_labels) for cls in self.class_names]
-
-        self.class_idx = [class_labels == cls for cls in self.class_names]
-        self.trial_idx = [np.where(class_labels == cls)[0] for cls in self.class_names]
-
-
-class AverageSubject(Subject):
-    """
-    Will initialize a Subject object which contains the class-average patterns
-    of a series of subjects, instead of a set of within-subject single-trial
-    patterns.
-    """
-
-    def __init__(self):
-        pass
-
-
-class ConcatenatedSubject(Subject):
-    """
-    Will initialize a Subject object which contains a set of single-trial
-    patterns concatenated across multiple subjects, yielding a matrix of
-    (trials * subjects) x features.
-    """
-
-    def __init__(self):
-        pass
 
 """
 PRE-SPLIT TRANSFORMERS.
@@ -287,7 +240,7 @@ class AveragePatterns(BaseEstimator, TransformerMixin):
 
         return X
 
-
+"""
 if __name__ == '__main__':
 
     from sklearn.preprocessing import LabelEncoder
@@ -300,3 +253,4 @@ if __name__ == '__main__':
                           mask_idx=mvp.mask_index)
 
     X_clustered = CT.fit_transform(mvp.X, mvp.y)
+"""
