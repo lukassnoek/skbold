@@ -1,12 +1,15 @@
+from __future__ import print_function, division
 import numpy as np
 import fnmatch
 import glob
 import os
-import pickle
+import cPickle
+import h5py
 import pandas as pd
 from os.path import join as opj
 from sklearn.metrics import precision_score, recall_score, accuracy_score, \
      confusion_matrix
+from nipype.interfaces import fsl
 
 
 def sort_numbered_list(stat_list):
@@ -41,7 +44,7 @@ class MvpResults(object):
         self.method = method
         self.n_iter = iterations
         self.verbose = verbose
-        self.sub_name = mvp.subject_name
+        self.sub_name = mvp.sub_name
         self.run_name = mvp.run_name
         self.n_features = np.zeros((self.n_iter, 1))
         self.y_true = mvp.y
@@ -106,7 +109,7 @@ class MvpResults(object):
         filename = os.path.join(directory, '%s_%s_results.pickle' % \
                                 (self.sub_name, self.run_name))
         with open(filename, 'wb') as handle:
-            pickle.dump(self, handle)
+            cPickle.dump(self, handle)
 
         # write meta-data (analysis parameters and stuff)
 
@@ -129,7 +132,7 @@ class MvpAverageResults(object):
                                        self.identifier))
 
         for i, f in enumerate(files):
-            results = pickle.load(open(f, 'rb'))
+            results = cPickle.load(open(f, 'rb'))
             tmp = {'Sub_name': results.sub_name,
                    'Accuracy': results.accuracy,
                    'Precision': results.precision,
