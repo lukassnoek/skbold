@@ -4,8 +4,8 @@ Contains rewritten code from my MSc thesis project
 (github.com/lukassnoek/MSc_thesis).
 """
 
-from __future__ import print_function, division
-from mvp_utils import sort_numbered_list
+from __future__ import print_function, division, absolute_import
+from scikit_bold.utils.mvp_utils import sort_numbered_list
 import numpy as np
 import nibabel as nib
 from sklearn.base import BaseEstimator, TransformerMixin

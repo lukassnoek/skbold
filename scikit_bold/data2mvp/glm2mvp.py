@@ -13,7 +13,7 @@ with a multivariate normalization technique in the future
 Lukas Snoek (lukassnoek@gmail.com)
 """
 
-from __future__ import print_function, division
+from __future__ import print_function, division, absolute_import
 import os
 import glob
 import cPickle
@@ -23,7 +23,7 @@ import numpy as np
 import nibabel as nib
 import pandas as pd
 import matplotlib.pyplot as plt
-from mvp_utils import sort_numbered_list
+from scikit_bold.utils.mvp_utils import sort_numbered_list
 from os.path import join as opj
 from nipype.interfaces import fsl
 
