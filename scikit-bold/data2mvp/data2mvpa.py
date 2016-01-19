@@ -100,7 +100,6 @@ class Subject:
         self.remove_idx = np.where(remove_idx.sum(axis=1).astype(int))[0]
         _ = [class_labels.pop(idx) for idx in np.sort(self.remove_idx)[::-1]]
         self.class_labels = [s.split('_')[0] for s in class_labels]
-
         return self
 
     def convert2mni(self, file2transform):

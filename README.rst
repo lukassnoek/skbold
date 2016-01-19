@@ -1,2 +1,3 @@
-# scikit_BOLD
+scikit-bold
 Several modules to transform single-trial BOLD-fMRI data to scikit-learn compatible data structures
+and provide fMRI-specific transformers.
