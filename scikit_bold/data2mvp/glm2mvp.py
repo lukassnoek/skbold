@@ -26,6 +26,7 @@ import matplotlib.pyplot as plt
 from scikit_bold.utils.mvp_utils import sort_numbered_list
 from os.path import join as opj
 from nipype.interfaces import fsl
+from sklearn.preprocessing import LabelEncoder
 
 
 class Subject:
@@ -121,8 +122,9 @@ class Subject:
 
         out = []
         for f in file2transform:
-            
+              
             out_file = opj(out_dir, os.path.basename(f))
+            print(out_file)
             apply_xfm = fsl.ApplyXfm()
             apply_xfm.inputs.in_file = f
             apply_xfm.inputs.reference = ref_file
@@ -134,6 +136,8 @@ class Subject:
             out.append(out_file)
 
         return out
+        # Remove annoying .mat files
+        _ = [os.remove(f) for f in glob.glob(opj(os.getcwd(), '*.mat'))]
 
     def convert2epi(self, file2transform):
 
@@ -198,6 +202,7 @@ class Subject:
 
         # Extract class vector (class_labels)
         self.extract_class_labels()
+        self.y = LabelEncoder().fit_transform(self.class_labels)
         self.n_trials = len(self.class_labels)
         self.class_names = np.unique(self.class_labels)
         self.n_class = len(self.class_names)
@@ -308,6 +313,7 @@ class Subject:
                     tmp = cPickle.load(open(run_headers[i], 'r'))
                     hdr.class_labels.extend(tmp.class_labels)
 
+            hdr.y = LabelEncoder().fit_transform(hdr.class_labels)
             fn_header = opj(mat_dir, '%s_header_merged.pickle' % self.sub_name)
             fn_data = opj(mat_dir, '%s_data_merged.hdf5' % self.sub_name)
 
@@ -322,16 +328,17 @@ class Subject:
 
 
 class DataHandler(object):
-
-    def __init__(self, mvp_dir, identifier='', shape='2D'):
-        self.mvp_dir = mvp_dir
+    """ Loads in data/hdrs """
+    def __init__(self, identifier='', shape='2D'):
         self.identifier = identifier
         self.shape = shape
+        self.mvp = None
 
-    def load(self):
+    def load_separate_sub(self, sub_dir):
 
-        data_path = glob.glob(opj(self.mvp_dir, '*%s*.hdf5' % self.identifier))
-        hdr_path = glob.glob(opj(self.mvp_dir, '*%s*.pickle' % self.identifier))
+        mvp_dir = opj(sub_dir, 'mvp_data')
+        data_path = glob.glob(opj(mvp_dir, '*%s*.hdf5' % self.identifier))
+        hdr_path = glob.glob(opj(mvp_dir, '*%s*.pickle' % self.identifier))
 
         if len(data_path) > 1 or len(hdr_path) > 1:
             raise ValueError('Try to load more than one data/hdr file ...')
@@ -351,77 +358,78 @@ class DataHandler(object):
                 tmp_X[:, :, :, trial] = mvp.X[trial, :].reshape(mvp.mask_shape)
             mvp.X = tmp_X
 
+        self.mvp = mvp
+
+        return mvp
+
+    def load_concatenated_subs(self, directory):
+
+        data_paths = glob.glob(opj(directory, '*', 'mvp_data', '*%s*.hdf5' % self.identifier))
+        hdr_paths = glob.glob(opj(directory, '*', 'mvp_data', '*%s*.pickle' % self.identifier))
+
+        # Peek at first
+        for i in range(len(data_paths)):
+
+            if i == 0:
+                h5f = h5py.File(data_paths[i], 'r')
+                data = h5f['data'][:]
+                h5f.close()
+                mvp = cPickle.load(open(hdr_paths[i]))
+
+                if mvp.ref_space == 'epi':
+                    raise ValueError('Cannot concatenate subjects from different (EPI) spaces!')
+
+            else:
+                tmp = h5py.File(data_paths[i])
+                data = np.vstack((data, tmp['data'][:]))
+                tmp.close()
+                tmp = cPickle.load(open(hdr_paths[i], 'r'))
+                mvp.class_labels.extend(tmp.class_labels)
+
+        mvp.X = data
+        mvp.sub_name = 'ConcatenatedSubjects'
+        self.mvp = mvp
+
+        return mvp
+
+    def load_averaged_subs(self, directory):
+
+        data_paths = glob.glob(opj(directory, '*', 'mvp_data', '*%s*.hdf5' % self.identifier))
+        hdr_paths = glob.glob(opj(directory, '*', 'mvp_data', '*%s*.pickle' % self.identifier))
+
+        # Peek at first
+        for i in range(len(data_paths)):
+
+            if i == 0:
+                h5f = h5py.File(data_paths[i], 'r')
+                data_tmp = h5f['data'][:]
+                h5f.close()
+                mvp = cPickle.load(open(hdr_paths[i]))
+
+                # Pre-allocation
+                data = np.zeros((len(data_paths), data_tmp.shape[0], data_tmp.shape[1]))
+                data[i, :, :] = data_tmp
+
+                if mvp.ref_space == 'epi':
+                    raise ValueError('Cannot concatenate subjects from different (EPI) spaces!')
+
+            else:
+                tmp = h5py.File(data_paths[i])
+                data[i, :, :] = tmp['data'][:]
+                tmp.close()
+                
+        mvp.X = data.mean(axis=0)
+        mvp.sub_name = 'AveragedSubjects'
+        self.mvp = mvp
         return mvp
 
     def write_4D_nifti(self):
 
-        sub_name = os.path.basename(os.path.dirname(self.mvp_dir))
-
-        print("Creating 4D nifti for %s" % sub_name)
-        self.shape = '4D'
+        print("Creating 4D nifti for %s" % self.mvp.sub_name)
         mvp = self.load()
         img = nib.Nifti1Image(mvp.X, np.eye(4))
         nib.save(img, opj(self.mvp_dir, 'data_4d.nii.gz'))
 
         return self
 
-class AverageSubject(Subject):
-    """
-    Will initialize a Subject object which contains the class-average patterns
-    of a series of subjects, instead of a set of within-subject single-trial
-    patterns.
-    """
 
-    def __init__(self):
-        pass
-
-
-class ConcatenatedSubject(object):
-    """
-    Will initialize a Subject object which contains a set of single-trial
-    patterns concatenated across multiple subjects, yielding a matrix of
-    (trials * subjects) x features.
-    """
-    
-    def __init__(self, directory, identifier):
-
-        self.directory = directory
-        self.identifier = identifier
-        self.name = 'ConcatenatedSubject'
-        self.data_files = glob.glob(opj(directory, '*', 'mvp_data', '*%s*.hdf5' % identifier))
-        self.hdr_files = glob.glob(opj(directory, '*', 'mvp_data', '*%s*.pickle' % identifier))
-
-    def load(self):
-
-        # Peek at first
-        for i in range(len(self.data_files)):
-
-            if i == 0:
-                h5f = h5py.File(self.data_files[i], 'r')
-                data = h5f['data'][:]
-                h5f.close()
-                hdr = cPickle.load(open(self.hdr_files[i]))
-
-                if hdr.ref_space == 'epi':
-                    raise ValueError('Cannot concatenate subjects from different (EPI) spaces!')
-
-            else:
-                tmp = h5py.File(self.data_files[i])
-                data = np.vstack((data, tmp['data'][:]))
-                tmp.close()
-                tmp = cPickle.load(open(self.hdr_files[i], 'r'))
-                hdr.class_labels.extend(tmp.class_labels)
-
-        fn_header = opj(self.directory, '%s.pickle' % self.name)
-        fn_data = opj(self.directory, '%s.hdf5' % self.name)
-
-        with open(fn_header, 'wb') as handle:
-            cPickle.dump(hdr, handle)
-
-        h5f = h5py.File(fn_data, 'w')
-        h5f.create_dataset('data', data=data)
-        h5f.close()        
-
-        hdr.X = data
-
-        return hdr

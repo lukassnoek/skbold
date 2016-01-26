@@ -5,6 +5,8 @@ import glob
 import os
 import cPickle
 import h5py
+import json
+import shutil
 import pandas as pd
 from os.path import join as opj
 from sklearn.metrics import precision_score, recall_score, accuracy_score, \
@@ -38,18 +40,21 @@ def sort_numbered_list(stat_list):
 class MvpResults(object):
     """ Contains info about model performance across iterations
     """
-    def __init__(self, mvp, iterations, n_test, method='iteration-based',
-                 verbose=0):
+    def __init__(self, mvp, iterations, method='voting',
+                 verbose=0, condition_name=None):
 
         self.method = method
         self.n_iter = iterations
         self.verbose = verbose
         self.sub_name = mvp.sub_name
         self.run_name = mvp.run_name
+        self.condition_name = condition_name
         self.mask_shape = mvp.mask_shape
         self.mask_index = mvp.mask_index
+        self.ref_space = mvp.ref_space
+        self.affine = mvp.affine
         self.y_true = mvp.y
-        self.n_tested = n_test * mvp.n_class
+        self.iter = 0
 
         self.feature_selection = np.zeros(np.sum(mvp.mask_index))
         self.feature_zscores = np.zeros(np.sum(mvp.mask_index))
@@ -62,62 +67,77 @@ class MvpResults(object):
         self.recall = None
         self.conf_mat = np.zeros((mvp.n_class, mvp.n_class))
 
-        if method == 'iteration-based':
+        if method == 'averaging':
             self.precision = np.zeros(self.n_iter)
             self.accuracy = np.zeros(self.n_iter)
             self.recall = np.zeros(self.n_iter)
-        elif method == 'trial-based':
+        elif method == 'voting':
             self.trials_mat = np.zeros((len(mvp.y), mvp.n_class))
 
-    def update_results(self, iter, feature_idx, feature_zscores, feature_weights, test_idx, y_pred):
+    def update_results(self, feature_idx, feature_zscores, feature_weights, test_idx, y_pred):
         """ Updates results after a cross-validation iteration """
         
-        self.feature_zscores[feature_idx] += feature_zscores[feature_idx]     
-        self.feature_weights[feature_idx] += np.mean(np.abs(feature_weights))
-        self.feature_selection += feature_idx.astype(int) 
-        self.n_features[iter] = feature_idx.sum()
+        compute_features = not ((feature_idx is None) or (feature_zscores is None) or (feature_weights is None))
+        self.compute_features = compute_features
 
-        # Score per voxel update
-        self.feature_scores[feature_idx] += accuracy_score(self.y_true[test_idx], y_pred)
+        if compute_features:
+            self.feature_zscores[feature_idx] += feature_zscores[feature_idx]     
+            self.feature_weights[feature_idx] += np.mean(np.abs(feature_weights))
+            self.feature_selection += feature_idx.astype(int) 
+            self.n_features[self.iter] = feature_idx.sum()
+            
+            if y_pred.ndim > 1:
+                y_tmp = np.argmax(y_pred, axis=1)
+            else:
+                y_tmp = y_pred
 
-        if self.method == 'iteration-based':
+            self.feature_scores[feature_idx] += accuracy_score(self.y_true[test_idx], y_tmp)
+
+        if self.method == 'averaging':
             y_true = self.y_true[test_idx]
             self.conf_mat += confusion_matrix(y_true, y_pred)
-            self.precision[iter] = precision_score(y_true, y_pred, average='macro')
-            self.recall[iter] = recall_score(y_true, y_pred, average='macro')
-            self.accuracy[iter] = accuracy_score(y_true, y_pred)
+            self.precision[self.iter] = precision_score(y_true, y_pred, average='macro')
+            self.recall[self.iter] = recall_score(y_true, y_pred, average='macro')
+            self.accuracy[self.iter] = accuracy_score(y_true, y_pred)
 
             if self.verbose:
                 print('Accuracy: %f' % self.accuracy[iter])
 
-        elif self.method == 'trial-based':
-            self.trials_mat[test_idx, y_pred.astype(int)] += 1
+        elif self.method == 'voting':
+
+            if y_pred.ndim > 1:
+                self.trials_mat[test_idx, :] += y_pred
+            else:
+                self.trials_mat[test_idx, y_pred.astype(int)] += 1
+            
+        self.iter += 1
 
         return self
 
     def compute_score(self):
 
         self.n_features = self.n_features.mean()
-        self.feature_zscores = self.feature_zscores / self.feature_selection
-        self.feature_scores = self.feature_scores / self.feature_selection
-        self.feature_weights = self.feature_weights / self.feature_selection
-        self.feature_zscores[np.isnan(self.feature_zscores)] = 0
-        self.feature_scores[np.isnan(self.feature_scores)] = 0
-        self.feature_weights[np.isnan(self.feature_weights)] = 0
- 
-        if self.method == 'trial-based':
-            filter_trials = np.sum(self.trials_mat, 1) == 0
-            trials_max = np.argmax(self.trials_mat, 1) + 1
+        if self.compute_features:
+            self.feature_zscores = self.feature_zscores / self.feature_selection
+            self.feature_scores = self.feature_scores / self.feature_selection
+            self.feature_weights = self.feature_weights / self.feature_selection
+            self.feature_zscores[np.isnan(self.feature_zscores)] = 0
+            self.feature_scores[np.isnan(self.feature_scores)] = 0
+            self.feature_weights[np.isnan(self.feature_weights)] = 0
+
+        if self.method == 'voting':
+
+            filter_trials = np.sum(self.trials_mat, axis=1) == 0
+            trials_max = np.argmax(self.trials_mat, axis=1) + 1
             trials_max[filter_trials] = 0
             y_pred = trials_max[trials_max > 0]-1
             y_true = self.y_true[trials_max > 0]
-
             self.conf_mat = confusion_matrix(y_true, y_pred)
             self.precision = precision_score(y_true, y_pred, average='macro')
             self.recall = recall_score(y_true, y_pred, average='macro')
             self.accuracy = accuracy_score(y_true, y_pred)
 
-        elif self.method == 'iteration-based':
+        elif self.method == 'averaging':
 
             self.accuracy = self.accuracy.mean()
             self.precision = self.precision.mean()
@@ -126,39 +146,67 @@ class MvpResults(object):
         print('Accuracy over iterations: %f' % self.accuracy)
         return self
 
-    def write_results(self, directory):
+    def write_results(self, directory, convert2mni=False):
 
         filename = os.path.join(directory, '%s_%s_classification.pickle' % \
                                 (self.sub_name, self.run_name))
         with open(filename, 'wb') as handle:
             cPickle.dump(self, handle)
 
-        # To do: write meta-data (analysis parameters and stuff)
+        if self.compute_features:
+            vox_dir = os.path.join(directory, 'vox_results_%s' % self.ref_space)
+            if not os.path.isdir(vox_dir):
+                os.makedirs(vox_dir)
 
-        # Write feature-selection scores (zvalues)
-        filename = os.path.join(directory, '%s_%s_FeatureZscores' % \
-                                (self.sub_name, self.run_name))
+            # Write feature-selection scores (zvalues)
+            fn_zscores = os.path.join(vox_dir, '%s_%s_FeatureZscores' % \
+                                    (self.sub_name, self.run_name))
 
-        img = np.zeros(np.prod(self.mask_shape))
-        img[self.mask_index] = self.feature_zscores
-        img = nib.Nifti1Image(img.reshape(self.mask_shape), np.eye(4))
-        nib.save(img, filename)
+            img = np.zeros(np.prod(self.mask_shape))
+            img[self.mask_index] = self.feature_zscores
+            img = nib.Nifti1Image(img.reshape(self.mask_shape), self.affine)
+            nib.save(img, fn_zscores)
 
-        # Write feature weights
-        filename = os.path.join(directory, '%s_%s_FeatureWeights' % \
-                                (self.sub_name, self.run_name))
-        img = np.zeros(np.prod(self.mask_shape))
-        img[self.mask_index] = self.feature_weights
-        img = nib.Nifti1Image(img.reshape(self.mask_shape), np.eye(4))
-        nib.save(img, filename)
+            # Write feature weights
+            fn_weights = os.path.join(vox_dir, '%s_%s_FeatureWeights' % \
+                                    (self.sub_name, self.run_name))
+            img = np.zeros(np.prod(self.mask_shape))
+            img[self.mask_index] = self.feature_weights
+            img = nib.Nifti1Image(img.reshape(self.mask_shape), self.affine)
+            nib.save(img, fn_weights)
 
-        # Write feature scores
-        filename = os.path.join(directory, '%s_%s_FeatureScores' % \
-                                (self.sub_name, self.run_name))
-        img = np.zeros(np.prod(self.mask_shape))
-        img[self.mask_index] = self.feature_scores
-        img = nib.Nifti1Image(img.reshape(self.mask_shape), np.eye(4))
-        nib.save(img, filename)
+            # Write feature scores
+            fn_scores = os.path.join(vox_dir, '%s_%s_FeatureScores' % \
+                                    (self.sub_name, self.run_name))
+            img = np.zeros(np.prod(self.mask_shape))
+            img[self.mask_index] = self.feature_scores
+            img = nib.Nifti1Image(img.reshape(self.mask_shape), self.affine)
+            nib.save(img, fn_scores)
+
+            if self.ref_space == 'epi' and convert2mni:
+
+                files2transform = [fn_zscores +'.nii', fn_weights+'.nii', fn_scores+'.nii']
+                mni_dir = os.path.join(directory, 'vox_results_mni')
+                if not os.path.isdir(mni_dir):
+                    os.makedirs(mni_dir)
+
+                reg_dir = glob.glob(opj(directory, '*', self.sub_name, '*', 'reg'))[0]
+                ref_file = opj(reg_dir, 'standard.nii.gz')
+                matrix_file = opj(reg_dir, 'example_func2standard.mat')
+            
+                for f in files2transform:
+                    out_file = opj(mni_dir, os.path.basename(f)+'.gz')
+                    apply_xfm = fsl.ApplyXfm()
+                    apply_xfm.inputs.in_file = f
+                    apply_xfm.inputs.reference = ref_file
+                    apply_xfm.inputs.in_matrix_file = matrix_file
+                    apply_xfm.interp = 'trilinear'
+                    apply_xfm.inputs.out_file = out_file
+                    apply_xfm.inputs.apply_xfm = True
+                    apply_xfm.run()
+
+                # Remove annoying .mat files
+                _ = [os.remove(f) for f in glob.glob(opj(os.getcwd(), '*.mat'))]
 
 
 class MvpAverageResults(object):
@@ -167,11 +215,12 @@ class MvpAverageResults(object):
     them and write their average/processed results as a pandas dataframe
     """
 
-    def __init__(self, directory, identifier, threshold=.4, write_df=True, cleanup=True):
+    def __init__(self, directory, identifier, compute_features=False, params=None, threshold=.4, cleanup=True):
         self.directory = directory
         self.threshold = threshold
         self.identifier = identifier
-        self.write_df = write_df
+        self.compute_features = compute_features
+        self.params = params
         self.cleanup = cleanup
         self.df_ = pd.DataFrame()
 
@@ -200,44 +249,45 @@ class MvpAverageResults(object):
         cols.insert(0, cols.pop(cols.index('Sub_name')))
         self.df_ = self.df_.ix[:, cols]
 
-        if self.cleanup:
-            _ = [os.remove(f) for f in files]
+        _ = [os.remove(f) for f in files]
 
         print(self.df_)
 
-        zscore_files = glob.glob(os.path.join(self.directory, '*%s*FeatureZscores*.nii' % \
-                                 self.identifier))
-
-        weight_files = glob.glob(os.path.join(self.directory, '*%s*FeatureWeights*.nii' % \
-                                 self.identifier))
+        if self.compute_features:
+            vox_files_dir = os.path.join(self.directory, 'vox_results_mni')
+            zscore_files = glob.glob(os.path.join(vox_files_dir, '*%s*FeatureZscores*.nii.gz' % \
+                                     self.identifier))
+            
+            weight_files = glob.glob(os.path.join(vox_files_dir, '*%s*FeatureWeights*.nii.gz' % \
+                                     self.identifier))
         
-        score_files = glob.glob(os.path.join(self.directory, '*%s*FeatureScores*.nii' % \
-                                 self.identifier))
+            score_files = glob.glob(os.path.join(vox_files_dir, '*%s*FeatureScores*.nii.gz' % \
+                                     self.identifier))
 
-        mask_shape = (91, 109, 91)
-        z = np.zeros((len(zscore_files), mask_shape[0], mask_shape[1], mask_shape[2]))
-        w = np.zeros((len(weight_files), mask_shape[0], mask_shape[1], mask_shape[2]))
-        s = np.zeros((len(score_files), mask_shape[0], mask_shape[1], mask_shape[2]))
+            mask_shape = (91, 109, 91) # hard-coded mni-shape
+            z = np.zeros((len(zscore_files), mask_shape[0], mask_shape[1], mask_shape[2]))
+            w = np.zeros((len(weight_files), mask_shape[0], mask_shape[1], mask_shape[2]))
+            s = np.zeros((len(score_files), mask_shape[0], mask_shape[1], mask_shape[2]))
 
-        for i, (zscore, weight, score) in enumerate(zip(zscore_files, weight_files, score_files)):
-            z[i, :, :, :] = nib.load(zscore).get_data()
-            w[i, :, :, :] = nib.load(weight).get_data()
-            s[i, :, :, :] = (nib.load(score).get_data() > self.threshold).astype(int)
+            for i, (zscore, weight, score) in enumerate(zip(zscore_files, weight_files, score_files)):
+                z[i, :, :, :] = nib.load(zscore).get_data()
+                w[i, :, :, :] = nib.load(weight).get_data()
+                s[i, :, :, :] = (nib.load(score).get_data() > self.threshold).astype(int)
+                
+            if self.cleanup:
+                _ = os.system('rm %s/*%s*.nii' % (self.directory, self.identifier))
 
-        if self.cleanup:
-            _ = os.system('rm %s/*%s*.nii' % (self.directory, self.identifier))
+            filename = os.path.join(self.directory, '%s_AverageZscores' % self.identifier)
+            img = nib.Nifti1Image(z.mean(axis=0), np.eye(4))
+            nib.save(img, filename)
 
-        filename = os.path.join(self.directory, '%s_AverageZscores' % self.identifier)
-        img = nib.Nifti1Image(z.mean(axis=0), np.eye(4))
-        nib.save(img, filename)
+            filename = os.path.join(self.directory, '%s_AverageWeights' % self.identifier)
+            img = nib.Nifti1Image(w.mean(axis=0), np.eye(4))
+            nib.save(img, filename)
 
-        filename = os.path.join(self.directory, '%s_AverageWeights' % self.identifier)
-        img = nib.Nifti1Image(w.mean(axis=0), np.eye(4))
-        nib.save(img, filename)
-
-        filename = os.path.join(self.directory, '%s_AverageScores' % self.identifier)
-        img = nib.Nifti1Image(s.sum(axis=0), np.eye(4))
-        nib.save(img, filename)
+            filename = os.path.join(self.directory, '%s_AverageScores' % self.identifier)
+            img = nib.Nifti1Image(s.sum(axis=0), np.eye(4))
+            nib.save(img, filename)
 
         return self
 
@@ -245,6 +295,9 @@ class MvpAverageResults(object):
         filename = os.path.join(self.directory, 'average_results_%s.csv' % \
                                 self.identifier)
         self.df_.to_csv(filename, sep='\t', header=True, index=False)
+
+        with open(os.path.join(self.directory, 'analysis_parameters.json'), 'w') as f:
+            json.dump(self.params, f)
 
 
 

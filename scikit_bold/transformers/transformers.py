@@ -10,6 +10,7 @@ import numpy as np
 import nibabel as nib
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.feature_selection import f_classif
+from sklearn.preprocessing import StandardScaler
 from scipy.ndimage.measurements import label
 from itertools import combinations
 from os.path import join as opj
@@ -87,6 +88,18 @@ applied (crossvalidated) on the test-set.
 """
 
 
+class ArrayPermuter(BaseEstimator, TransformerMixin):
+    """ Permutes (shuffles) rows of matrix """
+    
+    def __init__(self):
+        self.shuffle = None
+
+    def fit(self, X=None, y=None):
+        return self
+
+    def transform(self, X):
+        return np.random.permutation(X)
+
 class AnovaCutoff(BaseEstimator, TransformerMixin):
     """
     This class implements a ANOVA-based feature selection based on a
@@ -106,7 +119,7 @@ class AnovaCutoff(BaseEstimator, TransformerMixin):
         return X[:, self.idx_]
 
 
-class MeanEuclideanTransformer(BaseEstimator, TransformerMixin):
+class MeanEuclidean(BaseEstimator, TransformerMixin):
     """
     Selects features based on mean Euclidean distance between mean patterns.
     """
@@ -149,11 +162,46 @@ class MeanEuclideanTransformer(BaseEstimator, TransformerMixin):
         return X[:, self.idx_]
 
 
+class FeaturesToContrast(BaseEstimator, TransformerMixin):
+    
+    def __init__(self, zvalue):
+        self.zvalue = zvalue
+        self.idx_ = None
+        self.zvalues_ = None
 
-class FeaturesToContrastTransformer(BaseEstimator, TransformerMixin):
-    pass
+    def fit(self, X, y):
+        """ Performs feature selection on array of n_samples, n_features
+        Args:
+            X: array with n_samples, n_features
+            y: labels for n_samples
+        """
 
+        n_class = np.unique(y).shape[0]
+        n_features = X.shape[1]
 
+        av_patterns = np.zeros((n_class, n_features))
+
+        # Calculate mean patterns
+        for i in range(n_class):
+            av_patterns[i, :] = np.mean(X[y == np.unique(y)[i], :], axis=0)
+
+        # Create difference vectors, z-score standardization, absolute
+        comb = list(combinations(range(1, n_class + 1), 2))
+        diff_patterns = np.zeros((len(comb), n_features))
+        for i, cb in enumerate(comb):
+            tmp = av_patterns[cb[0] - 1] - av_patterns[cb[1] - 1, :]
+            diff_patterns[i, :] = np.abs((tmp - tmp.mean()) / tmp.std())
+
+        self.idx_ = diff_patterns > self.zvalue
+        self.zvalues_ = diff_patterns
+        return self
+
+    def transform(self, X):
+
+        X_new = np.zeros((X.shape[0], self.idx_.shape[0]))
+        for i in range(X_new.shape[1]):
+            X_new[:, i] = np.mean(X[:, self.idx_[i, :]], axis=1)
+        return X_new
 
 class ClusterThreshold(BaseEstimator, TransformerMixin):
     """
@@ -166,7 +214,7 @@ class ClusterThreshold(BaseEstimator, TransformerMixin):
         self.min_cluster_size = min_cluster_size
         self.mask_shape = mask_shape
         self.mask_idx = mask_idx
-        self.f_ = None
+        self.z_ = None
         self.idx_ = None
         self.cl_idx_ = None
 
@@ -174,16 +222,14 @@ class ClusterThreshold(BaseEstimator, TransformerMixin):
         """
         something
         """
-
-        np.seterr(invalid='ignore')
-
-        f, _ = f_classif(X, y)
-        self.f_ = f
-        self.idx_ = f > self.cutoff
+        transformer = MeanEuclidean(zvalue=self.cutoff)
+        X_new = transformer.fit_transform(X, y)
+        self.z_ = transformer.zvalues_
+        self.idx_ = transformer.idx_
 
         # X_fs = univariate feature values in wholebrain space
         X_fs = np.zeros(self.mask_shape).ravel()
-        X_fs[self.mask_idx] = self.f_
+        X_fs[self.mask_idx] = self.z_
         X_fs = X_fs.reshape(self.mask_shape)
 
         clustered, num_clust = label(X_fs > self.cutoff)
@@ -239,18 +285,3 @@ class AveragePatterns(BaseEstimator, TransformerMixin):
             raise ValueError('Invalid method: choose mean or median.')
 
         return X
-
-"""
-if __name__ == '__main__':
-
-    from sklearn.preprocessing import LabelEncoder
-    from data2mvpa import load_mvp_object
-
-    mvp = load_mvp_object('/home/lukas/DecodingEmotions/HWW_002/mvp_data', identifier='merged')
-    mvp.y = LabelEncoder().fit_transform(mvp.class_labels)
-
-    CT = ClusterThreshold(cutoff=2, min_cluster_size=10, mask_shape=mvp.mask_shape,
-                          mask_idx=mvp.mask_index)
-
-    X_clustered = CT.fit_transform(mvp.X, mvp.y)
-"""
