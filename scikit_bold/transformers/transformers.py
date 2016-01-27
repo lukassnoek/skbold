@@ -21,13 +21,14 @@ import shutil
 import pandas as pd
 import cPickle
 import h5py
-
+from joblib import Parallel, delayed
 
 """
 PRE-SPLIT TRANSFORMERS.
 These classes transform the entire dataset, before the train/set split,
 because they're not data-driven and thus do not need to be cross-validated.
 """
+
 
 class AverageRegionTransformer(BaseEstimator, TransformerMixin):
     """
@@ -40,10 +41,10 @@ class AverageRegionTransformer(BaseEstimator, TransformerMixin):
         self.orig_shape = orig_shape
         self.orig_threshold = orig_mask_threshold
 
-    def fit(self, X):
+    def fit(self, X=None, y=None):
         return self
 
-    def transform(self, X):
+    def transform(self, X, y=None):
         """
         Transforms features from X (voxels) to region-average features from X.
 
@@ -55,8 +56,8 @@ class AverageRegionTransformer(BaseEstimator, TransformerMixin):
         """
 
         X_new = np.zeros((X.shape[0], len(self.mask_list)))
-
         for i, mask in enumerate(self.mask_list):
+
             roi_idx = nib.load(mask).get_data() > self.orig_threshold
             overlap = roi_idx.astype(int).ravel() + self.orig_mask.astype(int)
             region_av = np.mean(X[:, (overlap == 2)[self.orig_mask]], axis=1)
@@ -285,3 +286,35 @@ class AveragePatterns(BaseEstimator, TransformerMixin):
             raise ValueError('Invalid method: choose mean or median.')
 
         return X
+
+
+def fit_parallel(fold, X, y, pipeline, already_fitted=False):
+    train_idx, test_idx = fold
+    X_train, X_test = X[train_idx, :], X[test_idx, :]
+    y_train, y_test = y[train_idx], y[test_idx]
+            
+    if not already_fitted:
+        pipeline.fit(X_train, y_train)
+    
+    return pipeline.predict_proba(X_test)
+    
+
+class VotingTransformer(BaseEstimator, TransformerMixin):
+
+    def __init__(self, pipeline, folds, n_cores=1, already_fitted=False):
+
+        self.pipeline = pipeline
+        self.folds = folds
+        self.n_cores = n_cores
+        self.votes = None
+        self.already_fitted = already_fitted
+        
+    def fit(self, X, y):
+
+        probas = Parallel(n_jobs=self.n_cores)(delayed(fit_parallel)(fold, X, y, self.pipeline, self.already_fitted) for fold in self.folds)
+        #probas = np.rollaxis(np.array(probas), 0, 3)
+        #self.votes = np.argmax(np.mean(probas, axis=2), axis=1)
+        #return self.votes
+
+class LocalRegionCombiner():
+    pass

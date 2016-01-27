@@ -1,11 +1,11 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 install_requires = [
 	'scikit-learn',
 	'numpy',
 	'nibabel',
 	'nilearn'
-	]
+]
 
 def readme():
 	with open('README.rst') as f:
@@ -13,7 +13,7 @@ def readme():
 
 setup(
 	name='scikit-bold',
-	version='0.1',
+	version='0.1.2',
     description='Tools to convert and transform first-level fMRI data to scikit-learn compatible data-structures',
     long_description=readme(),
     classifiers=[
@@ -22,9 +22,11 @@ setup(
     	'Operating System :: POSIX :: Linux',
     	'Programming Language :: Python :: 2.7',
     	'Topic :: Scientific/Engineering :: Bio-Informatics'],
+    keywords = "fMRI scikit-learn RSA representational simililarity analysis",
     url='https://github.com/lukassnoek/scikit-bold',
     author='Lukas Snoek',
     author_email='lukassnoek@gmail.com',
     license='MIT',
-    packages=['scikit-bold'],
+    platforms='Linux',
+    packages=find_packages(),
     zip_safe=False)

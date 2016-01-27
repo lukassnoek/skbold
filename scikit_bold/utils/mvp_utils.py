@@ -14,6 +14,7 @@ from sklearn.metrics import precision_score, recall_score, accuracy_score, \
 from nipype.interfaces import fsl
 import nibabel as nib
 
+
 def sort_numbered_list(stat_list):
     """
     Sorts list with paths to statistic files (e.g. COPEs, VARCOPES),
@@ -48,6 +49,7 @@ class MvpResults(object):
         self.verbose = verbose
         self.sub_name = mvp.sub_name
         self.run_name = mvp.run_name
+        self.n_class = mvp.n_class
         self.condition_name = condition_name
         self.mask_shape = mvp.mask_shape
         self.mask_index = mvp.mask_index
@@ -74,7 +76,7 @@ class MvpResults(object):
         elif method == 'voting':
             self.trials_mat = np.zeros((len(mvp.y), mvp.n_class))
 
-    def update_results(self, feature_idx, feature_zscores, feature_weights, test_idx, y_pred):
+    def update_results(self, test_idx, y_pred, feature_idx=None, feature_zscores=None, feature_weights=None):
         """ Updates results after a cross-validation iteration """
         
         compute_features = not ((feature_idx is None) or (feature_zscores is None) or (feature_weights is None))
@@ -215,13 +217,14 @@ class MvpAverageResults(object):
     them and write their average/processed results as a pandas dataframe
     """
 
-    def __init__(self, directory, identifier, compute_features=False, params=None, threshold=.4, cleanup=True):
+    def __init__(self, directory, identifier, compute_features=False, params=None, threshold=None, cleanup=True):
         self.directory = directory
         self.threshold = threshold
         self.identifier = identifier
         self.compute_features = compute_features
         self.params = params
         self.cleanup = cleanup
+        self.threshold = threshold
         self.df_ = pd.DataFrame()
 
     def load(self):
@@ -237,6 +240,10 @@ class MvpAverageResults(object):
                    'Recall': results.recall,
                    'n_feat': results.n_features}
             self.df_ = self.df_.append(pd.DataFrame(tmp, index=[i]))
+
+        if not self.threshold:
+            n_class = results.n_class
+            self.threshold = (1/n_class) + .2 * (1/n_class) 
 
         tmp = {'Sub_name': 'Average',
                'Accuracy': self.df_['Accuracy'].mean(),
@@ -296,8 +303,22 @@ class MvpAverageResults(object):
                                 self.identifier)
         self.df_.to_csv(filename, sep='\t', header=True, index=False)
 
-        with open(os.path.join(self.directory, 'analysis_parameters.json'), 'w') as f:
-            json.dump(self.params, f)
+        if self.params:
+            with open(os.path.join(self.directory, 'analysis_parameters.json'), 'w') as f:
+                json.dump(self.params, f)
 
 
+class AnalysisPermuter():
+
+    def __init__(self, project_dir):
+        pass
+
+class Parallelizer():
+
+    def __init__(self, X, y, folds, pipeline):
+
+        self.X = X
+        self.y = y
+        self.folds = folds
+        self.pipeline = pipeline
 
