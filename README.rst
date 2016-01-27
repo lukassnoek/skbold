@@ -17,8 +17,8 @@ and various other multivoxel pattern analyses (e.g. cross-validated MANOVA).
 Installing scikit-bold
 ########
 
-Althoug the package is very much in development, it can be installed using *pip* ::
+Althoug the package is very much in development, it can be installed using *pip*::
 
-pip install scikit-bold
+	pip install scikit-bold
 
 
