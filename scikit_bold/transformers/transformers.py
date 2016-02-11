@@ -91,7 +91,7 @@ applied (crossvalidated) on the test-set.
 
 class ArrayPermuter(BaseEstimator, TransformerMixin):
     """ Permutes (shuffles) rows of matrix """
-    
+
     def __init__(self):
         self.shuffle = None
 
@@ -125,8 +125,9 @@ class MeanEuclidean(BaseEstimator, TransformerMixin):
     Selects features based on mean Euclidean distance between mean patterns.
     """
 
-    def __init__(self, zvalue):
+    def __init__(self, zvalue, normalize=False):
         self.zvalue = zvalue
+        self.normalize = normalize
         self.idx_ = None
         self.zvalues_ = None
 
@@ -144,7 +145,14 @@ class MeanEuclidean(BaseEstimator, TransformerMixin):
 
         # Calculate mean patterns
         for i in range(n_class):
-            av_patterns[i, :] = np.mean(X[y == np.unique(y)[i], :], axis=0)
+            pattern = X[y == np.unique(y)[i], :]
+
+            if self.normalize:
+                av_patterns[i, :] = pattern.mean(axis=0) / pattern.std(axis=0)
+            else:
+                av_patterns[i, :] = pattern.mean(axis=0)
+
+        av_patterns[np.isnan(av_patterns)] = 0
 
         # Create difference vectors, z-score standardization, absolute
         comb = list(combinations(range(1, n_class + 1), 2))
@@ -154,8 +162,10 @@ class MeanEuclidean(BaseEstimator, TransformerMixin):
             diff_patterns[i, :] = np.abs((tmp - tmp.mean()) / tmp.std())
 
         mean_diff = np.mean(diff_patterns, axis=0)
+
         self.idx_ = mean_diff > self.zvalue
         self.zvalues_ = mean_diff
+
         return self
 
     def transform(self, X):
@@ -164,7 +174,7 @@ class MeanEuclidean(BaseEstimator, TransformerMixin):
 
 
 class FeaturesToContrast(BaseEstimator, TransformerMixin):
-    
+
     def __init__(self, zvalue):
         self.zvalue = zvalue
         self.idx_ = None
@@ -292,12 +302,12 @@ def fit_parallel(fold, X, y, pipeline, already_fitted=False):
     train_idx, test_idx = fold
     X_train, X_test = X[train_idx, :], X[test_idx, :]
     y_train, y_test = y[train_idx], y[test_idx]
-            
+
     if not already_fitted:
         pipeline.fit(X_train, y_train)
-    
+
     return pipeline.predict_proba(X_test)
-    
+
 
 class VotingTransformer(BaseEstimator, TransformerMixin):
 
@@ -308,7 +318,7 @@ class VotingTransformer(BaseEstimator, TransformerMixin):
         self.n_cores = n_cores
         self.votes = None
         self.already_fitted = already_fitted
-        
+
     def fit(self, X, y):
 
         probas = Parallel(n_jobs=self.n_cores)(delayed(fit_parallel)(fold, X, y, self.pipeline, self.already_fitted) for fold in self.folds)

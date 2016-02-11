@@ -1,14 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Module with functions to create subject-specific matrices of trials X voxels.
-
-The creat_subject_mats function does the following for each subject:
-1. Loads in mni-transformed first-level COPEs
-2. Indexes vectorized copes with specified mask (e.g. ROI/gray matter)
-3. Normalizes COPEs by their variance (sqrt(VARCOPE)); this will be extended 
-with a multivariate normalization technique in the future
-4. Initializes the result as an mvp_mat
-5. Saves subject-specific mvp_mat as .cpickle file 
+Module with functions to load in first-level GLM estimates as 
+returned by the software package FSL.
 
 Lukas Snoek (lukassnoek@gmail.com)
 """

@@ -313,12 +313,3 @@ class AnalysisPermuter():
     def __init__(self, project_dir):
         pass
 
-class Parallelizer():
-
-    def __init__(self, X, y, folds, pipeline):
-
-        self.X = X
-        self.y = y
-        self.folds = folds
-        self.pipeline = pipeline
-
