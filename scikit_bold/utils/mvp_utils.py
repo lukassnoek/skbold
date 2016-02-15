@@ -231,7 +231,6 @@ class MvpAverageResults(object):
 
         files = glob.glob(os.path.join(self.directory, '*%s*.pickle' % \
                                        self.identifier))
-
         for i, f in enumerate(files):
             results = cPickle.load(open(f, 'rb'))
             tmp = {'Sub_name': results.sub_name,
