@@ -17,6 +17,7 @@ import nibabel as nib
 import pandas as pd
 import matplotlib.pyplot as plt
 from scikit_bold.utils.mvp_utils import sort_numbered_list
+from scikit_bold.transformers.transformers import *
 from os.path import join as opj
 from nipype.interfaces import fsl
 from sklearn.preprocessing import LabelEncoder
@@ -121,7 +122,6 @@ class Subject:
         for f in file2transform:
               
             out_file = opj(out_dir, os.path.basename(f))
-            print(out_file)
             apply_xfm = fsl.ApplyXfm()
             apply_xfm.inputs.in_file = f
             apply_xfm.inputs.reference = ref_file
@@ -207,7 +207,7 @@ class Subject:
         self.class_idx = [self.class_labels == cls for cls in self.class_names]
         self.trial_idx = [np.where(self.class_labels == cls)[0] for cls in self.class_names]
 
-        print('Processing %s (run %i / %i)...' % (sub_name, n_converted + 1, n_feat), end='')
+        print('Processing %s (run %i / %i)...' % (sub_name, n_converted+1, n_feat), end='')
 
         # Specify appropriate stats-directory
         if self.ref_space == 'epi':
@@ -224,27 +224,26 @@ class Subject:
             transform2mni = False
 
         copes = glob.glob(opj(stat_dir, 'cope*.nii.gz'))
-        copes = sort_numbered_list(copes)
-        _ = [copes.pop(idx) for idx in sorted(self.remove_idx, reverse=True)]
-
         varcopes = glob.glob(opj(stat_dir, 'varcope*.nii.gz'))
-        varcopes = sort_numbered_list(varcopes)
-        _ = [varcopes.pop(idx) for idx in sorted(self.remove_idx, reverse=True)]
 
-        n_stat = len(copes)
-
-        if not n_stat == len(self.class_labels):
-            msg = 'The number of trials (%i) do not match the number of class labels (%i)' % \
-                  (n_stat, len(self.class_labels))
-            raise ValueError(msg)
-
-        # Transform to mni if necessary
         if transform2mni:
             copes.extend(varcopes)
             transformed_files = self.convert2mni(copes)            
             half = int(len(transformed_files) / 2)
             copes = transformed_files[:half]
             varcopes = transformed_files[half:]
+
+        copes = sort_numbered_list(copes)
+        _ = [copes.pop(idx) for idx in sorted(self.remove_idx, reverse=True)]
+
+        varcopes = sort_numbered_list(varcopes)
+        _ = [varcopes.pop(idx) for idx in sorted(self.remove_idx, reverse=True)]
+
+        n_stat = len(copes)
+        if not n_stat == len(self.class_labels):
+            msg = 'The number of trials (%i) do not match the number of class labels (%i)' % \
+                  (n_stat, len(self.class_labels))
+            raise ValueError(msg)
 
         # We need to 'peek' at the first cope to know the dimensions
         if self.mask_path is None:
@@ -396,7 +395,6 @@ class DataHandler(object):
 
         # Peek at first
         for i in range(len(data_paths)):
-
             if i == 0:
                 h5f = h5py.File(data_paths[i], 'r')
                 data_tmp = h5f['data'][:]
@@ -420,6 +418,74 @@ class DataHandler(object):
         self.mvp = mvp
         return mvp
 
+    def load_averagedcontrast_subs(self, directory, grouping):
+        """
+        Averages trials within conditions per subject and
+        concatenates these condition-average patterns across
+        subjects into one mvp-matrix.
+        """
+
+        data_paths = glob.glob(opj(directory, '*', 'mvp_data', '*%s*.hdf5' % self.identifier))
+        hdr_paths = glob.glob(opj(directory, '*', 'mvp_data', '*%s*.pickle' % self.identifier))
+
+        # Loop over subjects
+        for i in range(len(data_paths)):
+
+            # peek at first subject (to get some meta-info)
+            if i == 0:
+                h5f = h5py.File(data_paths[i], 'r')
+                data_tmp = h5f['data'][:]
+                h5f.close()
+                mvp = cPickle.load(open(hdr_paths[i]))
+
+                if mvp.ref_space == 'epi':
+                    raise ValueError('Cannot concatenate subjects from different (EPI) spaces!')
+
+                # Group labels so we know which conditions (within factorial design) to average
+                labfac = LabelFactorizer(grouping)
+                mvp.y = labfac.fit_transform(mvp.class_labels)
+                mvp.class_labels = list(labfac.get_new_labels())
+                mvp.class_names = np.unique(mvp.class_labels)
+                mvp.n_class = len(mvp.class_names)
+                mvp.class_idx = [np.array(mvp.class_labels) == cls for cls in mvp.class_names]
+                mvp.class_labels = list(mvp.class_names)    
+
+                data_averaged = np.zeros((mvp.n_class, data_tmp.shape[1]))
+                for ii in range(mvp.n_class):
+                    data_averaged[ii, :] = np.mean(data_tmp[mvp.class_idx[ii], :], axis=0)
+
+                # Pre-allocation
+                data = np.zeros((len(data_paths) * mvp.n_class, data_tmp.shape[1]))
+                data[(i*mvp.n_class):((i+1)*mvp.n_class), :] = data_averaged
+
+            # This is executed in the rest of the loop
+            else:
+                tmp = h5py.File(data_paths[i])
+                data_tmp = tmp['data'][:]
+                tmp.close()
+                hdr = cPickle.load(open(hdr_paths[i]))
+                labfac = LabelFactorizer(grouping)
+                hdr.y = labfac.fit_transform(hdr.class_labels)
+                hdr.class_labels = list(labfac.get_new_labels())
+                hdr.class_names = np.unique(hdr.class_labels)
+                hdr.n_class = len(hdr.class_names)
+                hdr.class_idx = [np.array(hdr.class_labels) == cls for cls in hdr.class_names]
+                hdr.class_labels = hdr.class_names
+
+                mvp.class_labels.extend(hdr.class_names)
+                for ii in range(hdr.n_class):
+                    # recycle data_averaged from when i==0
+
+                    data_averaged[ii, :] = np.mean(data_tmp[mvp.class_idx[ii], :], axis=0)
+
+                data[(i*mvp.n_class):((i+1)*mvp.n_class), :] = data_averaged
+
+        mvp.X = data
+        mvp.sub_name = 'AveragedContrastSubjects'
+        self.mvp = mvp
+        return mvp
+
+
     def write_4D_nifti(self):
 
         print("Creating 4D nifti for %s" % self.mvp.sub_name)
@@ -429,4 +495,6 @@ class DataHandler(object):
 
         return self
 
+if __name__ == '__main__':
 
+    data = DataHandler().load_averagedcontrast_subs('/media/lukas/data/glm_mni', ['pos', 'neg'])
