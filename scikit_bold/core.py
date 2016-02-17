@@ -19,10 +19,10 @@ import cPickle
 import h5py
 import numpy as np
 import os.path as op
-from scikit_bold.transformers.transformers import LabelEncoder
+from sklearn.preprocessing import LabelEncoder
 
 
-class Mvp:
+class Mvp(object):
     """ Mvp (multiVoxel Pattern) class.
 
     Creates an object, specialized for storing fMRI data that will be analyzed
@@ -102,14 +102,14 @@ class Mvp:
         # Maybe change this to work with @property and setters
         cl = self.class_labels
         self.y = LabelEncoder().fit_transform(cl)
-        self.n_trials = len(self.cl)
+        self.n_trials = len(cl)
         self.class_names = np.unique(cl)
         self.n_class = len(self.class_names)
         self.n_inst = [np.sum(cls == cl) for cls in cl]
         self.class_idx = [cl == cls for cls in self.class_names]
         self.trial_idx = [np.where(cl == cls)[0] for cls in self.class_names]
 
-    def merge_runs(self, cleanup=False, id='merged'):
+    def merge_runs(self, cleanup=False, iD='merged'):
         """ Merges single-trial patterns from different runs.
 
         Given two runs, this method merges their single-trial patterns by
@@ -152,9 +152,9 @@ class Mvp:
             hdr.update_metadata()
             hdr.y = LabelEncoder().fit_transform(hdr.class_labels)
             fn_header = op.join(mat_dir, '%s_header_%s.pickle' %
-                                self.sub_name, self.id)
+                                (self.sub_name, iD))
             fn_data = op.join(mat_dir, '%s_data_%s.hdf5' %
-                              self.sub_name, self.id)
+                              (self.sub_name, iD))
 
             with open(fn_header, 'wb') as handle:
                 cPickle.dump(hdr, handle)
@@ -163,4 +163,4 @@ class Mvp:
             h5f.create_dataset('data', data=data)
             h5f.close()
         else:
-            print('There seems to be only 1 run!')
+            pass

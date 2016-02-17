@@ -20,8 +20,7 @@ from scipy.ndimage.measurements import label
 from itertools import combinations
 from joblib import Parallel, delayed
 
-"""
-LABEL-TRANSFORMERS
+""" LABEL-TRANSFORMERS
 These classes transform the dataset's labels/targets (y).
 """
 
@@ -94,8 +93,7 @@ class LabelFactorizer(BaseEstimator, TransformerMixin):
         """ Returns new labels based on factorization. """
         return self.new_labels_
 
-"""
-PRE-SPLIT TRANSFORMERS.
+""" PRE-SPLIT TRANSFORMERS.
 These classes transform the entire dataset, before the train/set split,
 because they're not data-driven and thus do not need to be cross-validated.
 """
@@ -239,6 +237,8 @@ class AnovaCutoff(BaseEstimator, TransformerMixin):
 
         """
         self.cutoff = cutoff
+        self.scores_ = None
+        self.idx_ = None
 
     def fit(self, X, y):
         """ Fits AnovaCutoff.
@@ -258,8 +258,9 @@ class AnovaCutoff(BaseEstimator, TransformerMixin):
 
         """
         f, _ = f_classif(X, y)
-        self.f_ = f
+        self.scores_ = f
         self.idx_ = f > self.cutoff
+
         return self
 
     def transform(self, X):
@@ -305,9 +306,9 @@ class MeanEuclidean(BaseEstimator, TransformerMixin):
         self.cutoff = cutoff
         self.normalize = normalize
         self.fisher = fisher
-        self.averaged_idx_ = None
+        self.idx_ = None
         self.condition_idx_ = None
-        self.zvalues_ = None
+        self.scores_ = None
 
     def fit(self, X, y):
         """ Fits MeanEuclidean transformer.
@@ -352,8 +353,8 @@ class MeanEuclidean(BaseEstimator, TransformerMixin):
         self.condition_idx_ = diff_patterns > self.cutoff
         mean_diff = np.mean(diff_patterns, axis=0)
 
-        self.averaged_idx_ = mean_diff > self.cutoff
-        self.zvalues_ = mean_diff
+        self.idx_ = mean_diff > self.cutoff
+        self.scores_ = mean_diff
 
         return self
 
@@ -372,7 +373,7 @@ class MeanEuclidean(BaseEstimator, TransformerMixin):
             indices calculated during fit().
 
         """
-        return X[:, self.average_idx_]
+        return X[:, self.idx_]
 
 
 class FeaturesToContrast(MeanEuclidean):
@@ -433,8 +434,9 @@ class ClusterThreshold(BaseEstimator, TransformerMixin):
 
     """
 
-    def __init__(self, transformer=MeanEuclidean(zvalue=2.3), mask_idx=None,
-                 mask_shape=(91, 109, 91), min_cluster_size=20):
+    def __init__(self, transformer=MeanEuclidean(cutoff=2.3, normalize=False,
+                 fisher=False), mask_idx=None, mask_shape=(91, 109, 91),
+                 min_cluster_size=20):
         """ Initializes ClusterThreshold transformer.
 
         Parameters

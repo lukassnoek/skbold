@@ -311,10 +311,47 @@ def sort_numbered_list(stat_list):
 
 
 class MvpResults(object):
-    """ Contains info about model performance across iterations
+    """ Class that keeps track of model performance over iterations.
+
+    MvpResults keeps track of classification performance across iterations,
+    and is able to calculate various performance metrics and additionally
+    keeps track of feature importance, which can be operationlized in
+    different ways.
+
     """
-    def __init__(self, mvp, iterations, method='voting',
-                 verbose=0, condition_name=None):
+    def __init__(self, mvp, iterations, method='voting', verbose=False,
+                 feature_scoring=None):
+
+        """ Initializes MvpResults object.
+
+        Parameters
+        ----------
+        mvp : Mvp object (see scikit_bold.core)
+            Needs an Mvp object to extract some meta-data
+        iterations : int
+            Number of iterations that the analysis is iterated over (i.e.
+            number of folds)
+        method : str
+            Method to calculate performance across iterations. As of now,
+            there are two options: 'averaging', which simply calculates
+            various performance metrics for each iteration and averages these
+            across iterations at the end, and 'voting', which keeps track of
+            the predicted class (hard voting) or class probabilities (soft
+            voting) across iterations and at the end of all iterations
+            determines the class for each sample/trial based on the argmax of
+            the mean class probability (soft) or class prediction (hard);
+            for more info, see e.g. http://scikit-learn.org/stable/modules/
+            generated/sklearn.ensemble.VotingClassifier.html
+        verbose : bool
+            Whether to print accuracy for each iteration.
+        feature_scoring : str
+            Way to compute importance of features, can be 'accuracy' (default),
+            which computes a feature's score as:
+            sum(accuracy) / n_selected across iterations. Method 'importance'
+            calculates per iteration weights * feature values. Method 'coefs'
+            simply uses the feature weights (linear svm only). Default is
+            None (no feature score computation).
+        """
 
         self.method = method
         self.n_iter = iterations
@@ -322,7 +359,6 @@ class MvpResults(object):
         self.sub_name = mvp.sub_name
         self.run_name = mvp.run_name
         self.n_class = mvp.n_class
-        self.condition_name = condition_name
         self.mask_shape = mvp.mask_shape
         self.mask_index = mvp.mask_index
         self.ref_space = mvp.ref_space
@@ -330,10 +366,9 @@ class MvpResults(object):
         self.y_true = mvp.y
         self.iter = 0
 
+        self.feature_scoring = feature_scoring
         self.feature_selection = np.zeros(np.sum(mvp.mask_index))
-        self.feature_zscores = np.zeros(np.sum(mvp.mask_index))
         self.feature_scores = np.zeros(np.sum(mvp.mask_index))
-        self.feature_weights = np.zeros(np.sum(mvp.mask_index))
         self.n_features = np.zeros(iterations)
 
         self.precision = None
@@ -348,24 +383,48 @@ class MvpResults(object):
         elif method == 'voting':
             self.trials_mat = np.zeros((len(mvp.y), mvp.n_class))
 
-    def update_results(self, test_idx, y_pred, feature_idx=None, feature_zscores=None, feature_weights=None):
-        """ Updates results after a cross-validation iteration """
-        
-        compute_features = not ((feature_idx is None) or (feature_zscores is None) or (feature_weights is None))
-        self.compute_features = compute_features
+    def update_results(self, test_idx, y_pred, transformer=None, clf=None):
+        """ Updates results after a cross-validation iteration.
 
-        if compute_features:
-            self.feature_zscores[feature_idx] += feature_zscores[feature_idx]     
-            self.feature_weights[feature_idx] += np.mean(np.abs(feature_weights))
-            self.feature_selection += feature_idx.astype(int) 
+        This method updates the 'counters' for several attributes (relating
+        to features and class prediction/accuracy).
+
+        Parameters
+        ----------
+        test_idx : ndarray[bool] or ndarray[int] (i.e. using fancy indexing)
+            Indices for test trials, relativ to mvp.y
+        y_pred : ndarray[float]
+            Array with predicted classes (if hard-voting/simple predict()) or
+            arry with predicted class probabilities (if soft-voting/
+            predict_proba()). In the latter case, y_pred.shape =
+            [n_class, n_test].
+        transformer : transformer object
+            This transformer is assumed to have certain attributes, such as
+            feature scores (.zvalues) and corresponding indices.
+        clf : classifier object (scikit-learn estimator)
+            This classifier is assumed to have a _coef attributes, which is
+            extracted to keep track of feature weights (and feature importance,
+            calculated as weights * feature values).
+        """
+        fs_method = self.feature_scoring
+
+        if transformer is not None or clf is not None:
+            idx, scores = transformer.idx_, transformer.scores_
+            self.feature_selection[idx] += 1
             self.n_features[self.iter] = feature_idx.sum()
-            
-            if y_pred.ndim > 1:
-                y_tmp = np.argmax(y_pred, axis=1)
-            else:
-                y_tmp = y_pred
 
-            self.feature_scores[feature_idx] += accuracy_score(self.y_true[test_idx], y_tmp)
+            if self.feature_scoring == 'distance':
+                self.feature_scores += scores[idx]
+            elif fs_method == 'weights' or fs_method == 'importance':
+                coefs = np.mean(np.abs(clf.coef_), axis=0)
+                self.feature_scores[idx] += coefs
+            elif fs_method == 'accuracy':
+                if y_pred.ndim > 1:
+                    y_tmp = np.argmax(y_pred, axis=1)
+                else:
+                    y_tmp = y_pred
+                score_tmp = accuracy_score(self.y_true[test_idx], y_tmp)
+                self.feature_scores[idx] += score_tmp
 
         if self.method == 'averaging':
             y_true = self.y_true[test_idx]
@@ -383,21 +442,24 @@ class MvpResults(object):
                 self.trials_mat[test_idx, :] += y_pred
             else:
                 self.trials_mat[test_idx, y_pred.astype(int)] += 1
-            
+
         self.iter += 1
 
-        return self
-
     def compute_score(self):
+        """ Computes performance over iterations.
+
+        Computes performance metrics across iterations of the classifier and,
+        optionally, computes feature characteristics.
+
+        """
 
         self.n_features = self.n_features.mean()
-        if self.compute_features:
-            self.feature_zscores = self.feature_zscores / self.feature_selection
-            self.feature_scores = self.feature_scores / self.feature_selection
-            self.feature_weights = self.feature_weights / self.feature_selection
-            self.feature_zscores[np.isnan(self.feature_zscores)] = 0
-            self.feature_scores[np.isnan(self.feature_scores)] = 0
-            self.feature_weights[np.isnan(self.feature_weights)] = 0
+
+        if self.method is not None:
+
+            av_feature_info = self.feature_scores / self.feature_selection
+            av_feature_info[np.isnan(av_feature_info)] = 0
+            self.av_feature_info = av_feature_info
 
         if self.method == 'voting':
 
@@ -418,66 +480,50 @@ class MvpResults(object):
             self.recall = self.recall.mean()
 
         print('Accuracy over iterations: %f' % self.accuracy)
-        return self
 
     def write_results(self, directory, convert2mni=False):
 
-        filename = os.path.join(directory, '%s_%s_classification.pickle' % \
-                                (self.sub_name, self.run_name))
+        filename = op.join(directory, '%s_%s_classification.pickle' %
+                           (self.sub_name, self.run_name))
+
         with open(filename, 'wb') as handle:
             cPickle.dump(self, handle)
 
-        if self.compute_features:
-            vox_dir = os.path.join(directory, 'vox_results_%s' % self.ref_space)
+        if self.feature_scoring is not None:
+
+            vox_dir = op.join(directory, 'vox_results_%s' % self.ref_space)
+
             if not os.path.isdir(vox_dir):
                 os.makedirs(vox_dir)
 
-            # Write feature-selection scores (zvalues)
-            fn_zscores = os.path.join(vox_dir, '%s_%s_FeatureZscores' % \
-                                    (self.sub_name, self.run_name))
+            fn = op.join(vox_dir, '%s_%s_%s' % (self.sub_name,
+                         self.run_name, self.feature_scoring))
 
             img = np.zeros(np.prod(self.mask_shape))
-            img[self.mask_index] = self.feature_zscores
+            img[self.mask_index] = self.av_feature_info
             img = nib.Nifti1Image(img.reshape(self.mask_shape), self.affine)
-            nib.save(img, fn_zscores)
-
-            # Write feature weights
-            fn_weights = os.path.join(vox_dir, '%s_%s_FeatureWeights' % \
-                                    (self.sub_name, self.run_name))
-            img = np.zeros(np.prod(self.mask_shape))
-            img[self.mask_index] = self.feature_weights
-            img = nib.Nifti1Image(img.reshape(self.mask_shape), self.affine)
-            nib.save(img, fn_weights)
-
-            # Write feature scores
-            fn_scores = os.path.join(vox_dir, '%s_%s_FeatureScores' % \
-                                    (self.sub_name, self.run_name))
-            img = np.zeros(np.prod(self.mask_shape))
-            img[self.mask_index] = self.feature_scores
-            img = nib.Nifti1Image(img.reshape(self.mask_shape), self.affine)
-            nib.save(img, fn_scores)
+            nib.save(img, fn)
 
             if self.ref_space == 'epi' and convert2mni:
 
-                files2transform = [fn_zscores +'.nii', fn_weights+'.nii', fn_scores+'.nii']
                 mni_dir = os.path.join(directory, 'vox_results_mni')
                 if not os.path.isdir(mni_dir):
                     os.makedirs(mni_dir)
 
-                reg_dir = glob.glob(opj(directory, '*', self.sub_name, '*', 'reg'))[0]
-                ref_file = opj(reg_dir, 'standard.nii.gz')
-                matrix_file = opj(reg_dir, 'example_func2standard.mat')
-            
-                for f in files2transform:
-                    out_file = opj(mni_dir, os.path.basename(f)+'.gz')
-                    apply_xfm = fsl.ApplyXfm()
-                    apply_xfm.inputs.in_file = f
-                    apply_xfm.inputs.reference = ref_file
-                    apply_xfm.inputs.in_matrix_file = matrix_file
-                    apply_xfm.interp = 'trilinear'
-                    apply_xfm.inputs.out_file = out_file
-                    apply_xfm.inputs.apply_xfm = True
-                    apply_xfm.run()
+                reg_dir = glob.glob(op.join(directory, '*', self.sub_name, '*',
+                                    'reg'))[0]
+                ref_file = op.join(reg_dir, 'standard.nii.gz')
+                matrix_file = op.join(reg_dir, 'example_func2standard.mat')
+
+                out_file = opj(mni_dir, op.basename(f)+'.gz')
+                apply_xfm = fsl.ApplyXfm()
+                apply_xfm.inputs.in_file = fn
+                apply_xfm.inputs.reference = ref_file
+                apply_xfm.inputs.in_matrix_file = matrix_file
+                apply_xfm.interp = 'trilinear'
+                apply_xfm.inputs.out_file = out_file
+                apply_xfm.inputs.apply_xfm = True
+                apply_xfm.run()
 
                 # Remove annoying .mat files
                 _ = [os.remove(f) for f in glob.glob(opj(os.getcwd(), '*.mat'))]

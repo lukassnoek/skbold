@@ -88,9 +88,16 @@ class Fsl2mvp(Mvp):
 
         # Here, numeric extensions of contrast names (e.g. 'positive_003') are
         # removed
-        self.class_labels = ['_'.join(x.split('_')[:-1])
-                             if x.split('_')[-1].isdigit() else x
-                             for x in class_labels]
+
+        self.class_labels = []
+        for c in class_labels:
+            parts = c.split('_')
+            parts = [x.strip() for x in parts]
+            if parts[-1].isdigit():
+                label = '_'.join(parts[:-1])
+                self.class_labels.append(label)
+            else:
+                self.class_labels.append(c)
 
     def convert2mni(self, file2transform):
         """ Method to transform nifti files to MNI space.
@@ -255,7 +262,7 @@ class Fsl2mvp(Mvp):
             transform2mni = False
 
         copes = glob.glob(op.join(stat_dir, 'cope*.nii.gz'))
-        varcopes = glob.glob(opj(stat_dir, 'varcope*.nii.gz'))
+        varcopes = glob.glob(op.join(stat_dir, 'varcope*.nii.gz'))
 
         if transform2mni:
             copes.extend(varcopes)
