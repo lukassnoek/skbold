@@ -21,4 +21,13 @@ Althoug the package is very much in development, it can be installed using *pip*
 
 	pip install scikit-bold
 
+However, the pip-version is likely behind compared to the code on Github, so to get the
+most up to date version, use git::
+
+	pip install git+https://github.com/lukassnoek/scikit-bold.git@master
+
+Or, alternatively, download the package as a zip-file from Github, unzip, and run::
+	
+	python setup.py install
+
 
