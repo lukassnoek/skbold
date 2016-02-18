@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """ glm2mvp Module
 
-This module contains the Subject class which has several methods to 
+This module contains the Subject class which has several methods to
 extract first-level (i.e. fitted beta-estimates) data from single trials
 or run-wise condition regressors from first-level directories yielded by FSL's
 FEAT. In the future, this module should include loading/extraction methods
@@ -324,3 +324,9 @@ class Fsl2mvp(Mvp):
         h5f.close()
 
         print(' done.')
+
+        return self
+
+    def glm2mvp_and_merge(self):
+        """ Chains glm2mvp() and merge_runs(). """
+        self.glm2mvp().merge_runs()

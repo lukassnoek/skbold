@@ -105,7 +105,7 @@ class DataHandler(object):
         mvp : Mvp object (see scikit_bold.core module)
 
         """
-        iD = self.identfier
+        iD = self.identifier
         data_name = op.join(directory, '*', 'mvp_data', '*%s*.hdf5' % iD)
         hdr_name = op.join(directory, '*', 'mvp_data', '*%s*.pickle' % iD)
         data_paths, hdr_paths = glob.glob(data_name), glob.glob(hdr_name)
@@ -282,34 +282,6 @@ class DataHandler(object):
         nib.save(img, opj(self.mvp_dir, 'data_4d.nii.gz'))
 
 
-def sort_numbered_list(stat_list):
-    """ Sorts a list containing numbers.
-
-    Sorts list with paths to statistic files (e.g. COPEs, VARCOPES),
-    which are often sorted wrong (due to single and double digits).
-    This function extracts the numbers from the stat files and sorts
-    the original list accordingly.
-
-    Parameters
-    ----------
-    stat_list : list[str]
-        list with absolute paths to files
-
-    Returns
-    -------
-    sorted_list : list[str]
-        sorted stat_list
-    """
-
-    num_list = []
-    for path in stat_list:
-        num = [str(s) for s in str(os.path.basename(path)) if s.isdigit()]
-        num_list.append(int(''.join(num)))
-
-    sorted_list = [x for y, x in sorted(zip(num_list, stat_list))]
-    return sorted_list
-
-
 class MvpResults(object):
     """ Class that keeps track of model performance over iterations.
 
@@ -344,11 +316,10 @@ class MvpResults(object):
             generated/sklearn.ensemble.VotingClassifier.html
         verbose : bool
             Whether to print accuracy for each iteration.
-        feature_scoring : str
+        feature_scoring : str (default: None)
             Way to compute importance of features, can be 'accuracy' (default),
             which computes a feature's score as:
-            sum(accuracy) / n_selected across iterations. Method 'importance'
-            calculates per iteration weights * feature values. Method 'coefs'
+            sum(accuracy) / n_selected across iterations. Method 'coefs'
             simply uses the feature weights (linear svm only). Default is
             None (no feature score computation).
         """
@@ -364,13 +335,12 @@ class MvpResults(object):
         self.ref_space = mvp.ref_space
         self.affine = mvp.affine
         self.y_true = mvp.y
+        self.X = mvp.X
         self.iter = 0
-
         self.feature_scoring = feature_scoring
         self.feature_selection = np.zeros(np.sum(mvp.mask_index))
         self.feature_scores = np.zeros(np.sum(mvp.mask_index))
         self.n_features = np.zeros(iterations)
-
         self.precision = None
         self.accuracy = None
         self.recall = None
@@ -383,7 +353,7 @@ class MvpResults(object):
         elif method == 'voting':
             self.trials_mat = np.zeros((len(mvp.y), mvp.n_class))
 
-    def update_results(self, test_idx, y_pred, transformer=None, clf=None):
+    def update_results(self, test_idx, y_pred, pipeline=None):
         """ Updates results after a cross-validation iteration.
 
         This method updates the 'counters' for several attributes (relating
@@ -408,14 +378,20 @@ class MvpResults(object):
         """
         fs_method = self.feature_scoring
 
-        if transformer is not None or clf is not None:
+        if pipeline is not None:
+
+            if hasattr(pipeline, 'best_estimator_'):
+                pipeline = pipeline.best_estimator_
+
+            clf = pipeline.named_steps['classifier']
+            transformer = pipeline.named_steps['transformer']
             idx, scores = transformer.idx_, transformer.scores_
             self.feature_selection[idx] += 1
-            self.n_features[self.iter] = feature_idx.sum()
+            self.n_features[self.iter] = idx.sum()
 
             if self.feature_scoring == 'distance':
-                self.feature_scores += scores[idx]
-            elif fs_method == 'weights' or fs_method == 'importance':
+                self.feature_scores += scores
+            elif fs_method == 'weights':
                 coefs = np.mean(np.abs(clf.coef_), axis=0)
                 self.feature_scores[idx] += coefs
             elif fs_method == 'accuracy':
@@ -452,13 +428,17 @@ class MvpResults(object):
         optionally, computes feature characteristics.
 
         """
-
         self.n_features = self.n_features.mean()
 
-        if self.method is not None:
-
-            av_feature_info = self.feature_scores / self.feature_selection
-            av_feature_info[np.isnan(av_feature_info)] = 0
+        if self.feature_scoring is not None:
+            print("max: %f" % self.feature_scores.max())
+            am = np.argmax(self.feature_scores)
+            print("count: %f" % self.feature_selection[am])
+            av_feature_info = np.divide(self.feature_scores, self.feature_selection)
+            print("max/av: %f" % av_feature_info[am])
+            av_feature_info[av_feature_info == np.inf] = 0
+            print('max: %f' % av_feature_info.max())
+            print('max before: %f' % self.feature_selection[av_feature_info.argmax()])
             self.av_feature_info = av_feature_info
 
         if self.method == 'voting':
@@ -481,7 +461,19 @@ class MvpResults(object):
 
         print('Accuracy over iterations: %f' % self.accuracy)
 
+        return self
+
     def write_results(self, directory, convert2mni=False):
+        """ Writes analysis results and feature characteristics to file.
+
+        Parameters
+        ----------
+        directory : str
+            Absolute path to project directory
+        convert2mni : bool
+            Whether to convert feature scores in epi-space to mni spaces
+
+        """
 
         filename = op.join(directory, '%s_%s_classification.pickle' %
                            (self.sub_name, self.run_name))
@@ -493,7 +485,7 @@ class MvpResults(object):
 
             vox_dir = op.join(directory, 'vox_results_%s' % self.ref_space)
 
-            if not os.path.isdir(vox_dir):
+            if not op.isdir(vox_dir):
                 os.makedirs(vox_dir)
 
             fn = op.join(vox_dir, '%s_%s_%s' % (self.sub_name,
@@ -504,20 +496,23 @@ class MvpResults(object):
             img = nib.Nifti1Image(img.reshape(self.mask_shape), self.affine)
             nib.save(img, fn)
 
+            if self.ref_space == 'mni' and convert2mni:
+                convert2mni = False
+
             if self.ref_space == 'epi' and convert2mni:
 
-                mni_dir = os.path.join(directory, 'vox_results_mni')
-                if not os.path.isdir(mni_dir):
+                mni_dir = op.join(directory, 'vox_results_mni')
+                if not op.isdir(mni_dir):
                     os.makedirs(mni_dir)
 
-                reg_dir = glob.glob(op.join(directory, '*', self.sub_name, '*',
+                reg_dir = glob.glob(op.join(directory, self.sub_name, '*',
                                     'reg'))[0]
                 ref_file = op.join(reg_dir, 'standard.nii.gz')
                 matrix_file = op.join(reg_dir, 'example_func2standard.mat')
 
-                out_file = opj(mni_dir, op.basename(f)+'.gz')
+                out_file = op.join(mni_dir, op.basename(fn)+'.nii.gz')
                 apply_xfm = fsl.ApplyXfm()
-                apply_xfm.inputs.in_file = fn
+                apply_xfm.inputs.in_file = fn + '.nii'
                 apply_xfm.inputs.reference = ref_file
                 apply_xfm.inputs.in_matrix_file = matrix_file
                 apply_xfm.interp = 'trilinear'
@@ -526,29 +521,56 @@ class MvpResults(object):
                 apply_xfm.run()
 
                 # Remove annoying .mat files
-                _ = [os.remove(f) for f in glob.glob(opj(os.getcwd(), '*.mat'))]
+                to_remove = glob.glob(op.join(os.getcwd(), '*.mat'))
+                _ = [os.remove(f) for f in to_remove]
+
+        def compute_and_write(self, directory, convert2mni=False):
+            """ Chains compute_score() and write_results(). """
+            self.compute_score().write_results(directory, convert2mni)
 
 
 class MvpAverageResults(object):
-    """
-    Object that is able to load individual result-files, process/analyze
-    them and write their average/processed results as a pandas dataframe
+    """ Class that averages individual subject classification performance.
+
+    Is able to load individual result-files, process/analyze them and write
+    their average/processed results as a pandas dataframe.
+
     """
 
-    def __init__(self, directory, identifier, compute_features=False, params=None, threshold=None, cleanup=True):
+    def __init__(self, directory, identifier='analysis', params=None, threshold=None,
+                 cleanup=True):
+        """ Initializes MvpAverageResults object.
+
+        Parameters
+        ----------
+        directory : str
+            Absolute path to where individual classification files are located.
+        identifier : str
+            Identifier string for individual classification files (e.g. run
+            name)
+        threshold : int
+            ...
+        cleanup = bool
+            Whether to clean up subject-specific nifti-files
+        params : dict
+            Dictionary with analysis parameters
+        """
+
         self.directory = directory
         self.threshold = threshold
         self.identifier = identifier
-        self.compute_features = compute_features
         self.params = params
         self.cleanup = cleanup
         self.threshold = threshold
+        self.cleanup = cleanup
         self.df_ = pd.DataFrame()
 
-    def load(self):
+    def average(self):
+        """ Loads and computes average performance metrics. """
 
-        files = glob.glob(os.path.join(self.directory, '*%s*.pickle' % \
-                                       self.identifier))
+        files = glob.glob(op.join(self.directory, '*%s*.pickle' %
+                                  self.identifier))
+
         for i, f in enumerate(files):
             results = cPickle.load(open(f, 'rb'))
             tmp = {'Sub_name': results.sub_name,
@@ -560,7 +582,7 @@ class MvpAverageResults(object):
 
         if not self.threshold:
             n_class = results.n_class
-            self.threshold = (1/n_class) + .2 * (1/n_class) 
+            self.threshold = (1/n_class) + .2 * (1/n_class)
 
         tmp = {'Sub_name': 'Average',
                'Accuracy': self.df_['Accuracy'].mean(),
@@ -577,52 +599,41 @@ class MvpAverageResults(object):
 
         print(self.df_)
 
-        if self.compute_features:
-            vox_files_dir = os.path.join(self.directory, 'vox_results_mni')
-            zscore_files = glob.glob(os.path.join(vox_files_dir, '*%s*FeatureZscores*.nii.gz' % \
-                                     self.identifier))
-            
-            weight_files = glob.glob(os.path.join(vox_files_dir, '*%s*FeatureWeights*.nii.gz' % \
-                                     self.identifier))
-        
-            score_files = glob.glob(os.path.join(vox_files_dir, '*%s*FeatureScores*.nii.gz' % \
-                                     self.identifier))
-
-            mask_shape = (91, 109, 91) # hard-coded mni-shape
-            z = np.zeros((len(zscore_files), mask_shape[0], mask_shape[1], mask_shape[2]))
-            w = np.zeros((len(weight_files), mask_shape[0], mask_shape[1], mask_shape[2]))
-            s = np.zeros((len(score_files), mask_shape[0], mask_shape[1], mask_shape[2]))
-
-            for i, (zscore, weight, score) in enumerate(zip(zscore_files, weight_files, score_files)):
-                z[i, :, :, :] = nib.load(zscore).get_data()
-                w[i, :, :, :] = nib.load(weight).get_data()
-                s[i, :, :, :] = (nib.load(score).get_data() > self.threshold).astype(int)
-                
-            if self.cleanup:
-                _ = os.system('rm %s/*%s*.nii' % (self.directory, self.identifier))
-
-            filename = os.path.join(self.directory, '%s_AverageZscores' % self.identifier)
-            img = nib.Nifti1Image(z.mean(axis=0), np.eye(4))
-            nib.save(img, filename)
-
-            filename = os.path.join(self.directory, '%s_AverageWeights' % self.identifier)
-            img = nib.Nifti1Image(w.mean(axis=0), np.eye(4))
-            nib.save(img, filename)
-
-            filename = os.path.join(self.directory, '%s_AverageScores' % self.identifier)
-            img = nib.Nifti1Image(s.sum(axis=0), np.eye(4))
-            nib.save(img, filename)
-
-        return self
-
-    def write(self):
-        filename = os.path.join(self.directory, 'average_results_%s.csv' % \
-                                self.identifier)
+        filename = op.join(self.directory, 'average_results_%s.csv' %
+                           self.identifier)
         self.df_.to_csv(filename, sep='\t', header=True, index=False)
 
         if self.params:
-            with open(os.path.join(self.directory, 'analysis_parameters.json'), 'w') as f:
+            file2open = op.join(self.directory, 'analysis_parameters.json')
+            with open(file2open, 'w') as f:
                 json.dump(self.params, f)
+
+        feature_files = glob.glob(op.join(self.directory, 'vox_results_mni',
+                                          '*.nii*'))
+        if len(feature_files) > 0:
+
+            shape = (91, 109, 91)  # hard-coded mni-shape
+            s = np.zeros((len(feature_files), shape[0], shape[1], shape[2]))
+
+            for i, feature_file in enumerate(feature_files):
+
+                data = nib.load(feature_file).get_data()
+                s[i, :, :, :] = data
+
+            metric = feature_file.split('_')[-1].split('.')[0]
+
+            if metric == 'accuracy':
+                s = (s > self.threshold).astype(int).sum(axis=0)
+            else:
+                s = s.mean(axis=0)
+
+            if self.cleanup:
+                cmd = 'rm %s/*%s*.nii' % (self.directory, self.identifier)
+                _ = os.system(cmd)
+
+            fn = op.join(self.directory, '%s_AverageScores' % self.identifier)
+            img = nib.Nifti1Image(s, np.eye(4))
+            nib.save(img, fn)
 
 
 class AnalysisPermuter():
@@ -630,3 +641,30 @@ class AnalysisPermuter():
     def __init__(self, project_dir):
         pass
 
+
+def sort_numbered_list(stat_list):
+    """ Sorts a list containing numbers.
+
+    Sorts list with paths to statistic files (e.g. COPEs, VARCOPES),
+    which are often sorted wrong (due to single and double digits).
+    This function extracts the numbers from the stat files and sorts
+    the original list accordingly.
+
+    Parameters
+    ----------
+    stat_list : list[str]
+        list with absolute paths to files
+
+    Returns
+    -------
+    sorted_list : list[str]
+        sorted stat_list
+    """
+
+    num_list = []
+    for path in stat_list:
+        num = [str(s) for s in str(op.basename(path)) if s.isdigit()]
+        num_list.append(int(''.join(num)))
+
+    sorted_list = [x for y, x in sorted(zip(num_list, stat_list))]
+    return sorted_list

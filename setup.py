@@ -4,7 +4,8 @@ install_requires = [
 	'scikit-learn',
 	'numpy',
 	'nibabel',
-	'nilearn'
+	'nilearn',
+        'joblib'
 ]
 
 def readme():
