@@ -98,6 +98,7 @@ def parse_presentation_logfile(in_file, con_names, con_codes, con_design=None,
                 if con_design[i] == 'univar':
                     to_write.drop('Name', axis=1, inplace=True)
                     name = os.path.join(base_dir, '%s_00%i.bfsl' % (con_names[i], (i+1)))
+                    to_write = to_write[['Time', 'Duration', 'Weight']]
                     to_write.to_csv(name, sep='\t', index=False, header=False)
 
                 elif con_design[i] == 'multivar':
@@ -108,6 +109,7 @@ def parse_presentation_logfile(in_file, con_names, con_codes, con_design=None,
                         df_tmp = pd.DataFrame({'Time': row['Time'],
                                                'Duration': row['Duration'],
                                                'Weight': row['Weight']}, index=[0])
+                        df_tmp = df_tmp[['Time', 'Duration', 'Weight']]
                         df_tmp.to_csv(name, index=False, sep='\t', header=False)
 
 
