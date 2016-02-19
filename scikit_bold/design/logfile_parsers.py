@@ -119,7 +119,7 @@ def parse_custom_psychopy_logfile():
 
 if __name__ == '__main__':
 
-    testfiles = glob.glob('/home/lukas/Nipype_testset/working_directory/*/func_hww/*.log')
+    testfiles = glob.glob('/home/lukas/Nipype_testset/working_directory/sub001/func_hww/*.log')
     con_names = ['Action', 'Interoception', 'Situation', 'Cue']
     con_codes = [[100, 199], [200, 299], [300, 399], ['Cue']]
     con_design = ['multivar', 'univar', 'univar', 'univar']
