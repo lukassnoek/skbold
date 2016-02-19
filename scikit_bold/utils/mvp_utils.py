@@ -390,8 +390,8 @@ class MvpResults(object):
             self.n_features[self.iter] = idx.sum()
 
             if self.feature_scoring == 'distance':
-                self.feature_scores += scores
-            elif fs_method == 'weights':
+                self.feature_scores[idx] += scores[idx]
+            elif fs_method == 'coef':
                 coefs = np.mean(np.abs(clf.coef_), axis=0)
                 self.feature_scores[idx] += coefs
             elif fs_method == 'accuracy':
@@ -421,7 +421,7 @@ class MvpResults(object):
 
         self.iter += 1
 
-    def compute_score(self):
+    def compute_score(self, verbose=True):
         """ Computes performance over iterations.
 
         Computes performance metrics across iterations of the classifier and,
@@ -431,14 +431,9 @@ class MvpResults(object):
         self.n_features = self.n_features.mean()
 
         if self.feature_scoring is not None:
-            print("max: %f" % self.feature_scores.max())
-            am = np.argmax(self.feature_scores)
-            print("count: %f" % self.feature_selection[am])
-            av_feature_info = np.divide(self.feature_scores, self.feature_selection)
-            print("max/av: %f" % av_feature_info[am])
+            av_feature_info = self.feature_scores / self.feature_selection
             av_feature_info[av_feature_info == np.inf] = 0
-            print('max: %f' % av_feature_info.max())
-            print('max before: %f' % self.feature_selection[av_feature_info.argmax()])
+            av_feature_info[np.isnan(av_feature_info)] = 0
             self.av_feature_info = av_feature_info
 
         if self.method == 'voting':
@@ -459,7 +454,8 @@ class MvpResults(object):
             self.precision = self.precision.mean()
             self.recall = self.recall.mean()
 
-        print('Accuracy over iterations: %f' % self.accuracy)
+        if verbose:
+            print('Accuracy over iterations: %f' % self.accuracy)
 
         return self
 
@@ -475,15 +471,24 @@ class MvpResults(object):
 
         """
 
-        filename = op.join(directory, '%s_%s_classification.pickle' %
+        results_dir = op.join(directory, 'analysis_results')
+        if not op.isdir(results_dir):
+            os.makedirs(results_dir)
+        filename = op.join(results_dir, '%s_%s_classification.pickle' %
                            (self.sub_name, self.run_name))
+
+
+        # Remove some attributes to save space
+        self.X = None
+        self.feature_selection = None
+        self.mask_index = None
 
         with open(filename, 'wb') as handle:
             cPickle.dump(self, handle)
 
         if self.feature_scoring is not None:
 
-            vox_dir = op.join(directory, 'vox_results_%s' % self.ref_space)
+            vox_dir = op.join(results_dir, 'vox_results_%s' % self.ref_space)
 
             if not op.isdir(vox_dir):
                 os.makedirs(vox_dir)
@@ -501,7 +506,7 @@ class MvpResults(object):
 
             if self.ref_space == 'epi' and convert2mni:
 
-                mni_dir = op.join(directory, 'vox_results_mni')
+                mni_dir = op.join(results_dir, 'vox_results_mni')
                 if not op.isdir(mni_dir):
                     os.makedirs(mni_dir)
 
@@ -524,9 +529,46 @@ class MvpResults(object):
                 to_remove = glob.glob(op.join(os.getcwd(), '*.mat'))
                 _ = [os.remove(f) for f in to_remove]
 
-        def compute_and_write(self, directory, convert2mni=False):
-            """ Chains compute_score() and write_results(). """
-            self.compute_score().write_results(directory, convert2mni)
+    def compute_and_write(self, directory, convert2mni=False):
+        """ Chains compute_score() and write_results(). """
+        self.compute_score().write_results(directory, convert2mni)
+
+    def write_results_permutation(self, directory, perm_number):
+        """ Writes permutation results
+
+        Parameters
+        ----------
+
+        """
+
+        perm_dir = op.join(directory, 'permutation_results')
+        if not op.isdir(perm_dir):
+            os.makedirs(perm_dir)
+
+        current_perm_dir = op.join(perm_dir, 'perm_000%i' % perm_number)
+        if not op.isdir(current_perm_dir):
+            os.makedirs(current_perm_dir)
+
+        filename = op.join(current_perm_dir, '%s_%s_classification.pickle' %
+                           (self.sub_name, self.run_name))
+
+        with open(filename, 'wb') as handle:
+            cPickle.dump(self, handle)
+
+        if self.feature_scoring is not None:
+
+            vox_dir = op.join(current_perm_dir, 'vox_results_%s' % self.ref_space)
+
+            if not op.isdir(vox_dir):
+                os.makedirs(vox_dir)
+
+            fn = op.join(vox_dir, '%s_%s_%s' % (self.sub_name,
+                         self.run_name, self.feature_scoring))
+
+            img = np.zeros(np.prod(self.mask_shape))
+            img[self.mask_index] = self.av_feature_info
+            img = nib.Nifti1Image(img.reshape(self.mask_shape), self.affine)
+            nib.save(img, fn)
 
 
 class MvpAverageResults(object):
@@ -634,12 +676,6 @@ class MvpAverageResults(object):
             fn = op.join(self.directory, '%s_AverageScores' % self.identifier)
             img = nib.Nifti1Image(s, np.eye(4))
             nib.save(img, fn)
-
-
-class AnalysisPermuter():
-
-    def __init__(self, project_dir):
-        pass
 
 
 def sort_numbered_list(stat_list):
