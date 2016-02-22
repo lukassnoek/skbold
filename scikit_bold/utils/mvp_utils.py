@@ -477,11 +477,9 @@ class MvpResults(object):
         filename = op.join(results_dir, '%s_%s_classification.pickle' %
                            (self.sub_name, self.run_name))
 
-
         # Remove some attributes to save space
         self.X = None
         self.feature_selection = None
-        self.mask_index = None
 
         with open(filename, 'wb') as handle:
             cPickle.dump(self, handle)
@@ -545,15 +543,14 @@ class MvpResults(object):
         if not op.isdir(perm_dir):
             os.makedirs(perm_dir)
 
-        current_perm_dir = op.join(perm_dir, 'perm_000%i' % perm_number)
+        current_perm_dir = op.join(perm_dir, 'perm_%s' % perm_number)
         if not op.isdir(current_perm_dir):
             os.makedirs(current_perm_dir)
 
-        filename = op.join(current_perm_dir, '%s_%s_classification.pickle' %
+        filename = op.join(current_perm_dir, '%s_%s_confmat.npy' %
                            (self.sub_name, self.run_name))
 
-        with open(filename, 'wb') as handle:
-            cPickle.dump(self, handle)
+        np.save(filename, self.conf_mat)
 
         if self.feature_scoring is not None:
 
@@ -610,8 +607,8 @@ class MvpAverageResults(object):
     def average(self):
         """ Loads and computes average performance metrics. """
 
-        files = glob.glob(op.join(self.directory, '*%s*.pickle' %
-                                  self.identifier))
+        results_dir = op.join(self.directory, 'analysis_results')
+        files = glob.glob(op.join(results_dir, '*.pickle'))
 
         for i, f in enumerate(files):
             results = cPickle.load(open(f, 'rb'))
@@ -637,12 +634,12 @@ class MvpAverageResults(object):
         cols.insert(0, cols.pop(cols.index('Sub_name')))
         self.df_ = self.df_.ix[:, cols]
 
-        _ = [os.remove(f) for f in files]
+        if self.cleanup:
+            _ = [os.remove(f) for f in files]
 
         print(self.df_)
 
-        filename = op.join(self.directory, 'average_results_%s.csv' %
-                           self.identifier)
+        filename = op.join(results_dir, 'average_results.csv')
         self.df_.to_csv(filename, sep='\t', header=True, index=False)
 
         if self.params:
@@ -650,7 +647,7 @@ class MvpAverageResults(object):
             with open(file2open, 'w') as f:
                 json.dump(self.params, f)
 
-        feature_files = glob.glob(op.join(self.directory, 'vox_results_mni',
+        feature_files = glob.glob(op.join(results_dir, 'vox_results_mni',
                                           '*.nii*'))
         if len(feature_files) > 0:
 
@@ -670,10 +667,10 @@ class MvpAverageResults(object):
                 s = s.mean(axis=0)
 
             if self.cleanup:
-                cmd = 'rm %s/*%s*.nii' % (self.directory, self.identifier)
+                cmd = 'rm %s/*%s*.nii' % (results_dir, self.identifier)
                 _ = os.system(cmd)
 
-            fn = op.join(self.directory, '%s_AverageScores' % self.identifier)
+            fn = op.join(results_dir, 'AverageScores')
             img = nib.Nifti1Image(s, np.eye(4))
             nib.save(img, fn)
 
