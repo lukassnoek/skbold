@@ -22,7 +22,7 @@ parser.add_argument('-m', '--mask', help='Mask to index patterns.', required=Fal
 parser.add_argument('-t', '--threshold', help='Threshold for probabilistic mask.', required=False)
 parser.add_argument('-b', '--beta2t', help='Whether to convert to tstats.', required=False)
 parser.add_argument('-s', '--space', help='epi or mni', required=False)
-parser.add_argument('-r', '--remove', help='Class to remove')
+parser.add_argument('-r', '--remove', nargs='*', help='Class to remove', required=False)
 
 args = parser.parse_args()
 
