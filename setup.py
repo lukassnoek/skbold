@@ -14,7 +14,7 @@ def readme():
 
 setup(
     name='scikit-bold',
-    version='0.1.4',
+    version='0.1.6',
     description='Tools to convert and transform first-level fMRI data to scikit-learn compatible data-structures',
     long_description=readme(),
     classifiers=[

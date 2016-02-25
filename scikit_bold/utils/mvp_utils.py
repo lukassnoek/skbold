@@ -600,7 +600,8 @@ class MvpAverageResults(object):
             Identifier string for individual classification files (e.g. run
             name)
         threshold : int
-            ...
+            Threshold for summation-accuracy metric of voxel scores
+            (i.e. score = sum(voxel_scores > threshold)).
         cleanup = bool
             Whether to clean up subject-specific nifti-files
         params : dict

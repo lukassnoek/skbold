@@ -1,2 +1,5 @@
 include README.rst
 include scikit_bold/ROIs/*.nii.gz
+include scikit_bold/ROIs/yeo/*
+include scikit_bold/ROIs/harvard_oxford/bilateral/*.nii.gz
+
