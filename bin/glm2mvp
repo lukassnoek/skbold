@@ -1,0 +1,53 @@
+""" glm2mvp - the command line tool version.
+
+Converts first-level data to multivariate pattern matrices using the
+fsl2mvp class from the glm2mvp module.
+
+"""
+
+from __future__ import print_function
+import glob
+import os
+import os.path as op
+import sys
+import argparse
+import scikit_bold.ROIs as roi
+from scikit_bold.data2mvp.glm2mvp import Fsl2mvp
+
+parser = argparse.ArgumentParser(description='This is a command line tool to convert an FSL ' \
+											 'first-level directory.')
+
+parser.add_argument('-d', '--directory', help='Directory to be converted.',required=False)
+parser.add_argument('-m', '--mask', help='Mask to index patterns.', required=False)
+parser.add_argument('-t', '--threshold', help='Threshold for probabilistic mask.', required=False)
+parser.add_argument('-b', '--beta2t', help='Whether to convert to tstats.', required=False)
+parser.add_argument('-s', '--space', help='epi or mni', required=False)
+parser.add_argument('-r', '--remove', help='Class to remove')
+
+args = parser.parse_args()
+
+if args.directory is None:
+	args.directory = os.getcwd()
+
+if args.mask is None:
+	roi_dir = op.dirname(roi.__file__)
+	args.mask = op.join(roi_dir, 'GrayMatter.nii.gz')
+
+if args.threshold is None:
+	args.threshold = 0
+
+if args.beta2t is None:
+	args.beta2t = True
+
+if args.space is None:
+	args.space = 'epi'
+
+if args.remove is None:
+	args.remove = []
+
+to_convert = glob.glob(op.join(args.directory, '*', '*.feat'))
+
+for d in to_convert:
+	converter = Fsl2mvp(d, mask_threshold=args.threshold, beta2tstat=args.beta2t,
+						ref_space=args.space, mask_path=args.mask, remove_class=args.remove)
+	converter.glm2mvp().merge_runs()

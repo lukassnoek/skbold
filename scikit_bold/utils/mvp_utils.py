@@ -532,12 +532,24 @@ class MvpResults(object):
         self.compute_score().write_results(directory, convert2mni)
 
     def write_results_permutation(self, directory, perm_number):
-        """ Writes permutation results
+        """ Writes permutation results.
+
+        Instead of the 'regular' write_results() method, this method stores
+        only the confusion matrix and voxel scores, to avoid saving huge
+        amounts of data on disk - due to inefficient pickle storage - as
+        every permutation result may amount to >1 GB of data.
 
         Parameters
         ----------
+        directory : str
+            Absolute path to project directory
 
+        perm_number : str (or int/float)
+            Number of the permutation
         """
+
+        if type(perm_number) == int or type(perm_number) == float:
+            perm_number = str(perm_number)
 
         perm_dir = op.join(directory, 'permutation_results')
         if not op.isdir(perm_dir):
@@ -576,8 +588,8 @@ class MvpAverageResults(object):
 
     """
 
-    def __init__(self, directory, identifier='analysis', params=None, threshold=None,
-                 cleanup=True):
+    def __init__(self, directory, identifier='analysis', params=None,
+                 threshold=None, cleanup=True):
         """ Initializes MvpAverageResults object.
 
         Parameters

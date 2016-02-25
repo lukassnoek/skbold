@@ -1,2 +1,2 @@
 include README.rst
-include scikit_bold/data *
+include scikit_bold/ROIs/*.nii.gz
