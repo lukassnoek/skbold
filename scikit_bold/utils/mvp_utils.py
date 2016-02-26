@@ -12,6 +12,7 @@ from sklearn.metrics import precision_score, recall_score, accuracy_score, \
 from scikit_bold.transformers.transformers import *
 from nipype.interfaces import fsl
 import nibabel as nib
+import warnings
 
 
 class DataHandler(object):
@@ -291,8 +292,8 @@ class MvpResults(object):
     different ways.
 
     """
-    def __init__(self, mvp, iterations, method='voting', verbose=False,
-                 feature_scoring=None):
+    def __init__(self, mvp, iterations, resultsdir='analysis_results',
+                 method='voting', verbose=False, feature_scoring=None):
 
         """ Initializes MvpResults object.
 
@@ -326,6 +327,7 @@ class MvpResults(object):
 
         self.method = method
         self.n_iter = iterations
+        self.resultsdir = resultsdir
         self.verbose = verbose
         self.sub_name = mvp.sub_name
         self.run_name = mvp.run_name
@@ -466,12 +468,14 @@ class MvpResults(object):
         ----------
         directory : str
             Absolute path to project directory
+        resultsdir : str
+            name of the results directory   
         convert2mni : bool
             Whether to convert feature scores in epi-space to mni spaces
 
         """
 
-        results_dir = op.join(directory, 'analysis_results')
+        results_dir = op.join(directory, self.resultsdir)
         if not op.isdir(results_dir):
             os.makedirs(results_dir)
         filename = op.join(results_dir, '%s_%s_classification.pickle' %
@@ -588,7 +592,7 @@ class MvpAverageResults(object):
 
     """
 
-    def __init__(self, directory, identifier='analysis', params=None,
+    def __init__(self, directory, resultsdir='analysis_results', params=None,
                  threshold=None, cleanup=True):
         """ Initializes MvpAverageResults object.
 
@@ -596,9 +600,6 @@ class MvpAverageResults(object):
         ----------
         directory : str
             Absolute path to where individual classification files are located.
-        identifier : str
-            Identifier string for individual classification files (e.g. run
-            name)
         threshold : int
             Threshold for summation-accuracy metric of voxel scores
             (i.e. score = sum(voxel_scores > threshold)).
@@ -610,8 +611,8 @@ class MvpAverageResults(object):
 
         self.directory = directory
         self.threshold = threshold
-        self.identifier = identifier
         self.params = params
+        self.resultsdir = resultsdir
         self.cleanup = cleanup
         self.threshold = threshold
         self.cleanup = cleanup
@@ -620,7 +621,7 @@ class MvpAverageResults(object):
     def average(self):
         """ Loads and computes average performance metrics. """
 
-        results_dir = op.join(self.directory, 'analysis_results')
+        results_dir = op.join(self.directory, self.resultsdir)
         files = glob.glob(op.join(results_dir, '*.pickle'))
 
         for i, f in enumerate(files):
@@ -680,7 +681,7 @@ class MvpAverageResults(object):
                 s = s.mean(axis=0)
 
             if self.cleanup:
-                cmd = 'rm %s/*%s*.nii' % (results_dir, self.identifier)
+                cmd = 'rm %s/*%s*.nii' % results_dir
                 _ = os.system(cmd)
 
             fn = op.join(results_dir, 'AverageScores')

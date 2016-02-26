@@ -14,11 +14,20 @@ Depends on the scikit-learn BaseEstimator and TransformerMixin classes.
 from __future__ import print_function, division, absolute_import
 import numpy as np
 import nibabel as nib
+import warnings
+import glob
+import os
+import os.path as op
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.feature_selection import f_classif
 from scipy.ndimage.measurements import label
 from itertools import combinations
 from joblib import Parallel, delayed
+import scikit_bold.ROIs.harvard_oxford as roi
+from nipype.interfaces import fsl 
+
+warnings.filterwarnings('ignore', category=UserWarning)
+warnings.filterwarnings('ignore', category=DeprecationWarning)
 
 """ LABEL-TRANSFORMERS
 These classes transform the dataset's labels/targets (y).
@@ -106,13 +115,12 @@ class AverageRegionTransformer(BaseEstimator, TransformerMixin):
     and returns those as features for X.
     """
 
-    def __init__(self, mask_list, orig_mask=None, orig_shape=(91, 109, 91),
-                 orig_mask_threshold=0):
+    def __init__(self, mvp, mask_type='unilateral', mask_threshold=0):
         """ Initializes AverageRegionTransformer object.
 
         Parameters
         ----------
-        mask_list : List[str]
+        mask_type : List[str]
             List with absolute paths to nifti-images of brain masks in
             MNI152 (2mm) space.
         orig_mask : Optional[str]
@@ -124,16 +132,49 @@ class AverageRegionTransformer(BaseEstimator, TransformerMixin):
         orig_mask_threshold : Optional[int, float]
             Threshold used in previously applied mask (given a probabilistic
             mask)
-
         """
+
+        if mask_type is 'unilateral':
+            mask_dir = op.join(op.dirname(roi.__file__), 'unilateral')
+            mask_list = glob.glob(op.join(mask_dir, '*.nii.gz'))
+        elif mask_type is 'bilateral':
+            mask_dir = op.join(op.dirname(roi.__file__), 'bilateral')
+            mask_list = glob.glob(op.join(mask_dir, '*.nii.gz'))
+
+        # If patterns are in epi-space, transform mni-masks to
+        # subject specific epi-space if it doesn't exist already
+        if mvp.ref_space == 'epi':
+            epi_dir = op.join(op.dirname(mvp.directory), 'epi_masks', mask_type)
+            if not op.isdir(epi_dir):
+                os.makedirs(epi_dir)
+
+            ref_file = op.join(mvp.directory, 'mask.nii.gz')
+            matrix_file = op.join(mvp.directory, 'reg',
+                                  'standard2example_func.mat')
+
+            print('Transforming mni-masks to epi (if necessary).')
+            for mask in mask_list:
+                mask_file = op.basename(mask)
+                epi_mask = op.join(epi_dir, mask_file)
+                if not op.exists(epi_mask):
+
+                    out_file = epi_mask
+                    apply_xfm = fsl.ApplyXfm()
+                    apply_xfm.inputs.in_file = mask
+                    apply_xfm.inputs.reference = ref_file
+                    apply_xfm.inputs.in_matrix_file = matrix_file
+                    apply_xfm.interp = 'trilinear'
+                    apply_xfm.inputs.out_file = out_file
+                    apply_xfm.inputs.apply_xfm = True
+                    apply_xfm.run()
+
+            mask_list = glob.glob(op.join(epi_dir, '*.nii.gz'))
         self.mask_list = mask_list
 
-        if orig_mask is None:
-            orig_mask = np.ones(orig_shape).astype(bool)
-
-        self.orig_mask = orig_mask
-        self.orig_shape = orig_shape
-        self.orig_threshold = orig_mask_threshold
+        self.orig_mask = mvp.mask_index
+        self.orig_shape = mvp.mask_shape
+        self.orig_threshold = mvp.mask_threshold
+        self.mask_threshold = mask_threshold
 
     def fit(self, X=None, y=None):
         """ Does nothing, but included to be used in sklearn's Pipeline. """
@@ -156,14 +197,97 @@ class AverageRegionTransformer(BaseEstimator, TransformerMixin):
             in which features are region-average values.
 
         """
+
         X_new = np.zeros((X.shape[0], len(self.mask_list)))
         for i, mask in enumerate(self.mask_list):
 
-            roi_idx = nib.load(mask).get_data() > self.orig_threshold
+            roi_idx = nib.load(mask).get_data() > self.mask_threshold
             overlap = roi_idx.astype(int).ravel() + self.orig_mask.astype(int)
             region_av = np.mean(X[:, (overlap == 2)[self.orig_mask]], axis=1)
             X_new[:, i] = region_av
 
+        return X_new
+
+
+class RoiIndexer(BaseEstimator, TransformerMixin):
+    """ Indexes a whole-brain pattern with a certain ROI.
+
+    Given a certain ROI-mask, this class allows transformation
+    from a whole-brain pattern to the mask-subset.
+    """
+
+    def __init__(self, mvp, mask, mask_threshold=0):
+        """ Initializes RoiIndexer object.
+
+        Parameters
+        ----------
+        mvp : mvp-object (see scikit_bold.core)
+            Mvp-object, necessary to extract some pattern metadata
+        mask : str
+            Absolute paths to nifti-images of brain masks in MNI152 space.
+        mask_threshold : Optional[int, float]
+            Threshold to be applied on mask-indexing (given a probabilistic
+            mask)
+        """
+
+        self.mask = mask
+        self.mask_threshold = mask_threshold
+        self.orig_mask = mvp.mask_index
+
+        main_dir = op.dirname(mvp.directory)
+
+        # Check if epi-mask already exists:
+        if mvp.ref_space == 'epi':
+            laterality = op.basename(op.dirname(mask))
+            epi_dir = op.join(main_dir, 'epi_masks', laterality)
+            print('epidir: %s' % epi_dir)
+            if not op.isdir(epi_dir):
+                os.makedirs(epi_dir)
+
+            epi_name = op.basename(mask)
+            epi_exists = glob.glob(op.join(epi_dir, epi_name))
+            if epi_exists:
+                self.mask = epi_exists[0]
+            else:
+
+                ref_file = op.join(mvp.directory, 'mask.nii.gz')
+                matrix_file = op.join(mvp.directory, 'reg',
+                                      'standard2example_func.mat')
+                out_file = op.join(epi_dir, epi_name)
+                apply_xfm = fsl.ApplyXfm()
+                apply_xfm.inputs.in_file = self.mask
+                apply_xfm.inputs.reference = ref_file
+                apply_xfm.inputs.in_matrix_file = matrix_file
+                apply_xfm.interp = 'trilinear'
+                apply_xfm.inputs.out_file = out_file
+                apply_xfm.inputs.apply_xfm = True
+                apply_xfm.run()
+                self.mask = out_file
+
+    def fit(self, X=None, y=None):
+        """ Does nothing, but included to be used in sklearn's Pipeline. """
+        return self
+
+    def transform(self, X, y=None):
+        """ Transforms features from X (voxels) to a mask-subset.
+
+        Parameters
+        ----------
+        X : ndarray
+            Numeric (float) array of shape = [n_samples, n_features]
+        y : Optional[List[str] or numpy ndarray[str]]
+            List of ndarray with strings indicating label-names
+
+        Returns
+        -------
+        X_new : ndarray
+            array with transformed data of shape = [n_samples, n_features]
+            in which features are region-average values.
+        """
+
+        roi_idx = nib.load(self.mask).get_data() > self.mask_threshold
+        overlap = roi_idx.astype(int).ravel() + self.orig_mask.astype(int)
+        X_new = X[:, (overlap == 2)[self.orig_mask]]
         return X_new
 
 
