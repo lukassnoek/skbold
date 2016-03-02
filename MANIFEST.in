@@ -1,7 +1,7 @@
 include README.rst
-include scikit_bold/ROIs/*.nii.gz
-include scikit_bold/ROIs/yeo/*
-include scikit_bold/ROIs/harvard_oxford/bilateral/*.nii.gz
-include scikit_bold/ROIs/harvard_oxford/unilateral/*.nii.gz
+include skbold/ROIs/*.nii.gz
+include skbold/ROIs/yeo/*
+include skbold/ROIs/harvard_oxford/bilateral/*.nii.gz
+include skbold/ROIs/harvard_oxford/unilateral/*.nii.gz
 
 
