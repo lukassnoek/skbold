@@ -9,7 +9,7 @@ import pandas as pd
 import os.path as op
 from sklearn.metrics import precision_score, recall_score, accuracy_score, \
      confusion_matrix
-from scikit_bold.transformers.transformers import *
+from skbold.transformers.transformers import *
 from nipype.interfaces import fsl
 import nibabel as nib
 import warnings

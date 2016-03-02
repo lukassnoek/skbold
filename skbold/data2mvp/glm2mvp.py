@@ -20,9 +20,9 @@ import numpy as np
 import nibabel as nib
 import pandas as pd
 import os.path as op
-from scikit_bold.utils.mvp_utils import sort_numbered_list
-from scikit_bold.transformers.transformers import *
-from scikit_bold.core import Mvp
+from skbold.utils.mvp_utils import sort_numbered_list
+from skbold.transformers.transformers import *
+from skbold.core import Mvp
 from nipype.interfaces import fsl
 from sklearn.preprocessing import LabelEncoder
 

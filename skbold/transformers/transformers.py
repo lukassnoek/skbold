@@ -23,7 +23,7 @@ from sklearn.feature_selection import f_classif
 from scipy.ndimage.measurements import label
 from itertools import combinations
 from joblib import Parallel, delayed
-import scikit_bold.ROIs.harvard_oxford as roi
+import skbold.ROIs.harvard_oxford as roi
 from nipype.interfaces import fsl 
 
 warnings.filterwarnings('ignore', category=UserWarning)
@@ -176,6 +176,8 @@ class AverageRegionTransformer(BaseEstimator, TransformerMixin):
         self.orig_threshold = mvp.mask_threshold
         self.mask_threshold = mask_threshold
 
+        _ = [os.remove(f) for f in glob.glob(op.join(os.getcwd(), '*flirt.mat'))]
+
     def fit(self, X=None, y=None):
         """ Does nothing, but included to be used in sklearn's Pipeline. """
         return self
@@ -240,7 +242,6 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
         if mvp.ref_space == 'epi':
             laterality = op.basename(op.dirname(mask))
             epi_dir = op.join(main_dir, 'epi_masks', laterality)
-            print('epidir: %s' % epi_dir)
             if not op.isdir(epi_dir):
                 os.makedirs(epi_dir)
 
