@@ -5,7 +5,8 @@ install_requires = [
     'numpy',
     'nibabel',
     'nilearn',
-    'joblib'
+    'joblib',
+    'nipype'
 ]
 
 def readme():
@@ -13,7 +14,7 @@ def readme():
         return f.read()
 
 setup(
-    name='scikit-bold',
+    name='skbold',
     version='0.1.7',
     description='Tools to convert and transform first-level fMRI data to scikit-learn compatible data-structures',
     long_description=readme(),
@@ -24,7 +25,7 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Topic :: Scientific/Engineering :: Bio-Informatics'],
     keywords="fMRI scikit-learn RSA representational simililarity analysis",
-    url='https://github.com/lukassnoek/scikit-bold',
+    url='https://github.com/lukassnoek/skbold',
     author='Lukas Snoek',
     author_email='lukassnoek@gmail.com',
     license='MIT',
