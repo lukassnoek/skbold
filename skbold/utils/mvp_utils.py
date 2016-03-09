@@ -11,6 +11,8 @@ from sklearn.metrics import precision_score, recall_score, accuracy_score, \
      confusion_matrix
 from skbold.transformers.transformers import *
 from nipype.interfaces import fsl
+from itertools import chain, combinations
+from scipy.misc import comb
 import nibabel as nib
 import warnings
 
@@ -341,7 +343,17 @@ class MvpResults(object):
         self.iter = 0
         self.feature_scoring = feature_scoring
         self.feature_selection = np.zeros(np.sum(mvp.mask_index))
-        self.feature_scores = np.zeros(np.sum(mvp.mask_index))
+
+        n_voxels = np.sum(mvp.mask_index)
+
+        if 'coef' in feature_scoring:
+            n_models = mvp.n_class * (mvp.n_class - 1) / 2
+            self.feature_scores = np.zeros((n_voxels, n_models))
+        elif feature_scoring == 'accuracy':
+            self.feature_scores = np.zeros((n_voxels, mvp.n_class))
+        else: # if 'distance'
+            self.feature_scores = np.zeros(n_voxels)
+
         self.n_features = np.zeros(iterations)
         self.precision = None
         self.accuracy = None
@@ -380,8 +392,10 @@ class MvpResults(object):
         """
         fs_method = self.feature_scoring
 
+        # If pipeline is None, assume that we don't keep track of voxels.
         if pipeline is not None:
 
+            # If GridSearchCv, extract best estimator as pipeline.
             if hasattr(pipeline, 'best_estimator_'):
                 pipeline = pipeline.best_estimator_
 
@@ -393,15 +407,18 @@ class MvpResults(object):
 
             if self.feature_scoring == 'distance':
                 self.feature_scores[idx] += scores[idx]
-            elif fs_method == 'coef':
-                coefs = np.mean(np.abs(clf.coef_), axis=0)
-                self.feature_scores[idx] += coefs
+            elif 'coef' in fs_method:
+                self.feature_scores[idx] += clf.coef_.T
             elif fs_method == 'accuracy':
                 if y_pred.ndim > 1:
+                    # if output is proba estimates, then do soft vote
                     y_tmp = np.argmax(y_pred, axis=1)
                 else:
                     y_tmp = y_pred
-                score_tmp = accuracy_score(self.y_true[test_idx], y_tmp)
+
+                cm_tmp = confusion_matrix(self.y_true[test_idx], y_tmp)
+                score_tmp = np.diag(cm_tmp / cm_tmp.sum(axis=1))
+                score_tmp = np.expand_dims(score_tmp, 0)
                 self.feature_scores[idx] += score_tmp
 
         if self.method == 'averaging':
@@ -431,11 +448,61 @@ class MvpResults(object):
 
         """
         self.n_features = self.n_features.mean()
+        fs = self.feature_scoring
 
-        if self.feature_scoring is not None:
+        if fs is not None:
+
+            if fs == 'coefovr':
+                """
+                Here, we add the coefficients from the pairwise classifications
+                together, e.g. for class 'A', we add 'A vs. B' and 'A vs. C'
+                together, and if class 'A' is the negative class, we multiply
+                the coefficient by -1. Note that sklearn's multiclass models
+                reverse the labels for some reason (e.g. in the class 0 vs 1
+                classification, 0 becomes the positive label, and 1 becomes the
+                negative label), that's why the coefs are all reversed at the
+                beginning.
+                """
+                av_feature_info = self.feature_scores * -1
+                n, k = self.n_class, 2
+                count = comb(n, k, exact=True)
+                index = np.fromiter(chain.from_iterable(combinations(range(n), k)),
+                                    int, count=count*k)
+                c = index.reshape(-1, k)
+                store = np.zeros((av_feature_info.shape[0], av_feature_info.shape[1], n, 2))
+
+                for clas in range(n):
+
+                    present = 0
+                    for i in range(n):
+                        if any(c[i, :] == clas):
+                            if (c[i, :] == clas)[0]:
+                                store[:, :, clas, present] = av_feature_info[:, :, i] * -1
+                            else:
+                                store[:, :, clas, present] = av_feature_info[:, :, i]
+
+                            present += 1
+
+                store[store < 0] = 0
+                self.feature_scores = store.sum(axis=3)
+
+            elif fs == 'coefovo':
+                av_feature_info = self.feature_scores * -1
+
+            # n_selected = (av_feature_info != 0.0).sum(axis=0)
+            # av_feature_info = self.feature_scores.sum(axis=0) / n_selected
+            if 'coef' in fs or fs == 'accuracy':
+                self.feature_selection = np.expand_dims(self.feature_selection, axis=1)
+
             av_feature_info = self.feature_scores / self.feature_selection
             av_feature_info[av_feature_info == np.inf] = 0
             av_feature_info[np.isnan(av_feature_info)] = 0
+
+            """
+            Here, the std should be calculated, but I have now clue
+            how to do this properly...
+            """
+            # std_av_features = (av_feature_info-self.feature_scores * -1)
             self.av_feature_info = av_feature_info
 
         if self.method == 'voting':
@@ -469,24 +536,17 @@ class MvpResults(object):
         directory : str
             Absolute path to project directory
         resultsdir : str
-            name of the results directory   
+            name of the results directory
         convert2mni : bool
             Whether to convert feature scores in epi-space to mni spaces
 
         """
-
+        
         results_dir = op.join(directory, self.resultsdir)
         if not op.isdir(results_dir):
             os.makedirs(results_dir)
         filename = op.join(results_dir, '%s_%s_classification.pickle' %
                            (self.sub_name, self.run_name))
-
-        # Remove some attributes to save space
-        self.X = None
-        self.feature_selection = None
-
-        with open(filename, 'wb') as handle:
-            cPickle.dump(self, handle)
 
         if self.feature_scoring is not None:
 
@@ -498,9 +558,17 @@ class MvpResults(object):
             fn = op.join(vox_dir, '%s_%s_%s' % (self.sub_name,
                          self.run_name, self.feature_scoring))
 
-            img = np.zeros(np.prod(self.mask_shape))
-            img[self.mask_index] = self.av_feature_info
-            img = nib.Nifti1Image(img.reshape(self.mask_shape), self.affine)
+            if self.feature_scoring == 'accuracy' or 'coef' in self.feature_scoring:
+                img = np.zeros((np.prod(self.mask_shape), self.n_class))
+                img[self.mask_index, :] = self.av_feature_info
+                xs, ys, zs = self.mask_shape
+                img = img.reshape((xs, ys, zs, self.n_class)) 
+            else:
+                img = np.zeros(np.prod(self.mask_shape))
+                img[self.mask_index] = self.av_feature_info
+                img = img.reshape(self.mask_shape)
+
+            img = nib.Nifti1Image(img, self.affine)            
             nib.save(img, fn)
 
             if self.ref_space == 'mni' and convert2mni:
@@ -527,9 +595,14 @@ class MvpResults(object):
                 apply_xfm.inputs.apply_xfm = True
                 apply_xfm.run()
 
-                # Remove annoying .mat files
-                to_remove = glob.glob(op.join(os.getcwd(), '*.mat'))
-                _ = [os.remove(f) for f in to_remove]
+        # Remove some attributes to save space
+        self.X = None
+        self.feature_selection = None
+        self.feature_scores = None
+        self.mask_index = None
+
+        with open(filename, 'wb') as handle:
+            cPickle.dump(self, handle)
 
     def compute_and_write(self, directory, convert2mni=False):
         """ Chains compute_score() and write_results(). """
@@ -617,12 +690,16 @@ class MvpAverageResults(object):
         self.threshold = threshold
         self.cleanup = cleanup
         self.df_ = pd.DataFrame()
+        self.feature_scoring = None
 
     def average(self):
         """ Loads and computes average performance metrics. """
 
         results_dir = op.join(self.directory, self.resultsdir)
         files = glob.glob(op.join(results_dir, '*.pickle'))
+
+        if not files:
+            raise ValueError('Couldnt find files to be averaged!')
 
         for i, f in enumerate(files):
             results = cPickle.load(open(f, 'rb'))
@@ -663,20 +740,33 @@ class MvpAverageResults(object):
 
         feature_files = glob.glob(op.join(results_dir, 'vox_results_mni',
                                           '*.nii*'))
+        # Some really ugly code ...
         if len(feature_files) > 0:
 
-            shape = (91, 109, 91)  # hard-coded mni-shape
-            s = np.zeros((len(feature_files), shape[0], shape[1], shape[2]))
-
             for i, feature_file in enumerate(feature_files):
-
                 data = nib.load(feature_file).get_data()
-                s[i, :, :, :] = data
+                if i == 0:
+                    if data.ndim > 3:
+                        a, b, c, d = data.shape
+                        s = np.zeros((len(feature_files), a, b, c, d))
+                        s[i, :, :, :, :] = data
+                    else:
+                        a, b, c = data.shape
+                        s = np.zeros((len(feature_files), a, b, c))
+                        s[i, :, :, :] = data
+                else:
+                    try:
+                        s[i, :, :, :] = data
+                    except:
+                        s[i, :, :, :, :] = data
 
             metric = feature_file.split('_')[-1].split('.')[0]
 
             if metric == 'accuracy':
                 s = (s > self.threshold).astype(int).sum(axis=0)
+            if 'coef' in metric:
+                nsub = s.shape[0]
+                s = s.mean(axis=0) / (s.std(axis=0) / np.sqrt(nsub))
             else:
                 s = s.mean(axis=0)
 
@@ -687,6 +777,10 @@ class MvpAverageResults(object):
             fn = op.join(results_dir, 'AverageScores')
             img = nib.Nifti1Image(s, np.eye(4))
             nib.save(img, fn)
+
+        # Remove annoying .mat files (from epi-mni conversion)
+        to_remove = glob.glob(op.join(os.getcwd(), '*.mat'))
+        _ = [os.remove(f) for f in to_remove]
 
 
 def sort_numbered_list(stat_list):

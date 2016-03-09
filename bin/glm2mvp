@@ -11,8 +11,8 @@ import os
 import os.path as op
 import sys
 import argparse
-import scikit_bold.ROIs as roi
-from scikit_bold.data2mvp.glm2mvp import Fsl2mvp
+import skbold.ROIs as roi
+from skbold.data2mvp.glm2mvp import Fsl2mvp
 
 parser = argparse.ArgumentParser(description='This is a command line tool to convert an FSL ' \
 											 'first-level directory.')

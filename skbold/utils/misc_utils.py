@@ -14,7 +14,7 @@ from scipy.ndimage.measurements import label
 
 
 def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
-                     threshold=30):
+                     stat_threshold=None, mask_threshold=20, save_indices=True):
     """ Extracts information per ROI for a given statistics-file.
 
     Reads in a thresholded (!) statistics-file (such as a thresholded z- or
@@ -33,12 +33,19 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
     per_cluster : bool
         Whether to evaluate the statistics-file as a whole (per_cluster=False) or
         per cluster separately (per_cluster=True).
-    threshold : bool
+    stat_threshold : int or float
+        If the stat-file contains uncorrected data, stat_threshold can be used
+        to set a lower bound.
+    mask_threshold : bool
         Threshold for probabilistics masks, such as the Harvard-Oxford masks.
-
+        Default of 25 is chosen as this minimizes overlap between adjacent
+        masks while still covering most of the entire brain.
     """
 
     data = nib.load(statfile).get_data()
+    if stat_threshold:
+        data[data < stat_threshold] = 0
+
     stat_name = op.basename(statfile).split('.')[0]
     roi_dir = op.join(op.dirname(roi.__file__), roi_type)
     masks = glob(op.join(roi_dir, '*.nii.gz'))
@@ -47,10 +54,16 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
 
     if per_cluster:
 
-        results = pd.DataFrame(columns=['cluster', 'roi', 'k', 'max', 'X', 'Y', 'Z'])
+        results = pd.DataFrame(columns=['Contrast', 'cluster', 'k cluster', 'max cluster', 
+                                        'x', 'y', 'z', 'Region', 'k region', 'max region'])
+
         clustered, num_clust = label(data > 0)
         values, counts = np.unique(clustered.ravel(), return_counts=True)
         n_clust = np.argmax(np.sort(counts)[::-1] < 20)
+
+        if n_clust == 0:
+            print('No (sufficiently large) clusters for %s' % statfile)
+            return 0
 
         # Sort and trim
         cluster_nrs = values[counts.argsort()[::-1][:n_clust]]
@@ -68,17 +81,26 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
             tmp[cl_mask] = data[cl_mask] == mx
             X, Y, Z = np.where(tmp == 1)[0], np.where(tmp == 1)[1], np.where(tmp == 1)[2]
             
-            to_append = {'cluster': (i+1), 'roi': 'full cluster',
-                         'k': k, 'max': mx, 'X': X, 'Y': Y, 'Z': Z}
+            if i == 0:
+                stat = op.basename(statfile).split('.')[0].split('_')[-1]
+                c = op.basename(op.dirname(statfile)).split('.')[0] + '_%s' % stat
+            else:
+                c = ''
+
+            to_append = {'Contrast': c, 'cluster': (i+1), 'k cluster': k, 'max cluster': mx,
+                         'x': X, 'y': Y, 'z': Z, 'Region': '', 'k region': '',
+                         'max region': ''}
 
             df_list.append(pd.DataFrame(to_append, index=[0]))
 
             for mask in masks:
                 mask_name = op.basename(mask).split('.')[0].split('_')
-                mask_name[0] = mask_name[0] + '.'
+                if roi_type == 'unilateral':
+                    mask_name[0] = mask_name[0] + '.'
+                
                 mask_name = " ".join(mask_name)
 
-                roi_mask = nib.load(mask).get_data() > threshold
+                roi_mask = nib.load(mask).get_data() > mask_threshold
                 overlap = cl_mask.astype(int) + roi_mask.astype(int) == 2
                 k = overlap.sum()
 
@@ -94,45 +116,58 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
                     mx = 0
                     X, Y, Z = 0, 0, 0
 
-                to_append = pd.DataFrame({'cluster': (i+1), 'roi': mask_name,
-                         'k': k, 'max': mx, 'X': X, 'Y': Y, 'Z': Z}, index=[0])
+                to_append = {'Contrast': '', 'cluster': (i+1+0.1), 'k cluster': '', 'max cluster': '',
+                             'x': '', 'y': '', 'z': '', 'Region': mask_name,
+                             'k region': k, 'max region': mx}
+            
+                to_append = pd.DataFrame(to_append, index=[0])
                 df_list.append(to_append)
         df = pd.concat(df_list)
-        df = df[['cluster', 'roi', 'k', 'max', 'X', 'Y', 'Z']]  
-        df = df[df.k != 0].sort_values(by=['cluster', 'k'], ascending=[True,False])
+        
+        # Some cleaning / processing
+        df = df[['Contrast', 'cluster', 'k cluster', 'max cluster', 'x', 'y', 
+                                        'z', 'Region', 'k region', 'max region']]  
+        df = df[df['k region'] > 20]
+        df = df.sort_values(by=['cluster', 'k region'], ascending=[True,False])
+        df['cluster'] = ['' if val % 1 != 0 else val for val in df['cluster']]
 
     else:
         print('Analyzing %s' % statfile)
-        results = pd.DataFrame(columns=['roi', 'k', 'max', 'X', 'Y', 'Z'])
+        results = pd.DataFrame(columns=['roi', 'k', 'max', 'mean', 'sd', 'X', 'Y', 'Z'])
 
         for mask in masks:
                 mask_name = op.basename(mask).split('.')[0].split('_')
-                mask_name[0] = mask_name[0] + '.'
+                
+                if roi_type == 'unilateral':
+                    mask_name[0] = mask_name[0] + '.'
                 mask_name = " ".join(mask_name)
 
-                roi_mask = nib.load(mask).get_data() > threshold
+                roi_mask = nib.load(mask).get_data() > mask_threshold
                 sig_mask = data > 0
                 overlap = sig_mask.astype(int) + roi_mask.astype(int) == 2
                 k = overlap.sum()
+                X, Y, Z = 0, 0, 0
 
                 if k > 0:
                     mx = data[overlap].max()
+                    mean, std = data[overlap].mean(), data[overlap].std()
                     tmp = np.zeros(data.shape)
                     tmp[overlap] = data[overlap] == mx
-                    X = np.where(tmp == 1)[0]
-                    Y = np.where(tmp == 1)[1]
-                    Z = np.where(tmp == 1)[2]
+                    if save_indices:
+                        X = np.where(tmp == 1)[0]
+                        Y = np.where(tmp == 1)[1]
+                        Z = np.where(tmp == 1)[2]
                 else:
-                    mx = 0
-                    X, Y, Z = 0, 0, 0
+                    mx, mean, std = 0, 0, 0
 
-
-                to_append = pd.DataFrame({'roi': mask_name, 'k': k, 'max': mx,
-                             'X': X, 'Y': Y, 'Z': Z}, index=[0])
+                to_append = pd.DataFrame({'roi': mask_name, 'k': k, 'max': mx, 'mean': mean,
+                             'sd': std, 'X': X, 'Y': Y, 'Z': Z}, index=[0])
                 df_list.append(to_append)
+
         df = pd.concat(df_list)
         df = df[df.k != 0].sort_values(by='k', ascending=False)
-        df = df[['roi', 'k', 'max', 'X', 'Y', 'Z']]
+        df = df[['roi', 'k', 'max', 'mean', 'sd', 'X', 'Y', 'Z']]
+        df = df[df['k'] > 20]
     
     print(df)
     filename = op.join(op.dirname(statfile), 'roi_info_%s.csv' % stat_name)
@@ -140,7 +175,9 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
 
 
 if __name__ == '__main__':
-    "Just testing stuff"
-    testfile = '/media/lukas/data/DecodingEmotions/univar_zinnen/Cope4.gfeat/thresh_zstat1.nii.gz'
-    extract_roi_info(testfile, roi_type='unilateral', per_cluster=True,
-                     threshold=30)
+    
+    f = '/media/lukas/data/DecodingEmotions/Validation_set/glm_zinnen/100000iter_results/AverageScores.nii'
+    #files = glob(op.join(home, 'univar_*', '?ope[4-6].*feat', 'thresh_zstat?.nii.gz'))
+    extract_roi_info(f, per_cluster=False, save_indices=False, stat_threshold=2, mask_threshold=20,
+                     roi_type='bilateral')
+    #[extract_roi_info(f) for f in files]
