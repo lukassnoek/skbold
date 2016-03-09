@@ -14,7 +14,7 @@ import argparse
 import skbold.ROIs as roi
 from skbold.data2mvp.glm2mvp import Fsl2mvp
 
-parser = argparse.ArgumentParser(description='This is a command line tool to convert an FSL 'first-level directory.')
+parser = argparse.ArgumentParser(description='This is a command line tool to convert an FSL first-level directory.')
 
 parser.add_argument('-d', '--directory', help='Directory to be converted.',required=False)
 parser.add_argument('-m', '--mask', help='Mask to index patterns.', required=False)
