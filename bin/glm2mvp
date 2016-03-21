@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """ glm2mvp - the command line tool version.
 
 Converts first-level data to multivariate pattern matrices using the
