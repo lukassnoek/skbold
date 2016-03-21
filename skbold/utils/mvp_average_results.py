@@ -8,7 +8,11 @@ from __future__ import print_function, division, absolute_import
 import cPickle
 import json
 import pandas as pd
-from skbold.transformers.transformers import *
+import numpy as np
+import os.path as op
+import os
+import glob
+from skbold.transformers import *
 import nibabel as nib
 
 

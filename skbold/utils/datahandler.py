@@ -9,7 +9,7 @@ import pandas as pd
 import os.path as op
 from sklearn.metrics import precision_score, recall_score, accuracy_score, \
      confusion_matrix
-from skbold.transformers.transformers import *
+from skbold.transformers import *
 from nipype.interfaces import fsl
 from itertools import chain, combinations
 from scipy.misc import comb

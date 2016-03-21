@@ -9,7 +9,11 @@ from __future__ import print_function, division, absolute_import
 import cPickle
 from sklearn.metrics import precision_score, recall_score, accuracy_score, \
      confusion_matrix
-from skbold.transformers.transformers import *
+from skbold.transformers import *
+import numpy as np
+import os.path as op
+import os
+import glob
 from nipype.interfaces import fsl
 from itertools import chain, combinations
 from scipy.misc import comb
