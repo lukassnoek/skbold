@@ -1,13 +1,10 @@
-"""
-Some functions that can be used as 'Nodes' within a
-Nipype (fMRI preprocessing) workflow.
+# Parses a Presentation (neurobs.com) logfile.
 
-Lukas Snoek, University of Amsterdam
-"""
+# Author: Lukas Snoek [lukassnoek.github.io]
+# Contact: lukassnoek@gmail.com
+# License: 3 clause BSD
 
 from __future__ import division, print_function
-
-
 from nipype.interfaces.base import Bunch
 import pandas as pd
 import numpy as np
@@ -28,6 +25,8 @@ def parse_presentation_logfile(in_file, con_names, con_codes, con_design=None,
 
     if type(in_file) == str:
         in_file = [in_file]
+
+    subject_info_files = []
 
     for f in in_file:
 
@@ -112,18 +111,12 @@ def parse_presentation_logfile(in_file, con_names, con_codes, con_design=None,
                         df_tmp = df_tmp[['Time', 'Duration', 'Weight']]
                         df_tmp.to_csv(name, index=False, sep='\t', header=False)
 
+        subject_info = Bunch(conditions=con_names,
+                             onsets=trial_onsets,
+                             durations=trial_durations,
+                             amplitudes=None,
+                             regressor_names=con_names,
+                             regressors=None)
+        subject_info_files.append(subject_info)
 
-
-def parse_custom_psychopy_logfile():
-    pass
-
-if __name__ == '__main__':
-
-    testfiles = glob.glob('/home/lukas/Nipype_testset/working_directory/sub001/func_hww/*.log')
-    con_names = ['Action', 'Interoception', 'Situation', 'Cue']
-    con_codes = [[100, 199], [200, 299], [300, 399], ['Cue']]
-    con_design = ['multivar', 'univar', 'univar', 'univar']
-    parse_presentation_logfile(testfiles, con_names, con_codes, con_design,
-                               pulsecode=30, write_bfsl=True)
-
-
+    return subject_info_files

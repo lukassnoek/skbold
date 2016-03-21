@@ -1,17 +1,9 @@
-# -*- coding: utf-8 -*-
-""" Core module
+# Basic Mvp class, from which first-level specific (e.g. FSL or, perhaps in the
+# future, SPM) containers/converters are subclassed.
 
-This module contains some core classes/functions which are central to the
-scikit-bold package. Most importantly, it contains the Mvp class, an object
-meant for storage of multivoxel pattern data and its associated meta-data.
-
-In the data2mvp module, several classes subclass the Mvp class, adding
-methods specific to that class (e.g. the fslglm object subclasses Mvp and
-adds methods to extract first-level single-trial data from fsl-specific
-fist-level directories.)
-
-Lukas Snoek
-"""
+# Author: Lukas Snoek [lukassnoek.github.io]
+# Contact: lukassnoek@gmail.com
+# License: 3 clause BSD
 
 from __future__ import print_function, absolute_import, division
 import glob
@@ -36,6 +28,7 @@ class Mvp(object):
     def __init__(self, directory, mask_threshold=0, beta2tstat=True,
                  ref_space='mni', mask_path=None, remove_class=[],
                  cleanup=True):
+
         """ Initializes a (bare-bones) Mvp object.
 
         Parameters

@@ -2,6 +2,6 @@
 # Contact: lukassnoek@gmail.com
 # License: 3 clause BSD
 
-from .fsl2mvp import Fsl2mvp
+from .extract_roi_info import extract_roi_info
 
-__all__ = ['Fsl2mvp']
+__all__ = ['extract_roi_info']

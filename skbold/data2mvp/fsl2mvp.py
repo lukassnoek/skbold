@@ -1,18 +1,11 @@
-# -*- coding: utf-8 -*-
-""" glm2mvp Module
+# Class to extract and store first-level (meta)data from an FSL first-level
+# (feat) directory.
 
-This module contains the Subject class which has several methods to
-extract first-level (i.e. fitted beta-estimates) data from single trials
-or run-wise condition regressors from first-level directories yielded by FSL's
-FEAT. In the future, this module should include loading/extraction methods
-to handle first-level data from Nipy.
-
-Lukas Snoek (lukassnoek@gmail.com)
-"""
+# Author: Lukas Snoek [lukassnoek.github.io]
+# Contact: lukassnoek@gmail.com
+# License: 3 clause BSD
 
 from __future__ import print_function, division, absolute_import
-import os
-import glob
 import cPickle
 import h5py
 import shutil
