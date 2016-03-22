@@ -1,3 +1,9 @@
+# Class to handle loading of Mvp objects in several formats.
+
+# Author: Lukas Snoek [lukassnoek.github.io]
+# Contact: lukassnoek@gmail.com
+# License: 3 clause BSD
+
 from __future__ import print_function, division, absolute_import
 import numpy as np
 import glob
@@ -282,33 +288,3 @@ class DataHandler(object):
         mvp = self.load()
         img = nib.Nifti1Image(mvp.X, np.eye(4))
         nib.save(img, opj(self.mvp_dir, 'data_4d.nii.gz'))
-
-
-
-
-def sort_numbered_list(stat_list):
-    """ Sorts a list containing numbers.
-
-    Sorts list with paths to statistic files (e.g. COPEs, VARCOPES),
-    which are often sorted wrong (due to single and double digits).
-    This function extracts the numbers from the stat files and sorts
-    the original list accordingly.
-
-    Parameters
-    ----------
-    stat_list : list[str]
-        list with absolute paths to files
-
-    Returns
-    -------
-    sorted_list : list[str]
-        sorted stat_list
-    """
-
-    num_list = []
-    for path in stat_list:
-        num = [str(s) for s in str(op.basename(path)) if s.isdigit()]
-        num_list.append(int(''.join(num)))
-
-    sorted_list = [x for y, x in sorted(zip(num_list, stat_list))]
-    return sorted_list

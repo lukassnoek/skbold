@@ -20,6 +20,7 @@ from skbold.transformers import *
 from skbold.core import Mvp
 from nipype.interfaces import fsl
 from sklearn.preprocessing import LabelEncoder
+from ..utils import convert2mni, convert2epi
 
 
 class Fsl2mvp(Mvp):
