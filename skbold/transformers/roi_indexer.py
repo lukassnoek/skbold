@@ -11,6 +11,7 @@ import os.path as op
 import nibabel as nib
 import nipype.interfaces.fsl as fsl
 from sklearn.base import BaseEstimator, TransformerMixin
+from ..utils import convert2epi
 
 
 class RoiIndexer(BaseEstimator, TransformerMixin):
@@ -52,20 +53,8 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
             if epi_exists:
                 self.mask = epi_exists[0]
             else:
-
-                ref_file = op.join(mvp.directory, 'mask.nii.gz')
-                matrix_file = op.join(mvp.directory, 'reg',
-                                      'standard2example_func.mat')
-                out_file = op.join(epi_dir, epi_name)
-                apply_xfm = fsl.ApplyXfm()
-                apply_xfm.inputs.in_file = self.mask
-                apply_xfm.inputs.reference = ref_file
-                apply_xfm.inputs.in_matrix_file = matrix_file
-                apply_xfm.interp = 'trilinear'
-                apply_xfm.inputs.out_file = out_file
-                apply_xfm.inputs.apply_xfm = True
-                apply_xfm.run()
-                self.mask = out_file
+                reg_dir = op.join(mvp.directory, 'reg')
+                self.mask = convert2epi(self.mask, reg_dir, epi_dir)
 
     def fit(self, X=None, y=None):
         """ Does nothing, but included to be used in sklearn's Pipeline. """

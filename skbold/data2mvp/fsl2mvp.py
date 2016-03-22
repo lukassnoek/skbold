@@ -16,9 +16,7 @@ import os
 import glob
 import os.path as op
 from skbold.utils import sort_numbered_list
-from skbold.transformers import *
 from skbold.core import Mvp
-from nipype.interfaces import fsl
 from sklearn.preprocessing import LabelEncoder
 from ..utils import convert2mni, convert2epi
 
@@ -36,7 +34,7 @@ class Fsl2mvp(Mvp):
     """
 
     def __init__(self, directory, mask_threshold=0, beta2tstat=True,
-                 ref_space='mni', mask_path=None, remove_class=[]):
+                 ref_space='epi', mask_path=None, remove_class=[]):
 
         super(Fsl2mvp, self).__init__(directory, mask_threshold, beta2tstat,
                                       ref_space, mask_path, remove_class)
@@ -95,111 +93,6 @@ class Fsl2mvp(Mvp):
             else:
                 self.class_labels.append(c)
 
-    def convert2mni(self, file2transform):
-        """ Method to transform nifti files to MNI space.
-
-        Using Nipype's fsl interace, a single nifti file or a list of nifti
-        files are converted to MNI152 (2mm) space, given that there exists
-        a registration-directory with appropriate warps.
-
-        Parameters
-        ----------
-        file2transform : str or list[str]
-            Absolute path, or list of absolute paths, to nifti-files to be
-            converted to MNI space.
-
-        Returns
-        -------
-        Out : list
-            List of path(s) to MNI-transformed file(s).
-
-        """
-
-        if type(file2transform) == str:
-            base_path = op.dirname(file2transform)
-            tmp = []
-            tmp.append(file2transform)
-            file2transform = tmp
-        elif type(file2transform) == list:
-            base_path = op.dirname(file2transform[0])
-
-        ref_file = op.join(self.directory, 'reg', 'standard.nii.gz')
-        matrix_file = op.join(self.directory, 'reg',
-                              'example_func2standard.mat')
-        out_dir = op.join(self.directory, 'reg_standard')
-
-        if not os.path.isdir(out_dir):
-            os.makedirs(out_dir)
-
-        out = []
-        for f in file2transform:
-
-            out_file = op.join(out_dir, op.basename(f))
-            apply_xfm = fsl.ApplyXfm()
-            apply_xfm.inputs.in_file = f
-            apply_xfm.inputs.reference = ref_file
-            apply_xfm.inputs.in_matrix_file = matrix_file
-            apply_xfm.interp = 'trilinear'
-            apply_xfm.inputs.out_file = out_file
-            apply_xfm.inputs.apply_xfm = True
-            apply_xfm.run()
-            out.append(out_file)
-
-        # Remove annoying .mat files
-        _ = [os.remove(f) for f in glob.glob(op.join(os.getcwd(), '*.mat'))]
-
-        return out
-
-    def convert2epi(self, file2transform):
-        """ Method to transform nifti files to native (functional) space.
-
-        Using Nipype's fsl interace, a single nifti file or a list of nifti
-        files are converted to native (functional/EPI) space, given that there
-        exists a registration-directory with appropriate warps.
-
-        Parameters
-        ----------
-        file2transform : str or list[str]
-            Absolute path, or list of absolute paths, to nifti-files to be
-            converted to functional/EPI space.
-
-        Returns
-        -------
-        Out : list
-            List of path(s) to EPI-transformed file(s).
-
-        """
-
-        if type(file2transform) == str:
-            base_path = op.dirname(file2transform)
-            tmp = []
-            tmp.append(file2transform)
-            file2transform = tmp
-        elif type(file2transform) == list:
-            base_path = op.dirname(file2transform[0])
-
-        ref_file = op.join(self.directory, 'mask.nii.gz')
-        matrix_file = op.join(self.directory, 'reg',
-                              'standard2example_func.mat')
-        out_dir = op.join(self.directory, 'stats')
-
-        out = []
-        for f in file2transform:
-
-            out_file = op.join(out_dir, op.basename(f))
-            apply_xfm = fsl.ApplyXfm()
-            apply_xfm.inputs.in_file = f
-            apply_xfm.inputs.reference = ref_file
-            apply_xfm.inputs.in_matrix_file = matrix_file
-            apply_xfm.interp = 'trilinear'
-            apply_xfm.inputs.out_file = out_file
-            apply_xfm.inputs.apply_xfm = True
-            apply_xfm.run()
-
-            out.append(out_file)
-
-        return out
-
     def glm2mvp(self):
         """ Extract (meta)data from FSL first-level directory.
 
@@ -212,13 +105,16 @@ class Fsl2mvp(Mvp):
         sub_name = self.sub_name
         run_name = self.run_name
 
+        reg_dir = op.join(sub_path, 'reg')
+
         # Load mask, create index
         if self.mask_path is not None:
 
             mask_vol = nib.load(self.mask_path)
 
             if self.ref_space == 'epi' and mask_vol.shape == (91, 109, 91):
-                self.mask_path = self.convert2epi(self.mask_path)[0]
+                out_dir = reg_dir
+                self.mask_path = convert2epi(self.mask_path, reg_dir, out_dir)[0]
                 mask_vol = nib.load(self.mask_path)
 
             self.mask_shape = mask_vol.shape
@@ -259,15 +155,16 @@ class Fsl2mvp(Mvp):
 
         copes = glob.glob(op.join(stat_dir, 'cope*.nii.gz'))
         varcopes = glob.glob(op.join(stat_dir, 'varcope*.nii.gz'))
+        copes, varcopes = sort_numbered_list(copes), sort_numbered_list(varcopes)
 
         if transform2mni:
             copes.extend(varcopes)
-            transformed_files = self.convert2mni(copes)
+            out_dir = op.join(sub_path, 'reg_standard')
+            transformed_files = convert2mni(copes, reg_dir, out_dir)
             half = int(len(transformed_files) / 2)
             copes = transformed_files[:half]
             varcopes = transformed_files[half:]
 
-        copes = sort_numbered_list(copes)
         _ = [copes.pop(idx) for idx in sorted(self.remove_idx, reverse=True)]
 
         varcopes = sort_numbered_list(varcopes)

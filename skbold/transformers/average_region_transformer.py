@@ -9,10 +9,11 @@ import os
 import glob
 import nibabel as nib
 import os.path as op
-import skbold.ROIs as roi
+import skbold.data.rois.harvard_oxford as roi
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 from nipype.interfaces import fsl
+from ..utils import convert2mni, convert2epi
 
 # To do: allow for functionality without mvp structure!
 
@@ -54,31 +55,9 @@ class AverageRegionTransformer(BaseEstimator, TransformerMixin):
         # subject specific epi-space if it doesn't exist already
         if mvp.ref_space == 'epi':
             epi_dir = op.join(op.dirname(mvp.directory), 'epi_masks', mask_type)
-            if not op.isdir(epi_dir):
-                os.makedirs(epi_dir)
-
-            ref_file = op.join(mvp.directory, 'mask.nii.gz')
-            matrix_file = op.join(mvp.directory, 'reg',
-                                  'standard2example_func.mat')
-
+            reg_dir = op.join(mvp.directory, 'reg')
             print('Transforming mni-masks to epi (if necessary).')
-            for mask in mask_list:
-                mask_file = op.basename(mask)
-                epi_mask = op.join(epi_dir, mask_file)
-                if not op.exists(epi_mask):
-
-                    out_file = epi_mask
-                    apply_xfm = fsl.ApplyXfm()
-                    apply_xfm.inputs.in_file = mask
-                    apply_xfm.inputs.reference = ref_file
-                    apply_xfm.inputs.in_matrix_file = matrix_file
-                    apply_xfm.interp = 'trilinear'
-                    apply_xfm.inputs.out_file = out_file
-                    apply_xfm.inputs.apply_xfm = True
-                    apply_xfm.run()
-
-            mask_list = glob.glob(op.join(epi_dir, '*.nii.gz'))
-        self.mask_list = mask_list
+            self.mask_list = convert2epi(mask_list, reg_dir, epi_dir)
 
         self.orig_mask = mvp.mask_index
         self.orig_shape = mvp.mask_shape

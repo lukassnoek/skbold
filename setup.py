@@ -18,7 +18,8 @@ def readme():
 setup(
     name='skbold',
     version=VERSION,
-    description='Tools to convert and transform first-level fMRI data to scikit-learn compatible data-structures',
+    description='Tools to convert and transform first-level fMRI data to ' \
+                'scikit-learn compatible data-structures',
     long_description=readme(),
     classifiers=[
         'Development Status :: 1 - Planning',

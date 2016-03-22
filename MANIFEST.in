@@ -1,7 +1,9 @@
 include README.rst
-include skbold/ROIs/*.nii.gz
-include skbold/ROIs/yeo/*
-include skbold/ROIs/harvard_oxford/bilateral/*.nii.gz
-include skbold/ROIs/harvard_oxford/unilateral/*.nii.gz
+include skbold/data/rois/*.nii.gz
+include skbold/data/rois/yeo/*
+include skbold/data/rois/harvard_oxford/bilateral/*.nii.gz
+include skbold/data/rois/harvard_oxford/unilateral/*.nii.gz
+include skbold/data/test_data/*/design.con
+include skbold/data/test_data/*/*/*
 
 
