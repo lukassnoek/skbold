@@ -1,12 +1,12 @@
 skbold
---------
+------
 This package provides several tools to (pre)process and analyse BOLD-fMRI
 data. Most of the package's functionality is centered around machine learning
 analyses, which are structured similarly to the *scikit-learn* machine learning
 library in Python, using the same .fit() and .transform() methods.
 
 Next to these machine learning tools, this package contains some 
-miscellaneous tools to, for example, parse Presentation (www.neurobs.com)
+miscellaneous tools to, for example, parse Presentation (Neurobs)
 logfiles, extract region-of-interest information from activation-based
 statistics images (niftis), and various other tools that I use in my research.
 So basically *skbold* contains all the stuff I program during my PhD.
@@ -24,7 +24,7 @@ In the future, this package might be extended with representational similarity a
 and various other multivoxel pattern analyses (e.g. cross-validated MANOVA).
 
 Installing skbold
-########
+-----------------
 
 Although the package is very much in development, it can be installed using *pip*::
 

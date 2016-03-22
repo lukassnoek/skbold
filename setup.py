@@ -1,5 +1,7 @@
 from setuptools import setup, find_packages
 
+VERSION = '0.2.1'
+
 install_requires = [
     'scikit-learn',
     'numpy',
@@ -15,7 +17,7 @@ def readme():
 
 setup(
     name='skbold',
-    version='0.2.0',
+    version=VERSION,
     description='Tools to convert and transform first-level fMRI data to scikit-learn compatible data-structures',
     long_description=readme(),
     classifiers=[
