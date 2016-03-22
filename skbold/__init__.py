@@ -1,11 +1,5 @@
-"""
-Lukas Snoek, 2015-2016
-University of Amsterdam
+# Author: Lukas Snoek [lukassnoek.github.io]
+# Contact: lukassnoek@gmail.com
+# License: 3 clause BSD
 
-scikit-bold: tools for machine learning on BOLD-fMRI data
-Author: Lukas Snoek [lukassnoek@gmail.com]
-
-License: BSD 3 clause
-"""
-
-__version__ = '0.1.3'
+__version__ = '0.2.0'
