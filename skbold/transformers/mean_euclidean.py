@@ -52,7 +52,7 @@ class MeanEuclidean(BaseEstimator, TransformerMixin):
         X : ndarray
             Numeric (float) array of shape = [n_samples, n_features]
         y : List[str] or numpy ndarray[str]
-            List of ndarray with floats corresponding to labels
+            List or ndarray with floats corresponding to labels
 
         """
 
@@ -107,4 +107,5 @@ class MeanEuclidean(BaseEstimator, TransformerMixin):
             indices calculated during fit().
 
         """
+
         return X[:, self.idx_]

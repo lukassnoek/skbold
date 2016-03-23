@@ -54,7 +54,7 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
                 self.mask = epi_exists[0]
             else:
                 reg_dir = op.join(mvp.directory, 'reg')
-                self.mask = convert2epi(self.mask, reg_dir, epi_dir)
+                self.mask = convert2epi(self.mask, reg_dir, epi_dir)[0]
 
     def fit(self, X=None, y=None):
         """ Does nothing, but included to be used in sklearn's Pipeline. """
@@ -76,8 +76,8 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
             array with transformed data of shape = [n_samples, n_features]
             in which features are region-average values.
         """
-
         roi_idx = nib.load(self.mask).get_data() > self.mask_threshold
         overlap = roi_idx.astype(int).ravel() + self.orig_mask.astype(int)
         X_new = X[:, (overlap == 2)[self.orig_mask]]
+
         return X_new

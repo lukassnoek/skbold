@@ -70,7 +70,9 @@ def convert2epi(file2transform, reg_dir, out_dir=None,
         apply_xfm.inputs.apply_xfm = True
         apply_xfm.run()
 
-        os.remove(out_matrix_file)
+        if op.exists(out_matrix_file):
+            os.remove(out_matrix_file)
+
         out_all.append(out_file)
     return out_all
 
