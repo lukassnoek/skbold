@@ -24,7 +24,7 @@ class MvpAverageResults(object):
 
     """
 
-    def __init__(self, directory, resultsdir='analysis_results', params=None,
+    def __init__(self, resultsdir, params=None,
                  threshold=None, cleanup=True):
         """ Initializes MvpAverageResults object.
 
@@ -41,7 +41,7 @@ class MvpAverageResults(object):
             Dictionary with analysis parameters
         """
 
-        self.directory = directory
+        self.resultsdir = resultsdir
         self.threshold = threshold
         self.params = params
         self.resultsdir = resultsdir
@@ -54,8 +54,7 @@ class MvpAverageResults(object):
     def average(self):
         """ Loads and computes average performance metrics. """
 
-        results_dir = op.join(self.directory, self.resultsdir)
-        files = glob.glob(op.join(results_dir, '*.pickle'))
+        files = glob.glob(op.join(self.resultsdir, '*.pickle'))
 
         if not files:
             raise ValueError('Couldnt find files to be averaged!')
@@ -89,7 +88,7 @@ class MvpAverageResults(object):
 
         print(self.df_)
 
-        filename = op.join(results_dir, 'average_results.csv')
+        filename = op.join(self.resultsdir, 'average_results.csv')
         self.df_.to_csv(filename, sep='\t', header=True, index=False)
 
         if self.params:
@@ -97,7 +96,7 @@ class MvpAverageResults(object):
             with open(file2open, 'w') as f:
                 json.dump(self.params, f)
 
-        feature_files = glob.glob(op.join(results_dir, 'vox_results_mni',
+        feature_files = glob.glob(op.join(self.resultsdir, 'vox_results_mni',
                                           '*.nii*'))
         # Some really ugly code ...
         if len(feature_files) > 0:
@@ -130,10 +129,10 @@ class MvpAverageResults(object):
                 s = s.mean(axis=0)
 
             if self.cleanup:
-                cmd = 'rm %s/*%s*.nii' % results_dir
+                cmd = 'rm %s/*%s*.nii' % self.resultsdir
                 _ = os.system(cmd)
 
-            fn = op.join(results_dir, 'AverageScores')
+            fn = op.join(self.resultsdir, 'AverageScores')
             img = nib.Nifti1Image(s, np.eye(4))
             nib.save(img, fn)
 

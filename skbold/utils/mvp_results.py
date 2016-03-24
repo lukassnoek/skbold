@@ -81,13 +81,14 @@ class MvpResults(object):
 
         n_voxels = np.sum(mvp.mask_index)
 
-        if 'coef' in feature_scoring:
-            n_models = mvp.n_class * (mvp.n_class - 1) / 2
-            self.feature_scores = np.zeros((n_voxels, n_models))
-        elif feature_scoring == 'accuracy':
-            self.feature_scores = np.zeros((n_voxels, mvp.n_class))
-        else: # if 'distance'
-            self.feature_scores = np.zeros(n_voxels)
+        if feature_scoring is not None:
+            if 'coef' in feature_scoring:
+                n_models = mvp.n_class * (mvp.n_class - 1) / 2
+                self.feature_scores = np.zeros((n_voxels, n_models))
+            elif feature_scoring == 'accuracy':
+                self.feature_scores = np.zeros((n_voxels, mvp.n_class))
+            else: # if 'distance'
+                self.feature_scores = np.zeros(n_voxels)
 
         self.n_features = np.zeros(iterations)
         self.precision = None
@@ -258,8 +259,7 @@ class MvpResults(object):
             self.precision = self.precision.mean()
             self.recall = self.recall.mean()
 
-        if verbose:
-            print('Accuracy over iterations: %f' % self.accuracy)
+        print('Accuracy over iterations: %f' % self.accuracy)
 
         return self
 
