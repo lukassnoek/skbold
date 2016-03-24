@@ -13,7 +13,7 @@ import skbold.data.rois.harvard_oxford as roi
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 from nipype.interfaces import fsl
-from ..utils import convert2mni, convert2epi
+from skbold.utils import convert2mni, convert2epi
 
 # To do: allow for functionality without mvp structure!
 
