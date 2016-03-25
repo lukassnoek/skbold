@@ -9,11 +9,11 @@ import os
 import glob
 import nibabel as nib
 import os.path as op
-import skbold.data.rois.harvard_oxford as roi
+from ..data.ROIs import harvard_oxford as roi
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 from nipype.interfaces import fsl
-from skbold.utils import convert2mni, convert2epi
+from ..core import convert2mni, convert2epi
 
 # To do: allow for functionality without mvp structure!
 

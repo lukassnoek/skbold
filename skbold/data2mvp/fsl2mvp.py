@@ -18,7 +18,7 @@ import os.path as op
 from skbold.utils import sort_numbered_list
 from skbold.core import Mvp
 from sklearn.preprocessing import LabelEncoder
-from ..utils import convert2mni, convert2epi
+from ..core import convert2mni, convert2epi
 
 
 class Fsl2mvp(Mvp):

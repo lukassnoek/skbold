@@ -10,15 +10,8 @@ import glob
 import os
 import cPickle
 import h5py
-import json
-import pandas as pd
 import os.path as op
-from sklearn.metrics import precision_score, recall_score, accuracy_score, \
-     confusion_matrix
 from ..transformers import LabelFactorizer
-from nipype.interfaces import fsl
-from itertools import chain, combinations
-from scipy.misc import comb
 import nibabel as nib
 
 
@@ -287,4 +280,4 @@ class DataHandler(object):
         print("Creating 4D nifti for %s" % self.mvp.sub_name)
         mvp = self.load()
         img = nib.Nifti1Image(mvp.X, np.eye(4))
-        nib.save(img, opj(self.mvp_dir, 'data_4d.nii.gz'))
+        nib.save(img, op.join(self.mvp_dir, 'data_4d.nii.gz'))

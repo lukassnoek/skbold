@@ -5,13 +5,6 @@
 # Contact: lukassnoek@gmail.com
 # License: 3 clause BSD
 
-# Class to implement a voting classifier from the output of
-# classifiers trained on different feature sets from different ROIs.
-
-# Author: Lukas Snoek [lukassnoek.github.io]
-# Contact: lukassnoek@gmail.com
-# License: 3 clause BSD
-
 # Note: this implementation was inspired by the code of S. Rashka
 # (http://sebastianraschka.com/Articles/2014_ensemble_classifier.html)
 
@@ -195,7 +188,7 @@ if __name__ == '__main__':
     from skbold.utils import DataHandler, MvpResults, MvpAverageResults
     from joblib import Parallel, delayed
 
-    mask_dir = '/home/lukas/bestrois'
+    mask_dir = 'unilateral'
     sub_dirs = glob.glob('/media/lukas/data/DecodingEmotions/Validation_set/glm_zinnen/sub*')
 
     def run_parallel(sub_dir, mask_dir=mask_dir):
