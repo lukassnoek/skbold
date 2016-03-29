@@ -37,12 +37,12 @@ def mcflirt_across_runs(in_file, cost='mutualinfo', stages=3):
     other_runs = [f for f in in_file if f != middle_run]
 
     middle_data = nib.load(middle_run)
-    middle_vol_idx = np.round(middle_data.shape[3] / 2).astype(int)
+    #middle_vol_idx = np.round(middle_data.shape[3] / 2).astype(int)
 
     new_name = os.path.basename(middle_run).split('.')[:-2][0] + '_mc.nii.gz'
     out_name = os.path.abspath(new_name)
 
-    mcflt = MCFLIRT(in_file=middle_run, cost=cost, ref_vol=middle_vol_idx,
+    mcflt = MCFLIRT(in_file=middle_run, cost=cost, #ref_vol=middle_vol_idx,
                     interpolation='sinc', out_file=out_name, stages=stages,
                     save_plots=True)
 
