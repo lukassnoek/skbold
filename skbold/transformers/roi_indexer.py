@@ -11,7 +11,7 @@ import os.path as op
 import nibabel as nib
 import nipype.interfaces.fsl as fsl
 from sklearn.base import BaseEstimator, TransformerMixin
-from ..utils import convert2epi
+from ..core import convert2epi
 
 
 class RoiIndexer(BaseEstimator, TransformerMixin):
