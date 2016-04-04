@@ -102,6 +102,12 @@ class Mvp(object):
         self.class_idx = [cl == cls for cls in self.class_names]
         self.trial_idx = [np.where(cl == cls)[0] for cls in self.class_names]
 
+    def update_mask(self, new_idx):
+
+        tmp_idx = np.zeros(self.mask_shape)
+        tmp_idx[self.mask_index.reshape(self.mask_shape)] += new_idx
+        self.mask_index = tmp_idx.astype(bool)
+
     def merge_runs(self, cleanup=False, iD='merged'):
         """ Merges single-trial patterns from different runs.
 
