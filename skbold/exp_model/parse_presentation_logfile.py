@@ -5,11 +5,6 @@
 # License: 3 clause BSD
 
 from __future__ import division, print_function
-from nipype.interfaces.base import Bunch
-import pandas as pd
-import numpy as np
-import os
-import glob
 
 
 def parse_presentation_logfile(in_file, con_names, con_codes, con_design=None,
@@ -22,6 +17,12 @@ def parse_presentation_logfile(in_file, con_names, con_codes, con_design=None,
     (e.g. ['anger', 'sadness', 'disgust'] --> name: 'negative';
     see custom piopfaces logfile crawler for example
     """
+
+    from nipype.interfaces.base import Bunch
+    import pandas as pd
+    import numpy as np
+    import os
+    import glob
 
     if type(in_file) == str:
         in_file = [in_file]
