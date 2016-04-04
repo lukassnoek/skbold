@@ -49,6 +49,10 @@ def convert2mni(file2transform, reg_dir, out_dir=None, interpolation='trilinear'
         out_name = op.basename(f).split('.')[0] + '_mni.nii.gz'
         out_file = op.join(out_dir, out_name)
 
+        if op.exists(out_file):
+            out_all.append(out_file)
+            continue
+
         if not op.isdir(out_dir):
             os.makedirs(out_dir)
 
