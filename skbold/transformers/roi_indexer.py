@@ -9,7 +9,6 @@ import os
 import glob
 import os.path as op
 import nibabel as nib
-import nipype.interfaces.fsl as fsl
 from sklearn.base import BaseEstimator, TransformerMixin
 from ..core import convert2epi
 
@@ -38,6 +37,7 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
         self.mask = mask
         self.mask_threshold = mask_threshold
         self.orig_mask = mvp.mask_index
+        self.idx_ = None
 
         main_dir = op.dirname(mvp.directory)
 
@@ -58,6 +58,10 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
 
     def fit(self, X=None, y=None):
         """ Does nothing, but included to be used in sklearn's Pipeline. """
+        roi_idx = nib.load(self.mask).get_data() > self.mask_threshold
+        overlap = roi_idx.astype(int).ravel() + self.orig_mask.astype(int)
+        self.idx_ = (overlap == 2)[self.orig_mask]
+
         return self
 
     def transform(self, X, y=None):
@@ -76,8 +80,6 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
             array with transformed data of shape = [n_samples, n_features]
             in which features are region-average values.
         """
-        roi_idx = nib.load(self.mask).get_data() > self.mask_threshold
-        overlap = roi_idx.astype(int).ravel() + self.orig_mask.astype(int)
-        X_new = X[:, (overlap == 2)[self.orig_mask]]
+        X_new = X[:, self.idx_]
 
         return X_new
