@@ -21,16 +21,19 @@ from sklearn.cross_validation import StratifiedKFold
 from copy import copy, deepcopy
 from sklearn.grid_search import GridSearchCV
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import recall_score
+from sklearn.metrics import recall_score, precision_score
 from sklearn.grid_search import GridSearchCV
+import warnings
+warnings.filterwarnings('ignore')  # hack to turn off UndefinedMetricWarning
 
 
 class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
     """ Stacking classifier for an ensemble of patterns from different ROIs.
     """
 
-    def __init__(self, mvp, preproc_pipeline=None, base_clf=None, meta_clf=None,
-                 mask_type='unilateral', proba=False, folds=-1, cutoff=None):
+    def __init__(self, mvp, preproc_pipe='default', base_clf=None, meta_clf=None,
+                 mask_type='unilateral', proba=False, folds=-1, meta_fs='univar',
+                 meta_gs=None):
         """ Initializes RoiStackingClassifier object.
 
         Parameters
@@ -57,30 +60,43 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
         self.n_class = mvp.n_class
         self.mask_type = mask_type
         self.proba = proba
-        self.gs_pipe = None
 
+        """ STEP 1: PREPROCESSING """
+        # If no preprocessing pipeline is defined, we'll assume that at least
+        # scaling and minor (univariate) feature selection is desired.
+        if preproc_pipe == 'default':
+            scaler = StandardScaler()
+            transformer = MeanEuclidean(cutoff=1, normalize=False)
+            preproc_pipe = Pipeline([('transformer', transformer),
+                                     ('scaler', scaler)])
+        self.preproc_pipe = preproc_pipe
+
+        """ STEP 2a: BASE CLASSIFIER """
         if base_clf is None:
             base_clf = SVC(C=1.0, kernel='linear', probability=True,
                            decision_function_shape='ovo')
         self.base_clf = base_clf
 
+        """ STEP 2b: PREPROC+BASE """
+        base_pipe = self.preproc_pipe.steps
+        base_pipe.extend([('base_clf', self.base_clf)])
+        self.base_pipe = Pipeline(base_pipe)
+
+        """ STEP 3a: META FEATURE SELECTION + CLASSIFICATION """
         if meta_clf is None:
             meta_clf = LogisticRegression(multi_class='multinomial',
                                           C=0.1, solver='lbfgs')
-        self.meta_clf = meta_clf
+        meta_pipe = Pipeline([('selector', meta_fs),
+                              ('meta_clf', meta_clf)])
 
-        # If no preprocessing pipeline is defined, we'll assume that at least
-        # scaling and minor (univariate) feature selection is desired.
-        if preproc_pipeline is None:
-            scaler = StandardScaler()
-            transformer = MeanEuclidean(cutoff=1, normalize=False)
-            preproc_pipeline = Pipeline([('transformer', transformer),
-                                         ('scaler', scaler)])
-
-        self.preproc_pipeline = preproc_pipeline
+        if meta_gs is not None:
+            params = dict(selector__cutoff=meta_gs)
+            meta_pipe = GridSearchCV(meta_pipe, params, error_score=0)
+        self.meta_pipe = meta_pipe
 
         # Glob masks
         if mask_type not in ['unilateral', 'bilateral']:
+            # It is assumed that a directory with masks is inputted
             self.masks = glob.glob(op.join(mask_type, '*nii.gz'))
         else:
             mask_dir = op.join(op.dirname(roi.__file__), mask_type)
@@ -89,15 +105,7 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
         if not self.masks:
             raise ValueError('No masks found in specified directory!')
 
-        self.pipes = [] # This will gather all roi-specific pipelines
         self.folds = folds
-
-        if cutoff is None:
-            # cutoff is chance-level + 33%
-            chance = (1.0 / mvp.n_class)
-            cutoff = 1.333 * chance
-
-        self.cutoff = cutoff
 
         # I guess it's nicer to insert RoiIndexer into the preprocessing
         # pipeline, but this crashed for some reason, so this is a temp. fix.
@@ -107,6 +115,10 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
             roiindexer.fit()
             self.indices[:, i] = roiindexer.idx_
         self.indices = self.indices.astype(bool)
+
+        # Metrics
+        self.train_roi_scores = None
+        self.test_roi_scores = None
 
     def fit(self, X=None, y=None):
         """ Fits RoiStackingTransformer.
@@ -128,98 +140,91 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
 
         if self.folds == -1:
             self.folds = (y == 0).sum()
-
         self.cv = StratifiedKFold(y, n_folds=self.folds)
 
-        if self.proba:
-            stck_fts = np.zeros((X.shape[0], len(self.masks), self.n_class))
-        else:
-            stck_fts = np.zeros((X.shape[0], len(self.masks)))
+        n_trials = X.shape[0]
+        n_class = self.n_class
+        n_masks = len(self.masks)
+        n_folds = len(self.cv)
+
+        if self.proba:  # trials X masks X nr. classes (proba output)
+            stck_fts = np.zeros((n_trials, n_masks, n_class))
+        else:  # discrete class output
+            stck_fts = np.zeros((n_trials, n_masks))
 
         scores = np.zeros((len(self.cv), len(self.masks), self.n_class))
-        self.pipes = []
+        self.base_pipes = []  # This will gather all roi-specific pipelines
 
+        # Loop over inner cv-folds to generate post. probs. for all trials
         for i, fold in enumerate(self.cv):
             train_idx, test_idx = fold
             X_train, y_train = X[train_idx, :], y[train_idx]
             X_test, y_test = X[test_idx, :], y[test_idx]
-
-            cv_pipe = []
+            roi_pipes = []
             for ii, mask in enumerate(self.masks):
                 X_trainroi = X_train[:, self.indices[:, ii]]
                 X_testroi = X_test[:, self.indices[:, ii]]
-                pipeline = deepcopy(self.preproc_pipeline).steps
-                pipeline.extend([('base_clf', copy(self.base_clf))])
-                pipeline = Pipeline(pipeline)
-                pipeline.fit(X_trainroi, y_train)
+                base_pipe = deepcopy(self.base_pipe)
+                base_pipe.fit(X_trainroi, y_train)
 
-                if self.proba:
-                    stck_fts[test_idx, ii, :] = pipeline.predict_proba(X_testroi)
-                    scores[i, ii, :] = recall_score(y_test, pipeline.predict(X_testroi), average=None)
-                else:
-                    stck_fts[test_idx, ii] = pipeline.predict(X_testroi)
-                    scores[i, ii, :] = recall_score(y_test, stck_fts[test_idx, ii], average=None)
+                # Save precision to use in selection of meta-features
+                pred = base_pipe.predict(X_testroi)
+                scores[i, ii, :] = precision_score(y_test, pred, average=None)
 
-                cv_pipe.append(pipeline)
+                if self.proba:  # save posterior probabilities
+                    stck_fts[test_idx, ii, :] = base_pipe.predict_proba(X_testroi)
+                else:  # save discrete class predictions
+                    stck_fts[test_idx, ii] = pred
 
-            self.pipes.append(cv_pipe)
+                roi_pipes.append(base_pipe)
 
-        mean_scores = scores.mean(axis=0)
+            self.base_pipes.append(roi_pipes)
 
-        """
-        if isinstance(self.cutoff, int) and self.cutoff >= 1:
-
-            if mean_scores.ndim > 1:
-                mean_scores = mean_scores.mean(axis=-1)
-
-            best_rois = np.argsort(mean_scores)[::-1][0:self.cutoff]
-            best_roi_idx = np.zeros(mean_scores.size, dtype=bool)
-            best_roi_idx[best_rois] = True
-
-        else:
-            best_roi_idx = mean_scores > self.cutoff
-        if self.proba:
-            stck_fts = stck_fts[:, best_roi_idx]
-            stck_fts = stck_fts.reshape((stck_fts.shape[0], np.prod(stck_fts.shape[1:])))
-        else:
-            stck_fts = stck_fts[:, best_roi_idx]
-        """
-        selector = IncrementalFeatureCombiner(mean_scores, cutoff=5)
-        clf = deepcopy(self.meta_clf)
-        gs_pipe = Pipeline([('selector', selector), ('clf', clf)])
-        self.gs_pipe = GridSearchCV(gs_pipe, dict(selector__cutoff=np.linspace(0.33, .5, 2)))
-
+        mean_scores = scores.mean(axis=0)  # average over cv folds
         stck_tmp = stck_fts.reshape((stck_fts.shape[0], np.prod(stck_fts.shape[1:])))
-        #stck_fts = selector.fit(stck_tmp).transform(stck_tmp)
-        self.gs_pipe.fit(stck_tmp, y)
-        self.stck_train = stck_fts
-        self.train_scores = scores
-        self.best_roi_idx = selector.idx_
-        # meta_pred = self.meta_clf.predict(stck_fts)
-        #print('Score train meta_clf: %f' % np.mean(meta_pred == y))
+
+        #meta_clf = deepcopy(self.meta_pipe)
+        self.meta_pipe.fit(stck_tmp, y)
+
+        # Save some stuff for exploratory stuff / debugging
+        self.stck_train = stck_tmp
+        self.train_roi_scores = mean_scores
+
+        self.best_roi_idx = self.meta_pipe.best_estimator_.named_steps['selector'].idx_
 
         return self
 
     def predict(self, X, y=None):
+        """ Predict class given  RoiStackingTransformer.
+
+        Parameters
+        ----------
+        X : ndarray
+            Array of shape = [n_samples, n_features].
+        """
+        n_trials = X.shape[0]
+        n_class = self.n_class
+        n_masks = len(self.masks)
+        n_folds = len(self.cv)
 
         if self.proba:
-            stck_fts = np.zeros((X.shape[0], len(self.masks), self.n_class, len(self.cv)))
+            stck_fts = np.zeros((n_trials, n_masks, n_class, n_folds))
         else:
-            stck_fts = np.zeros((X.shape[0], len(self.masks), len(self.cv)))
+            stck_fts = np.zeros((n_trials, n_masks, n_folds))
 
-        scores = np.zeros((len(self.cv), len(self.masks), self.n_class))
-        for i, cvfold in enumerate(self.pipes):
+        scores = np.zeros((n_folds, n_masks, n_class))
+        for i, cvfold in enumerate(self.base_pipes):
 
             for ii, pipe in enumerate(cvfold):
                 Xroi = X[:, self.indices[:, ii]]
+
+                pred = pipe.predict(Xroi)
+                scores[i, ii, :] = precision_score(y, pred, average=None)
+
                 if self.proba:
                     stck_fts[:, ii, :, i] = pipe.predict_proba(Xroi)
                 else:
-                    stck_fts[:, ii, i] = pipe.predict(Xroi)
-
-                scores[i, ii, :] = recall_score(y, pipe.predict(Xroi))
-
-        self.test_scores = scores
+                    stck_fts[:, ii, i] = pred
 
         if self.proba:
             stck_fts = stck_fts.mean(axis=-1)
@@ -227,20 +232,14 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
             stck_fts = stck_fts.max(axis=-1)
 
         if self.proba:
-            #stck_fts = stck_fts[:, self.best_roi_idx]
-            stck_fts = stck_fts.reshape((stck_fts.shape[0], np.prod(stck_fts.shape[1:])))
-        #else:
-        #    stck_fts = stck_fts[:, self.best_roi_idx]
-        meta_pred = self.gs_pipe.predict(stck_fts)
+            shape = stck_fts.shape
+            stck_fts = stck_fts.reshape((shape[0], np.prod(shape[1:])))
+
+        meta_pred = self.meta_pipe.predict(stck_fts)
         self.stck_test = stck_fts
+        self.test_roi_scores = scores.mean(axis=0)
 
         return meta_pred
-
-    def score(self, X, y):
-        meta_pred = self.predict(X)
-        score = np.mean(meta_pred == y)
-        print('Score test meta_clf: %f' % np.mean(meta_pred == y))
-        return score
 
 
 if __name__ == '__main__':
@@ -259,7 +258,9 @@ if __name__ == '__main__':
         results = MvpResults(mvp, iterations=len(cv), resultsdir=resultsdir,
                              method='averaging')
         stackingclassifier = RoiStackingClassifier(mvp, mask_type=mask_dir,
-                                                   folds=-1, proba=True, cutoff=0.4)
+                                                   folds=-1, proba=True,
+                                                   meta_fs=MeanEuclidean(cutoff=1.5),
+                                                   meta_gs=np.linspace(0.5, 2, 10))
 
         for train_idx, test_idx in cv:
             X_train, y_train = mvp.X[train_idx, :], mvp.y[train_idx]
@@ -269,7 +270,6 @@ if __name__ == '__main__':
             results.update_results(test_idx=test_idx, y_pred=pred, pipeline=None)
 
         results.compute_and_write(directory=resultsdir)
-        #pred = cross_val_predict(stackingclassifier, mvp.X, mvp.y, cv=cv)
 
     Parallel(n_jobs=1, verbose=5)(delayed(run_parallel)(sub, mask_dir, folds=12) for sub in sub_dirs)
     avresults = MvpAverageResults(op.join(op.dirname(sub_dirs[0]), 'test_stack2'))
