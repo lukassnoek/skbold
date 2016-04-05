@@ -11,7 +11,7 @@ import nibabel as nib
 from glob import glob
 import os.path as op
 import pandas as pd
-import skbold.data.rois.harvard_oxford as roi
+import skbold.data.ROIs.harvard_oxford as roi
 from scipy.ndimage.measurements import label
 
 
