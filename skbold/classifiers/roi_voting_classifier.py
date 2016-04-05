@@ -14,7 +14,7 @@ import numpy as np
 import os.path as op
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.svm import SVC
-from skbold.data.rois import harvard_oxford as roi
+from skbold.data.ROIs import harvard_oxford as roi
 from skbold.transformers import RoiIndexer, MeanEuclidean
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import StandardScaler
