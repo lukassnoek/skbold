@@ -9,7 +9,7 @@ import os
 import os.path as op
 from sklearn.base import BaseEstimator, TransformerMixin
 import numpy as np
-
+import time
 
 class IncrementalFeatureCombiner(BaseEstimator, TransformerMixin):
     """ Indexes a set of features with a number of (sorted) features.
@@ -32,10 +32,11 @@ class IncrementalFeatureCombiner(BaseEstimator, TransformerMixin):
 
     def fit(self, X, y=None):
 
-        if isinstance(self.cutoff, int) and self.cutoff >= 1:
+        if self.cutoff >= 1:
 
             if self.scores.ndim > 1:
                 mean_scores = self.scores.mean(axis=-1)
+
             best = np.argsort(mean_scores)[::-1][0:self.cutoff]
             self.idx_ = np.zeros(mean_scores.size, dtype=bool)
             self.idx_[best] = True
@@ -43,14 +44,15 @@ class IncrementalFeatureCombiner(BaseEstimator, TransformerMixin):
         else:
             self.idx_ = self.scores > self.cutoff
 
+            if self.idx_.ndim > 1 and X.shape[1] == self.idx_.shape[0]:
+                self.idx_ = self.idx_.sum(axis=1)
+
         if self.idx_.ndim > 1:
             self.idx_ = self.idx_.ravel()
-
         return self
 
     def transform(self, X, y=None):
 
-        """
         if self.idx_.size != X.shape[1]:
             n_class = X.shape[1] / self.idx_.size
             X_tmp = X.reshape((X.shape[0], n_class, self.idx_.size))
@@ -58,5 +60,3 @@ class IncrementalFeatureCombiner(BaseEstimator, TransformerMixin):
             return X_tmp.reshape((X.shape[0], np.prod(X_tmp.shape[1:])))
         else:
             return X[:, self.idx_]
-        """
-        return X[:, self.idx_]
