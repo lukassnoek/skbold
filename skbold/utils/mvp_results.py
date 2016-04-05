@@ -311,6 +311,7 @@ class MvpResults(object):
 
             if self.ref_space == 'epi' and convert2mni:
 
+                # TO DO: call convert2mni
                 mni_dir = op.join(results_dir, 'vox_results_mni')
                 if not op.isdir(mni_dir):
                     os.makedirs(mni_dir)
