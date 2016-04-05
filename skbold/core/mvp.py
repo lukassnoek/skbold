@@ -10,6 +10,7 @@ import glob
 import cPickle
 import h5py
 import numpy as np
+import os
 import os.path as op
 from sklearn.preprocessing import LabelEncoder
 
@@ -104,11 +105,16 @@ class Mvp(object):
 
     def update_mask(self, new_idx):
 
+        if new_idx.size != self.mask_index.sum():
+            msg = 'Shape of new index (%r) is not the same as the current ' \
+                    'pattern (%r)!' % (new_idx.size, self.mask_index.sum())
+            raise ValueError(msg)
+
         tmp_idx = np.zeros(self.mask_shape)
         tmp_idx[self.mask_index.reshape(self.mask_shape)] += new_idx
         self.mask_index = tmp_idx.astype(bool)
 
-    def merge_runs(self, cleanup=False, iD='merged'):
+    def merge_runs(self, cleanup=True, iD='merged'):
         """ Merges single-trial patterns from different runs.
 
         Given two runs, this method merges their single-trial patterns by
@@ -161,5 +167,10 @@ class Mvp(object):
             h5f = h5py.File(fn_data, 'w')
             h5f.create_dataset('data', data=data)
             h5f.close()
+
+            if cleanup:
+                run_headers.extend(run_data)
+                _ = [os.remove(f) for f in run_headers]
         else:
+            # If there's only one file, don't merge
             pass
