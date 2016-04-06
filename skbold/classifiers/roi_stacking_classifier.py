@@ -86,6 +86,7 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
         if meta_clf is None:
             meta_clf = LogisticRegression(multi_class='multinomial',
                                           C=0.1, solver='lbfgs')
+        self.meta_fs = meta_fs
         meta_pipe = Pipeline([('selector', meta_fs),
                               ('meta_clf', meta_clf)])
 
@@ -184,13 +185,22 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
         stck_tmp = stck_fts.reshape((stck_fts.shape[0], np.prod(stck_fts.shape[1:])))
 
         #meta_clf = deepcopy(self.meta_pipe)
+        if self.meta_fs.__class__ == IncrementalFeatureCombiner:
+            if self.is_gridsearch(self.meta_pipe):
+                self.meta_pipe.estimator.set_params(selector__scores=mean_scores)
+            else:
+                self.meta_pipe.set_params(selector__scores=mean_scores)
+
         self.meta_pipe.fit(stck_tmp, y)
 
         # Save some stuff for exploratory stuff / debugging
         self.stck_train = stck_tmp
         self.train_roi_scores = mean_scores
 
-        self.best_roi_idx = self.meta_pipe.best_estimator_.named_steps['selector'].idx_
+        if self.is_gridsearch(self.meta_pipe):
+            self.best_roi_idx = self.meta_pipe.best_estimator_.named_steps['selector'].idx_
+        else:
+            self.best_roi_idx = self.meta_pipe.named_steps['selector'].idx_
 
         return self
 
@@ -241,6 +251,12 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
 
         return meta_pred
 
+    def is_gridsearch(self, pipe):
+
+        if hasattr(pipe, 'estimator'):
+            return True
+        else:
+            return False
 
 if __name__ == '__main__':
 
@@ -259,8 +275,8 @@ if __name__ == '__main__':
                              method='averaging')
         stackingclassifier = RoiStackingClassifier(mvp, mask_type=mask_dir,
                                                    folds=-1, proba=True,
-                                                   meta_fs=MeanEuclidean(cutoff=1.5),
-                                                   meta_gs=np.linspace(0.5, 2, 10))
+                                                   meta_fs=IncrementalFeatureCombiner(scores=None, cutoff=0.33),
+                                                   meta_gs=np.linspace(0.3, 0.5, 10))
 
         for train_idx, test_idx in cv:
             X_train, y_train = mvp.X[train_idx, :], mvp.y[train_idx]
