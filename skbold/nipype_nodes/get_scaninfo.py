@@ -6,10 +6,13 @@ from __future__ import division, print_function
 
 def load_scaninfo(in_file):
 
-    import cPickle
-    scaninfo = cPickle.load(open(in_file))
-    TR = scaninfo['repetition_time']
-    x, y = scaninfo['scan_resolution']
-    z = scaninfo['max_slices']
-    dims = (x, y, z)
-    return(TR, dims, scaninfo)
+    import nibabel as nib
+
+    nifti = nib.load(in_file)
+    affine = nifti.affine
+    shape = nifti.shape
+    dyns = nifti.shape[-1]
+    voxsize = nifti.header['pixdim'][1:4]
+    TR = nifti.header['pixdim'][4]
+
+    return TR, shape, dyns, voxsize, affine
