@@ -10,13 +10,35 @@ from __future__ import division, print_function
 
 def parse_presentation_logfile(in_file, con_names, con_codes, con_design=None,
                                pulsecode=30, write_bfsl=False, verbose=False):
-    """
+    """ Parses Presentation (Neurobs) logfiles.
+
     Parses a Presentation-logfile and extracts stimulus/event times and
     durations given their corresponding codes in the logfile.
 
-    To do: build feature to input list of strings for codes
-    (e.g. ['anger', 'sadness', 'disgust'] --> name: 'negative';
-    see custom piopfaces logfile crawler for example
+    Parameters
+    ----------
+    in_file : str
+        Absolute path to .log file
+    con_names : list of str
+        List of condition names.
+    con_codes : list of list (of int or str)
+        List of lists, which contain condition codes corresponding to conditon
+        names (e.g. [[1, 100], [101, 200], [201, 300]])
+    con_design : list of str, {'univar', 'multivar'}
+        What 'design' does each condition have? Univar = one regressor
+        per condition; multivar = each trial has one regressor.
+    pulsecode : int {default: 30}
+        Code used for (first) pulse logging.
+    write_bfsl : bool
+        Whether to write out .bfsl files for each regressor.
+    verbose : bool {default: False}
+        Whether to print out extra info about process.
+
+    Returns
+    -------
+    subject_info : 'Bunch' object
+        Bunch object (nipype.interfaces.base.Bunch), including information about
+        regressor names, duration, and onsets.
     """
 
     from nipype.interfaces.base import Bunch
@@ -111,16 +133,19 @@ def parse_presentation_logfile(in_file, con_names, con_codes, con_design=None,
                          regressor_names=con_names,
                          regressors=None)
 
+    if verbose:
+        print(subject_info)
+
     return subject_info
 
 
 # Only for testing
 if __name__ == '__main__':
 
-    testfile = '/home/lukas/Nipype_testset/working_directory/sub002/func_hww/sub002_hww.log'
+    testfile = '/home/lukas/Nipype_tryout/working_directory/sub003/func_hww/sub003_HWW.log'
     con_names = ['Action', 'Interoception', 'Situation', 'Cue']
     con_codes = [[100, 199], [200, 299], [300, 399], ['Cue']]
-    con_design = ['univar', 'univar', 'univar', 'univar']
+    con_design = ['multivar', 'univar', 'univar', 'univar']
 
     parse_presentation_logfile(testfile, con_names, con_codes, con_design,
-                               pulsecode=30, write_bfsl=True)
+                               pulsecode=30, write_bfsl=True, verbose=True)

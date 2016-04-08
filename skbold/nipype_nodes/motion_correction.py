@@ -1,11 +1,30 @@
-# Implements motion correction across runs, using the mcflirted middle run
-# as template for the other runs.
-
 # Author: Lukas Snoek [lukassnoek.github.io]
 # Contact: lukassnoek@gmail.com
 # License: 3 clause BSD
 
 from __future__ import division, print_function
+
+
+def find_middle_run(in_files):
+    """ Finds middle run based on Philips Achieva run numbering.
+
+    Really ugly, but can't be bothered to improve it.
+    """
+
+    import numpy as np
+
+    run_nrs = []
+    for f in in_files:
+        parts = np.array(f.split('_'))
+        idx = parts[np.where(parts == 'SENSE')[0] + 1]
+        run_nrs.append(int(idx[0]))
+
+    middle_idx = np.floor(np.median(run_nrs)) == run_nrs
+    middle_run = [f for idx, f in zip(middle_idx, in_files) if idx]
+    middle_run = middle_run[0]
+    other_runs = [f for f in in_files if f != middle_run]
+
+    return middle_run, other_runs
 
 
 def mcflirt_across_runs(in_file, cost='mutualinfo', stages=3):
@@ -24,25 +43,14 @@ def mcflirt_across_runs(in_file, cost='mutualinfo', stages=3):
 
     mc_files = []
     plot_files = []
-    run_nrs = []
 
-    for f in in_file:
-        parts = np.array(f.split('_'))
-        idx = parts[np.where(parts == 'SENSE')[0] + 1]
-        run_nrs.append(int(idx[0]))
-
-    middle_idx = np.floor(np.median(run_nrs)) == run_nrs
-    middle_run = [f for idx, f in zip(middle_idx, in_file) if idx]
-    middle_run = middle_run[0]
-    other_runs = [f for f in in_file if f != middle_run]
-
+    middle_run, other_runs = find_middle_run(in_file)
     middle_data = nib.load(middle_run)
-    #middle_vol_idx = np.round(middle_data.shape[3] / 2).astype(int)
 
     new_name = os.path.basename(middle_run).split('.')[:-2][0] + '_mc.nii.gz'
     out_name = os.path.abspath(new_name)
 
-    mcflt = MCFLIRT(in_file=middle_run, cost=cost, #ref_vol=middle_vol_idx,
+    mcflt = MCFLIRT(in_file=middle_run, cost=cost,
                     interpolation='sinc', out_file=out_name, stages=stages,
                     save_plots=True)
 

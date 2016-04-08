@@ -16,8 +16,8 @@ import cPickle
 import nibabel as nib
 
 
-class DataOrganizer():
-    "Organizes data into a sensible directory structure"
+class DataOrganizer(object):
+    """ Organizes data into a sensible directory structure """
 
     def __init__(self, run_names, project_dir=os.getcwd(), subject_stem='sub', already_converted=False):
 
@@ -71,11 +71,11 @@ class DataOrganizer():
 
             os.system("gzip %s" % os.path.join(sub_dir, '*.nii'))
 
-            if remove_nifti:
-                os.system('rm %s' % os.path.join(sub_dir, '*.nii'))
-
             if backup:
                 self.backup_parrec(sub_dir)
+
+            if remove_nifti:
+                os.system('rm %s' % os.path.join(sub_dir, '*.nii'))
 
             new_dir = os.path.join(self.working_dir, os.path.basename(sub_dir))
             shutil.copytree(sub_dir, new_dir)
