@@ -30,11 +30,8 @@ Functionality
 
 Currently, the package contains two main features:
 
-1. Transforming first-level FSL directories to scikit-learn compatible data
-structures (data2mvp module);
-2. Classes that provide scikit-learn style *transformers* that transform
-patterns of fMRI data in various ways as preprocessing or feature-selection steps
-in ML analyses.
+- Transforming first-level FSL directories to scikit-learn compatible data structures (data2mvp module)
+- Classes that provide scikit-learn style *transformers* that transform patterns of fMRI data in various ways as preprocessing or feature-selection steps in ML analyses.
 
 More extensive documentation will be developed soon.
 
