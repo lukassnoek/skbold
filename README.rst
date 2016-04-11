@@ -1,27 +1,41 @@
-skbold
-------
-This package provides several tools to (pre)process and analyse BOLD-fMRI
-data. Most of the package's functionality is centered around machine learning
-analyses, which are structured similarly to the *scikit-learn* machine learning
-library in Python, using the same .fit() and .transform() methods.
+skbold - utilities for machine learning analyses on BOLD-fMRI data
+------------------------------------------------------------------
 
-Next to these machine learning tools, this package contains some 
-miscellaneous tools to, for example, parse Presentation (Neurobs)
-logfiles, extract region-of-interest information from activation-based
-statistics images (niftis), and various other tools that I use in my research.
-So basically *skbold* contains all the stuff I program during my PhD.
+Functional MRI (fMRI) data has traditionally been analyzed by calculating average
+signal differences between conditions. In the past decade, however,
+pattern-based type of analyses have become increasingly popular. Especially
+machine-learning based analyses experience a surge in popularity among
+(cognitive) neuroscientists.
 
-More specifically, at this stage, the package contains a module to load in first-level FSL data
-(i.e. estimates of patterns of activation for single trials; *data2mvp*), which
-transforms these patterns into an object (Mvp, which stands for multivoxel pattern)
-containing various attributes with meta-data and, importantly, the voxel-patterns
-(trials x features) and class labels. Moreover, it contains a module to transform
-these voxel-pattern matrices in various ways (*transformers* module), adhering
-to the scikit-learn API for transformer-objects.
+While many great resources for domain-general machine learning exists
+(e.g. `scikit-learn <www.scikit-learn.org>`_,
+`caret <http://topepo.github.io/caret/index.html>`_, and
+`libsvm <https://www.csie.ntu.edu.tw/~cjlin/libsvm>`_), few resources are
+available specifically for machine learning analyses of neuroimaging data
+(but see `nilearn <https://nilearn.github.io/>`_).
 
-In the future, this package might be extended with representational similarity analysis
-(RSA) transformers (i.e. transform voxels patterns to representational dissimilarity matrices),
-and various other multivoxel pattern analyses (e.g. cross-validated MANOVA).
+As my PhD involved mainly machine learning analyses of fMRI data, I decided
+to bundle my (relevant) code into this package, which provides a nice
+opportunity for me to develop my programming skills by forcing me to write
+concise, readable, and efficient code.
+
+The skbold-package contains mostly extensions and utilities for machine learning
+analyses of fMRI data. Its structure/setup draws heavily upon the *scikit-learn*
+(sklearn, hence the name) machine learning library in Python. Also, credit should
+be given to `this <http://rasbt.github.io/mlxtend/>`_ repository, as it has
+a similar purpose and served as an example for much of my code.
+
+Functionality
+-------------
+
+Currently, the package contains two main features:
+1) Transforming first-level FSL directories to scikit-learn compatible data
+structures (data2mvp module);
+2) Classes that provide scikit-learn style *transformers* that transform
+patterns of fMRI data in various ways as preprocessing or feature-selection steps
+in ML analyses.
+
+More extensive documentation will be developed soon.
 
 Installing skbold
 -----------------
