@@ -29,6 +29,7 @@ Functionality
 -------------
 
 Currently, the package contains two main features:
+
 1. Transforming first-level FSL directories to scikit-learn compatible data
 structures (data2mvp module);
 2. Classes that provide scikit-learn style *transformers* that transform
