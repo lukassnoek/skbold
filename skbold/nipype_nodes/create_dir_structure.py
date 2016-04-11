@@ -10,49 +10,112 @@ Lukas Snoek, University of Amsterdam
 
 from __future__ import division, print_function
 import os
-import glob
+from glob import glob
 import shutil
 import cPickle
 import nibabel as nib
-
+import os.path as op
+import urllib
+import subprocess
 
 class DataOrganizer(object):
-    """ Organizes data into a sensible directory structure """
+    """ Organizes data into a sensible directory structure.
 
-    def __init__(self, run_names, project_dir=os.getcwd(), subject_stem='sub', already_converted=False):
+    Class that performs minor preprocessing (PAR/REC to nifti conversion) and
+    creates a project tree that is sensible given a Nipype preprocessing
+    workflow.
+    """
 
+    def __init__(self, run_names, project_dir=os.getcwd(), subject_stem='sub',
+                 already_converted=False):
+        """ Initializes a DataOrganizer object.
+
+        Parameters
+        ----------
+        run_names : dictionary
+            Dictionary with type of scan as keys (functional, structural, B1,
+            etc.) and keywords/identifiers as values
+            (e.g. 'functional': 'runx').
+        project_dir : str (default: current dir)
+            Which directory to convert/process.
+        subject_stem : str
+            Prefix of subject names / directories.
+        already_converted : bool (default: False)
+            Whether PAR/RECs have already been converted to nifti (takes a
+            while, so only convert when necessary.
+        """
         self.run_names = run_names
         self.project_dir = project_dir
-        self.working_dir = os.path.join(project_dir, 'working_directory')
+        self.working_dir = op.join(project_dir, 'working_directory')
         self.subject_stem = subject_stem
-        self.subject_dirs = glob.glob(os.path.join(project_dir, '%s*' % subject_stem))
+        self.subject_dirs = glob(op.join(project_dir, '%s*' % subject_stem))
 
         if not self.subject_dirs and not already_converted:
             raise ValueError('Could not find valid subject directories!')
 
         if already_converted:
-            self.subject_dirs = glob.glob(os.path.join(self.working_dir, '*%s*' % subject_stem))
+            self.subject_dirs = glob(op.join(self.working_dir, '*%s*' %
+                                             subject_stem))
+
+    def fetch_test_data(self):
+
+        url = 'https://db.tt/KCemtca7'
+        out_file = op.join('%s' % self.project_dir, 'test_data.zip')
+
+        if op.exists(op.join(self.project_dir, 'test_data')):
+            self.project_dir = op.join(op.dirname(out_file), 'test_data')
+            self.working_dir = op.join(self.project_dir, 'working_directory')
+            self.subject_dirs = glob(op.join(self.project_dir, '%s*' % self.subject_stem))
+
+            return 'Already downloaded!'
+
+        msg = """ The file you will download is 523 MB; do you want to continue?
+                  (Y / N) """
+        resp = raw_input(msg)
+
+        if resp in ['Y', 'y', 'yes', 'Yes']:
+            print('Downloading test data ...', end='')
+
+            if not op.exists(out_file):
+                urllib.urlretrieve(url, out_file)
+
+            with open(os.devnull, 'w') as devnull:
+                out_dir = op.dirname(out_file)
+                subprocess.call(['unzip', out_file, '-d', out_dir], stdout=devnull)
+                subprocess.call(['rm', out_file], stdout=devnull)
+
+                print(' done.')
+                print('Data is located at: %s' % op.join(out_dir, 'test_data'))
+
+        elif resp in ['N', 'n', 'no', 'No']:
+            print('Aborting download.')
+        else:
+            print('Invalid answer! Choose Y or N.')
+
+        self.project_dir = op.join(op.dirname(out_file), 'test_data')
+        self.working_dir = op.join(self.project_dir, 'working_directory')
+        self.subject_dirs = glob(op.join(self.project_dir, '%s*' % self.subject_stem))
 
     def create_scaninfo(self, par_filepath):
-        """Create pickle with scan-params."""
+        """ Create pickle with scan-params. """
         fID = open(par_filepath)
         scaninfo = nib.parrec.parse_PAR_header(fID)[0]
         fID.close()
 
-        to_save = os.path.join(os.getcwd(), par_filepath[:-4] + '_scaninfo' + '.cPickle')
-
-        with open(to_save,'wb') as handle:
+        to_save = op.join(os.getcwd(), '%s_scaninfo.cPickle' % par_filepath[:-4])
+        with open(to_save, 'wb') as handle:
             cPickle.dump(scaninfo, handle)
 
-    def convert_parrec2nifti(self, remove_nifti=True, backup=True):
+    def convert_parrec2nifti(self, remove_nifti=True):
+        """ Converts PAR/REC files to nifti-files. """
 
-        if not os.path.isdir(self.working_dir):
+        if not op.isdir(self.working_dir):
             os.makedirs(self.working_dir)
 
         new_sub_dirs = []
         for sub_dir in self.subject_dirs:
-            REC_files = glob.glob(os.path.join(sub_dir, '*.REC'))
-            PAR_files = glob.glob(os.path.join(sub_dir, '*.PAR'))
+            REC_files = glob(op.join(sub_dir, '*.REC'))
+            PAR_files = glob(op.join(sub_dir, '*.PAR'))
 
             # Create scaninfo from PAR and convert .REC to nifti
             for REC, PAR in zip(REC_files, PAR_files):
@@ -60,7 +123,7 @@ class DataOrganizer(object):
                 self.create_scaninfo(PAR)
                 REC_name = REC[:-4]
 
-                if not os.path.exists(REC_name + '.nii'):
+                if not op.exists(REC_name + '.nii'):
                     print("Processing file %s ..." % REC_name, end="")
                     PR_obj = nib.parrec.load(REC)
                     nib.nifti1.save(PR_obj,REC_name)
@@ -69,38 +132,21 @@ class DataOrganizer(object):
                 else:
                     print("File %s was already converted." % REC_name)
 
-            os.system("gzip %s" % os.path.join(sub_dir, '*.nii'))
+            niftis = glob(op.join(sub_dir, '*.nii'))
 
-            if backup:
-                self.backup_parrec(sub_dir)
+            if niftis:
+                os.system('gzip %s' % op.join(sub_dir, '*.nii'))
 
             if remove_nifti:
-                os.system('rm %s' % os.path.join(sub_dir, '*.nii'))
+                os.system('rm %s' % op.join(sub_dir, '*.nii'))
 
-            new_dir = os.path.join(self.working_dir, os.path.basename(sub_dir))
+            new_dir = op.join(self.working_dir, op.basename(sub_dir))
             shutil.copytree(sub_dir, new_dir)
             shutil.rmtree(sub_dir)
             new_sub_dirs.append(new_dir)
 
         self.subject_dirs = new_sub_dirs
         print("Done with conversion of par/rec to nifti.")
-
-    def backup_parrec(self, sub_dir):
-
-        backup_dir = os.path.join(self.project_dir, 'rawdata_backup')
-        if not os.path.isdir(backup_dir):
-            os.makedirs(backup_dir)
-
-        backup_subdir = os.path.join(backup_dir, os.path.basename(sub_dir))
-        if not os.path.isdir(backup_subdir):
-            os.makedirs(backup_subdir)
-
-        PAR_files = glob.glob(os.path.join(sub_dir, '*.PAR'))
-        REC_files = glob.glob(os.path.join(sub_dir, '*.REC'))
-
-        for PAR,REC in zip(PAR_files, REC_files):
-            shutil.move(PAR, backup_subdir)
-            shutil.move(REC, backup_subdir)
 
     def create_project_tree(self):
         """
@@ -112,30 +158,30 @@ class DataOrganizer(object):
 
             for func_run in self.run_names['func']:
 
-                func_dir = os.path.join(sub_dir, 'func_%s' % func_run)
-                if not os.path.isdir(func_dir):
+                func_dir = op.join(sub_dir, 'func_%s' % func_run)
+                if not op.isdir(func_dir):
                     os.makedirs(func_dir)
 
                 # kinda ugly, but it works (accounts for different spellings)
-                run_files = glob.glob(os.path.join(sub_dir, '*%s*' % func_run))
-                run_files.extend(glob.glob(os.path.join(sub_dir, '*%s*' % func_run.upper())))
-                run_files.extend(glob.glob(os.path.join(sub_dir, '*%s*' % func_run.capitalize())))
+                run_files = glob(op.join(sub_dir, '*%s*' % func_run))
+                run_files.extend(glob(op.join(sub_dir, '*%s*' % func_run.upper())))
+                run_files.extend(glob(op.join(sub_dir, '*%s*' % func_run.capitalize())))
 
                 _ = [shutil.move(f, func_dir) for f in run_files]
 
             struc_run = self.run_names['struc']
-            struc_dir = os.path.join(sub_dir, struc_run)
-            if not os.path.isdir(struc_dir):
+            struc_dir = op.join(sub_dir, struc_run)
+            if not op.isdir(struc_dir):
                 os.makedirs(struc_dir)
 
-            struc_files = glob.glob(os.path.join(sub_dir, '*%s*' % struc_run))
+            struc_files = glob(op.join(sub_dir, '*%s*' % struc_run))
 
             _ = [shutil.move(f, struc_dir) for f in struc_files]
 
-            unallocated = glob.glob(os.path.join(sub_dir, '*'))
+            unallocated = glob(op.join(sub_dir, '*'))
 
             for f in unallocated:
-                if not os.path.isdir(f):
+                if not op.isdir(f):
                     print('Unallocated file: %s' % f)
 
     def reset_pipeline(self):
@@ -146,21 +192,21 @@ class DataOrganizer(object):
         """
 
         for sub in self.subject_dirs:
-            dirs = glob.glob(os.path.join(sub, '*'))
+            dirs = glob(op.join(sub, '*'))
 
             for d in dirs:
-                if os.path.isdir(d):
+                if op.isdir(d):
 
-                    files = glob.glob(os.path.join(d, '*'))
+                    files = glob(op.join(d, '*'))
                     _ = [shutil.move(to_move, sub) for to_move in files]
 
-            shutil.copytree(sub, os.path.join(self.project_dir, os.path.basename(sub)))
+            shutil.copytree(sub, op.join(self.project_dir, op.basename(sub)))
             shutil.rmtree(sub)
 
-        self.subject_dirs = glob.glob(os.path.join(self.project_dir, '*%s*' % self.subject_stem))
+        self.subject_dirs = glob(op.join(self.project_dir, '*%s*' % self.subject_stem))
 
     def create_dir_structure_full(self):
-
+        """ Chains convert_parrec2nifti and create_project_tree. """
         self.convert_parrec2nifti().create_project_tree()
 
     def get_filepaths(keyword, directory):
@@ -179,3 +225,4 @@ class DataOrganizer(object):
                     matches.append(root + '/' + filename)
                     filenames_total.append(filename)
         return matches, filenames_total
+
