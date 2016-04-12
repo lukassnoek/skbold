@@ -108,7 +108,6 @@ pygments_style = 'sphinx'
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
 
-
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -118,8 +117,8 @@ import sphinx_readable_theme
 html_theme_path = [sphinx_readable_theme.get_html_theme_path()]
 html_theme = 'readable'
 
-exclude_patterns = ['_build', 'skbold/data', '**tests**']
-exclude_trees = ['_build', 'skbold/data']
+exclude_patterns = ['**tests**', '**data/**', '**ROIs**']
+exclude_trees = ['_build']
 
 add_module_names = False
 #html_theme = 'alabaster'
