@@ -25,6 +25,22 @@ analyses of fMRI data. Its structure/setup draws heavily upon the *scikit-learn*
 be given to `this <http://rasbt.github.io/mlxtend/>`_ repository, as it has
 a similar purpose and served as an example for much of my code.
 
+Installing skbold
+-----------------
+
+Although the package is very much in development, it can be installed using *pip*::
+
+	pip install skbold
+
+However, the pip-version is likely behind compared to the code on Github, so to get the
+most up to date version, use git::
+
+	pip install git+https://github.com/lukassnoek/skbold.git@master
+
+Or, alternatively, download the package as a zip-file from Github, unzip, and run::
+
+	python setup.py install
+
 Functionality
 -------------
 
@@ -39,10 +55,10 @@ Below, some basic examples are given.
 Generating observation X feature arrays
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The class `Mvp` (from the `core.py` module) functions as a container for
+The class ``Mvp`` (from the ``core.py`` module) functions as a container for
 the objects used in the skbold-package. This object is subclassed to provide
 methods that allow to generate and load in data. Currently, the only
-implementation is `Fsl2mvp` (see `data2mvp` module), which converts first-level
+implementation is ``Fsl2mvp`` (see ``data2mvp`` module), which converts first-level
 GLM estimates from an FSL FEAT directory to an array of observations X features.
 Importantly, this function assumes that a single-trial design is used (i.e. each
 trial is modelled as a separate regressor) and that the analysis is done within
@@ -70,13 +86,23 @@ trial X voxel array (stored as an Mvp-object; more on this later).
     # Transform directory
     fsl2mvp.glm2mvp()
 
-Calling the method `glm2mvp()` creates a directory *mvp_data* with a data-file
+Calling the method ``glm2mvp()`` creates a directory *mvp_data* with a data-file
 (hdf5) and a corresponding header-file (cPickle).
+
+Alteratively, there is a command line function ``glm2mvp`` that has the same
+functionality as outlined in the example above::
+
+    $ glm2mvp -h
+      usage: glm2mvp [-h] [-d DIRECTORY] [-m MASK] [-t THRESHOLD] [-b BETA2T]
+             [-s SPACE] [-r [REMOVE [REMOVE ...]]]
+
+    $ cd /home/users/data/sub002
+    $ glm2mvp -d pwd -b True -s epi
 
 Loading Mvp objects
 ~~~~~~~~~~~~~~~~~~~
 
-To load Mvp-objects, the class DataHandler from the `utils` module can be used.
+To load Mvp-objects, the class DataHandler from the ``utils`` module can be used.
 An example is given below:
 
 .. code:: python
@@ -100,30 +126,29 @@ Structure of Mvp-objects
 
 The Mvp class contains the following main attributes:
 
-- X : numpy-ndarray of length = [n_samples, n_features]. This contains the actual patterns!
-- y : list, containing the target class as numeric labels.
+- ``X`` : numpy-ndarray of length = [n_samples, n_features]. This contains the actual patterns!
+- ``y`` : list, containing the target class as numeric labels.
 
 Other useful metadata is stored in the following attributes:
 
-- mask_index : index applied to the original whole-brain data
-- mask_shape : shape of original mask, most likely MNI152 (2mm) shape (91 * 109 * 91)
+- ``mask_index`` : index applied to the original whole-brain data
+- ``mask_shape`` : shape of original mask, most likely MNI152 (2mm) shape (91 * 109 * 91)
 
 Transforming data using transformer-classes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A major part of the skbold-package is the `transformers` module, which contains
-scikit-learn style `transformer`-objects that adhere to the consistent
-scikit-learn API, using the same .fit() and .transform() methods. The major
+A major part of the skbold-package is the ``transformers`` module, which contains
+scikit-learn style ``transformer``-objects that adhere to the consistent
+scikit-learn API, using the same ``.fit()`` and ``.transform()`` methods. The major
 advantage of directly inheriting from scikit-learn's Transformer objects is
 that they can be seamlessly integrated in `Pipelines <http://scikit-learn.org/stable/modules/generated/sklearn.pipeline.Pipeline.html>`_
 and `gridsearch <http://scikit-learn.org/stable/modules/grid_search.html>`_ procedures.
 
 In the following example, we'll create a scikit-learn pipeline to extract
 the patterns from only a single brain region from the whole-brain data
-contained in mvp.X (using the RoiIndexer transformer) and perform a type of
+contained in mvp.X (using the ``RoiIndexer`` transformer) and perform a type of
 univariate feature selection based on the average euclidean distance between
-classes (using the MeanEuclidean transformer).
-
+classes (using the ``MeanEuclidean`` transformer).
 
 .. code:: python
 
@@ -146,21 +171,7 @@ classes (using the MeanEuclidean transformer).
     pipeline = Pipeline([('roiindex', roiindexer), ('meaneuc', mean_euclidean)])
     X_tmp = pipeline.fit_transform(mvp.X, mvp.y)
 
-
-Installing skbold
------------------
-
-Although the package is very much in development, it can be installed using *pip*::
-
-	pip install skbold
-
-However, the pip-version is likely behind compared to the code on Github, so to get the
-most up to date version, use git::
-
-	pip install git+https://github.com/lukassnoek/skbold.git@master
-
-Or, alternatively, download the package as a zip-file from Github, unzip, and run::
-	
-	python setup.py install
-
-
+License and contact
+~~~~~~~~~~~~~~~~~~~
+The code is BSD (3-clause) licensed. You can find my contact details at my
+`Github profile page <https://github.com/lukassnoek>`_.

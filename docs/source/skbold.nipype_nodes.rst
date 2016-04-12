@@ -44,14 +44,6 @@ skbold.nipype_nodes.motion_correction module
     :undoc-members:
     :show-inheritance:
 
-skbold.nipype_nodes.utils module
---------------------------------
-
-.. automodule:: skbold.nipype_nodes.utils
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 
 Module contents
 ---------------
