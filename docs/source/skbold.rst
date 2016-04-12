@@ -8,7 +8,6 @@ Subpackages
 
     skbold.classifiers
     skbold.core
-    skbold.data
     skbold.data2mvp
     skbold.exp_model
     skbold.nipype_nodes

@@ -6,6 +6,4 @@ from .mvp import Mvp
 from .convert_to_epi import convert2epi
 from .convert_to_mni import convert2mni
 
-Mvp.__module__ = 'core'
-
 __all__ = ['Mvp', 'convert2epi', 'convert2mni']

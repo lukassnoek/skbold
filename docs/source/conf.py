@@ -117,7 +117,6 @@ import sphinx_readable_theme
 html_theme_path = [sphinx_readable_theme.get_html_theme_path()]
 html_theme = 'readable'
 
-exclude_patterns = ['**tests**', '**data/**', '**ROIs**']
 exclude_trees = ['_build']
 
 add_module_names = False

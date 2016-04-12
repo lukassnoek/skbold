@@ -11,8 +11,10 @@ import nibabel as nib
 from glob import glob
 import os.path as op
 import pandas as pd
-import skbold.data.ROIs.harvard_oxford as roi
 from scipy.ndimage.measurements import label
+
+import skbold
+roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs', 'harvard_oxford')
 
 
 def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
@@ -62,7 +64,6 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
         data[data < stat_threshold] = 0
 
     stat_name = op.basename(statfile).split('.')[0]
-    roi_dir = op.join(op.dirname(roi.__file__), roi_type)
     masks = glob(op.join(roi_dir, '*.nii.gz'))
 
     df_list = []
@@ -207,3 +208,9 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
     df.to_csv(filename, index=False, header=True, sep='\t')
 
     return df
+
+"""
+if __name__ == '__main__':
+
+    extract_roi_info('/home/lukas/DecodingEmotions_searchlight/Other/HWW_002/searchlight_results_2cat.nii')
+"""

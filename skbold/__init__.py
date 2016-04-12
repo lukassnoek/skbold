@@ -6,7 +6,7 @@ __version__ = '0.2.1'
 
 import classifiers
 import core
-import data
+#import data
 import data2mvp
 import exp_model
 import nipype_nodes

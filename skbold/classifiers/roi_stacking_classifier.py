@@ -13,7 +13,7 @@ import numpy as np
 import os.path as op
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.svm import SVC
-from skbold.data.ROIs import harvard_oxford as roi
+#from skbold.data.ROIs import harvard_oxford as roi
 from skbold.transformers import RoiIndexer, MeanEuclidean, IncrementalFeatureCombiner
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -25,6 +25,9 @@ from sklearn.metrics import recall_score, precision_score
 from sklearn.grid_search import GridSearchCV
 import warnings
 warnings.filterwarnings('ignore')  # hack to turn off UndefinedMetricWarning
+
+import skbold
+roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs', 'harvard_oxford')
 
 
 class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
