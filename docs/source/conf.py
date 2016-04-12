@@ -35,7 +35,10 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
+    'sphinx.ext.autosummary'
 ]
+
+autosummary_generate = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -78,10 +81,6 @@ language = None
 # Else, today_fmt is used as the format for a strftime call.
 #today_fmt = '%B %d, %Y'
 
-# List of patterns, relative to source directory, that match files and
-# directories to ignore when looking for source files.
-exclude_patterns = []
-
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
 #default_role = None
@@ -119,6 +118,10 @@ import sphinx_readable_theme
 html_theme_path = [sphinx_readable_theme.get_html_theme_path()]
 html_theme = 'readable'
 
+exclude_patterns = ['_build', 'skbold/data', '**tests**']
+exclude_trees = ['_build', 'skbold/data']
+
+add_module_names = False
 #html_theme = 'alabaster'
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -134,7 +137,7 @@ html_theme = 'readable'
 #html_title = None
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
-#html_short_title = None
+html_short_title = 'skbold'
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
@@ -171,10 +174,10 @@ html_static_path = ['_static']
 #html_additional_pages = {}
 
 # If false, no module index is generated.
-#html_domain_indices = True
+html_domain_indices = False
 
 # If false, no index is generated.
-#html_use_index = True
+html_use_index = False
 
 # If true, the index is split into individual pages for each letter.
 #html_split_index = False
@@ -183,7 +186,7 @@ html_static_path = ['_static']
 #html_show_sourcelink = True
 
 # If true, "Created using Sphinx" is shown in the HTML footer. Default is True.
-#html_show_sphinx = True
+html_show_sphinx = True
 
 # If true, "(C) Copyright ..." is shown in the HTML footer. Default is True.
 #html_show_copyright = True
