@@ -117,6 +117,7 @@ import sphinx_readable_theme
 html_theme_path = [sphinx_readable_theme.get_html_theme_path()]
 html_theme = 'readable'
 
+exclude_patterns = ['**test**']
 exclude_trees = ['_build']
 
 add_module_names = False
@@ -172,10 +173,10 @@ html_static_path = ['_static']
 #html_additional_pages = {}
 
 # If false, no module index is generated.
-html_domain_indices = False
+html_domain_indices = True
 
 # If false, no index is generated.
-html_use_index = False
+html_use_index = True
 
 # If true, the index is split into individual pages for each letter.
 #html_split_index = False

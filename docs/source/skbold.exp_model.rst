@@ -1,26 +1,6 @@
 skbold.exp_model package
 ========================
 
-Submodules
-----------
-
-skbold.exp_model.parse_presentation_logfile module
---------------------------------------------------
-
-.. automodule:: skbold.exp_model.parse_presentation_logfile
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-skbold.exp_model.parse_psychopy_logfile module
-----------------------------------------------
-
-.. automodule:: skbold.exp_model.parse_psychopy_logfile
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 Module contents
 ---------------
 
