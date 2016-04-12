@@ -43,13 +43,18 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
 
         # Check if epi-mask already exists:
         if mvp.ref_space == 'epi':
-            laterality = op.basename(op.dirname(mask))
+
+            if mask[0:2] in ['L_', 'R_']:
+                laterality = 'unilateral'
+            else:
+                laterality = 'bilateral'
+
             epi_dir = op.join(main_dir, 'epi_masks', laterality)
             if not op.isdir(epi_dir):
                 os.makedirs(epi_dir)
 
             epi_name = op.basename(mask)
-            epi_exists = glob.glob(op.join(epi_dir, epi_name))
+            epi_exists = glob.glob(op.join(epi_dir, '*%s*.nii.gz' % epi_name))
             if epi_exists:
                 self.mask = epi_exists[0]
             else:
@@ -57,7 +62,7 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
                 self.mask = convert2epi(self.mask, reg_dir, epi_dir)[0]
 
     def fit(self, X=None, y=None):
-        """ Does nothing, but included to be used in sklearn's Pipeline. """
+        """ Fits RoiIndexer. """
         roi_idx = nib.load(self.mask).get_data() > self.mask_threshold
         overlap = roi_idx.astype(int).ravel() + self.orig_mask.astype(int)
         self.idx_ = (overlap == 2)[self.orig_mask]
