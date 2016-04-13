@@ -62,3 +62,4 @@ target/
 *.ipynb_checkpoints/*
 *.ipynb_checkpoints*
 docs
+skbold/data/test_data/epi_masks
