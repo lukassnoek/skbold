@@ -14,3 +14,9 @@ class PCAfilter(BaseEstimator, TransformerMixin):
     which are assumed to be noise components.
     """
     pass
+
+
+if __name__ == '__main__':
+
+    from skbold.utils import DataHandler
+    mvp = DataHandler(identifier='merged').load_separate_sub('')
