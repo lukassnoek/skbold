@@ -64,7 +64,7 @@ class ClusterThreshold(BaseEstimator, TransformerMixin):
             List of ndarray with floats corresponding to labels
 
         """
-        _ = self.transformer.fit_transform(X, y)
+        self.transformer.fit(X, y)
         self.z_ = self.transformer.zvalues_
         self.idx_ = self.transformer.idx_
 
