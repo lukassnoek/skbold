@@ -12,8 +12,10 @@ import os
 import os.path as op
 import sys
 import argparse
-import skbold.data.ROIs as roi
 from skbold.data2mvp import Fsl2mvp
+
+import skbold
+roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs')
 
 parser = argparse.ArgumentParser(description='This is a command line tool to convert an FSL first-level directory.')
 
@@ -30,7 +32,6 @@ if args.directory is None:
 	args.directory = os.getcwd()
 
 if args.mask is None:
-	roi_dir = op.dirname(roi.__file__)
 	args.mask = op.join(roi_dir, 'GrayMatter.nii.gz')
 
 if args.threshold is None:
