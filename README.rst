@@ -30,16 +30,16 @@ Installing skbold
 
 Although the package is very much in development, it can be installed using *pip*::
 
-	pip install skbold
+	$ pip install skbold
 
 However, the pip-version is likely behind compared to the code on Github, so to get the
 most up to date version, use git::
 
-	pip install git+https://github.com/lukassnoek/skbold.git@master
+	$ pip install git+https://github.com/lukassnoek/skbold.git@master
 
 Or, alternatively, download the package as a zip-file from Github, unzip, and run::
 
-	python setup.py install
+	$ python setup.py install
 
 Functionality
 -------------
@@ -179,4 +179,4 @@ The code is BSD (3-clause) licensed. You can find my contact details at my
 Documentation
 -------------
 `Here <http://lukassnoek.github.io/skbold/>`_, you can check out the
-documentation of this package, which has been created with Sphinx. 
+documentation of this package, which has been created with Sphinx.
