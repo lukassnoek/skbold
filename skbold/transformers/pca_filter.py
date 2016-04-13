@@ -19,4 +19,6 @@ class PCAfilter(BaseEstimator, TransformerMixin):
 if __name__ == '__main__':
 
     from skbold.utils import DataHandler
-    mvp = DataHandler(identifier='merged').load_separate_sub('')
+    from skbold import testdata_path
+    print(testdata_path)
+    mvp = DataHandler(identifier='merged').load_separate_sub(testdata_path)
