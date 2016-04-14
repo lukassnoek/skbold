@@ -23,7 +23,7 @@ class PCAfilter(BaseEstimator, TransformerMixin):
         self.reject = reject
         self.pca = None
 
-    def fit(self, X):
+    def fit(self, X, y=None):
 
         pca = PCA(n_components=self.n_components)
         pca.fit(X)
@@ -46,6 +46,7 @@ class PCAfilter(BaseEstimator, TransformerMixin):
 
         return(X_rec)
 
+
 if __name__ == '__main__':
 
     from skbold.utils import DataHandler
@@ -60,3 +61,4 @@ if __name__ == '__main__':
 
     pcafilt = PCAfilter(n_components=None, reject=[1, 2])
     X_filt = pcafilt.fit_transform(X)
+    
