@@ -12,7 +12,7 @@ import numpy as np
 import os.path as op
 import os
 import glob
-from skbold.transformers import *
+from ..transformers import *
 import nibabel as nib
 
 

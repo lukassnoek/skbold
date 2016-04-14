@@ -1,14 +1,8 @@
 from setuptools import setup, find_packages
 import skbold
 
-install_requires = [
-    'scikit-learn',
-    'numpy',
-    'nibabel',
-    'nilearn',
-    'joblib',
-    'nipype'
-]
+with open('requirements.txt') as f:
+    requirements = f.read().splitlines()
 
 VERSION = skbold.__version__
 
@@ -29,12 +23,13 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Topic :: Scientific/Engineering :: Bio-Informatics'],
     keywords="fMRI scikit-learn RSA representational simililarity analysis",
-    url='https://github.com/lukassnoek/skbold',
+    url='lukassnoek.github.io/skbold',
     author='Lukas Snoek',
     author_email='lukassnoek@gmail.com',
     license='MIT',
     platforms='Linux',
     packages=find_packages(),
+    install_requires=requirements,
     scripts=['bin/glm2mvp'],
     include_package_data=True,
     zip_safe=False)

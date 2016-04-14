@@ -1,8 +1,12 @@
 scipy>=0.17
-numpy=1.10.4
-nibabel
+numpy>=1.10.4
 sklearn>=0.17
+pandas>=0.17
+nibabel
 matplotlib
 nipype
+h5py
+joblib
+
 
 
