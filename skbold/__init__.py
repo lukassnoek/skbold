@@ -2,11 +2,10 @@
 # Contact: lukassnoek@gmail.com
 # License: 3 clause BSD
 
-__version__ = '0.2.1'
+__version__ = '0.2.3'
 
 import classifiers
 import core
-#import data
 import data2mvp
 import exp_model
 import nipype_nodes

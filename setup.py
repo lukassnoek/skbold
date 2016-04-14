@@ -1,6 +1,5 @@
 from setuptools import setup, find_packages
-
-VERSION = '0.2.3'
+import skbold
 
 install_requires = [
     'scikit-learn',
@@ -10,6 +9,8 @@ install_requires = [
     'joblib',
     'nipype'
 ]
+
+VERSION = skbold.__version__
 
 def readme():
     with open('README.rst') as f:
