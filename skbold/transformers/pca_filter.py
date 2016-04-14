@@ -61,4 +61,3 @@ if __name__ == '__main__':
 
     pcafilt = PCAfilter(n_components=None, reject=[1, 2])
     X_filt = pcafilt.fit_transform(X)
-    

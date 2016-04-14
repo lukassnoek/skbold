@@ -36,22 +36,17 @@ class AverageRegionTransformer(BaseEstimator, TransformerMixin):
         mask_type : List[str]
             List with absolute paths to nifti-images of brain masks in
             MNI152 (2mm) space.
-        orig_mask : Optional[str]
-            Path to the previous mask applied to the data (e.g. grey matter
-            mask)
-        orig_shape : Optional[tuple]
-            Tuple with dimensions of original shape (before a mask was applied)
-            assumed to be MNI152 (2mm) dimensions.
-        orig_mask_threshold : Optional[int, float]
-            Threshold used in previously applied mask (given a probabilistic
-            mask)
+        mvp : Mvp-object (see core.mvp)
+            Mvp object that provides some metadata about previous masks
+        mask_threshold : int (default: 0)
+            Minimum threshold for probabilistic masks (such as Harvard-Oxford)
         """
 
         if mask_type is 'unilateral':
-            mask_dir = op.join(op.dirname(roi.__file__), 'unilateral')
+            mask_dir = op.join(roi_dir, 'unilateral')
             mask_list = glob.glob(op.join(mask_dir, '*.nii.gz'))
         elif mask_type is 'bilateral':
-            mask_dir = op.join(op.dirname(roi.__file__), 'bilateral')
+            mask_dir = op.join(roi_dir, 'bilateral')
             mask_list = glob.glob(op.join(mask_dir, '*.nii.gz'))
 
         # If patterns are in epi-space, transform mni-masks to

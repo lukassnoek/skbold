@@ -103,7 +103,7 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
             # It is assumed that a directory with masks is inputted
             self.masks = glob.glob(op.join(mask_type, '*nii.gz'))
         else:
-            mask_dir = op.join(op.dirname(roi.__file__), mask_type)
+            mask_dir = op.join(roi_dir, mask_type)
             self.masks = glob.glob(op.join(mask_dir, '*nii.gz'))
 
         if not self.masks:

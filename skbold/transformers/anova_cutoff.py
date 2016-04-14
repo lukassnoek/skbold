@@ -6,8 +6,8 @@
 # License: 3 clause BSD
 
 from __future__ import print_function, division
-import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.feature_selection import f_classif
 
 
 class AnovaCutoff(BaseEstimator, TransformerMixin):

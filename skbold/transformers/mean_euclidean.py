@@ -35,7 +35,6 @@ class MeanEuclidean(BaseEstimator, TransformerMixin):
         fisher : bool
             Whether to apply a fisher transform to the averaged euclidean
             distance.
-
         """
         self.cutoff = cutoff
         self.normalize = normalize

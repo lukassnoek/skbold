@@ -35,7 +35,7 @@ class FeaturesToContrast(MeanEuclidean):
             Whether to apply a fisher transform to the averaged euclidean
             distance.
         """
-        super(FeaturesToContrast, self).__init__(cutoff, normalize)
+        super(FeaturesToContrast, self).__init__(cutoff, normalize, fisher)
 
     def transform(self, X):
         """ Transforms a pattern (X) given the indices calculated during fit().

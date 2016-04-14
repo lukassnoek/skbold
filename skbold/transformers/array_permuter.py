@@ -14,7 +14,7 @@ class ArrayPermuter(BaseEstimator, TransformerMixin):
 
     def __init__(self):
         """ Initializes ArrayPermuter object. """
-        self.shuffle = None
+        pass
 
     def fit(self, X=None, y=None):
         """ Does nothing, but included to be used in sklearn's Pipeline. """

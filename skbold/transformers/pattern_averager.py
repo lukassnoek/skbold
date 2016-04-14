@@ -19,7 +19,6 @@ class PatternAverager(BaseEstimator, TransformerMixin):
         ----------
         method : str
             method of averaging (either 'mean' or 'median')
-
         """
         self.method = method
 
@@ -39,8 +38,8 @@ class PatternAverager(BaseEstimator, TransformerMixin):
         -------
         X_new : ndarray
             Transformed ndarray of shape = [n_samples, 1]
-
         """
+
         if self.method == 'mean':
             X_new = np.mean(X, axis=1)
         elif self.method == 'median':

@@ -14,7 +14,6 @@ from scipy.ndimage.measurements import label
 
 # To do: implement engine-option (fsl or scipy)
 
-# THIS IS A PULL REQUEST TEST THINGY
 
 class ClusterThreshold(BaseEstimator, TransformerMixin):
     """ Implements a cluster-based feature selection method.
@@ -27,32 +26,32 @@ class ClusterThreshold(BaseEstimator, TransformerMixin):
 
     """
 
-    def __init__(self, transformer=MeanEuclidean(cutoff=2.3, normalize=False,
-                 fisher=False), mask_idx=None, mask_shape=(91, 109, 91),
-                 min_cluster_size=20):
+    def __init__(self, mvp, transformer=None, min_cluster_size=20):
         """ Initializes ClusterThreshold transformer.
 
         Parameters
         ----------
         transformer : scikit-learn style transformer class
-            transformer class used to perform univariate feature selection
-        mask_idx : ndarray[bool]
-            if a mask was applied before, this should give the indices used for
-            the transformation
-        mask_shape : tuple
-            original size of the mask used for the initial transformation
-            (assumed to be MNI152 2 mm dimensions)
+            transformer class used to perform some kind of univariate feature
+            selection.
+        mvp : Mvp-object (see core.mvp)
+            Necessary to provide mask metadata (index, shape).
         min_cluster_size : int
             minimum cluster size to be set for cluster-thresholding
-
         """
+
+        if transformer is None:
+            transformer = MeanEuclidean(cutoff=2.3, normalize=False,
+                                        fisher=False)
+
         self.transformer = transformer
         self.min_cluster_size = min_cluster_size
-        self.mask_shape = mask_shape
-        self.mask_idx = mask_idx
-        self.z_ = None
+        self.mask_shape = mvp.mask_shape
+        self.mask_idx = mvp.mask_index
+        self.scores_ = None
         self.idx_ = None
         self.cl_idx_ = None
+        self.n_clust_ = None
 
     def fit(self, X, y):
         """ Fits ClusterThreshold transformer.
@@ -66,12 +65,12 @@ class ClusterThreshold(BaseEstimator, TransformerMixin):
 
         """
         self.transformer.fit(X, y)
-        self.z_ = self.transformer.zvalues_
+        self.scores_ = self.transformer.scores_
         self.idx_ = self.transformer.idx_
 
         # X_fs = univariate feature values in wholebrain space
         X_fs = np.zeros(self.mask_shape).ravel()
-        X_fs[self.mask_idx] = self.z_
+        X_fs[self.mask_idx] = self.scores_
         X_fs = X_fs.reshape(self.mask_shape)
 
         clustered, num_clust = label(X_fs > self.cutoff)
@@ -89,6 +88,7 @@ class ClusterThreshold(BaseEstimator, TransformerMixin):
         for j, clt in enumerate(cluster_nrs):
             cl_idx[:, j] = (clustered == clt).ravel()[self.mask_idx]
 
+        self.n_clust_ = cl_idx.shape[1]
         self.cl_idx_ = cl_idx
 
         return self
@@ -110,7 +110,7 @@ class ClusterThreshold(BaseEstimator, TransformerMixin):
         """
 
         # X_cl = clustered version of X
-        X_cl = np.zeros((X.shape[0], self.cl_idx_.shape[1]))
+        X_cl = np.zeros((X.shape[0], self.n_clust_))
         n_clust = X_cl.shape[1]
 
         for j in range(n_clust):
