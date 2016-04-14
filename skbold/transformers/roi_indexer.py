@@ -34,17 +34,23 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
             mask)
         """
 
+        self.mvp = mvp
         self.mask = mask
         self.mask_threshold = mask_threshold
         self.orig_mask = mvp.mask_index
+        self.directory = mvp.directory
+        self.ref_space = mvp.ref_space
         self.idx_ = None
 
-        main_dir = op.dirname(mvp.directory)
+    def fit(self, X=None, y=None):
+        """ Fits RoiIndexer. """
+
+        main_dir = op.dirname(self.directory)
 
         # Check if epi-mask already exists:
-        if mvp.ref_space == 'epi':
+        if self.ref_space == 'epi':
 
-            if mask[0:2] in ['L_', 'R_']:
+            if self.mask[0:2] in ['L_', 'R_']:
                 laterality = 'unilateral'
             else:
                 laterality = 'bilateral'
@@ -53,16 +59,17 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
             if not op.isdir(epi_dir):
                 os.makedirs(epi_dir)
 
-            epi_name = op.basename(mask)
+            epi_name = op.basename(self.mask)
             epi_exists = glob.glob(op.join(epi_dir, '*%s*.nii.gz' % epi_name))
             if epi_exists:
                 self.mask = epi_exists[0]
             else:
-                reg_dir = op.join(mvp.directory, 'reg')
+                reg_dir = op.join(self.directory, 'reg')
                 self.mask = convert2epi(self.mask, reg_dir, epi_dir)[0]
+        else:
+            # TO DO: IMPLEMENT MNI MASKING
+            print('Not yet implemented!')
 
-    def fit(self, X=None, y=None):
-        """ Fits RoiIndexer. """
         roi_idx = nib.load(self.mask).get_data() > self.mask_threshold
         overlap = roi_idx.astype(int).ravel() + self.orig_mask.astype(int)
         self.idx_ = (overlap == 2)[self.orig_mask]

@@ -223,3 +223,4 @@ class Fsl2mvp(Mvp):
     def glm2mvp_and_merge(self):
         """ Chains glm2mvp() and merge_runs(). """
         self.glm2mvp().merge_runs()
+        return self

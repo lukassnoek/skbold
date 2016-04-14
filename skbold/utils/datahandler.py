@@ -56,9 +56,9 @@ class DataHandler(object):
 
         Returns
         -------
-        mvp : Mvp object (see scikit_bold.core module)
-
+        mvp : Mvp object (see skbold.core module)
         """
+
         mvp_dir = op.join(sub_dir, 'mvp_data')
         data_path = glob.glob(op.join(mvp_dir, '*%s*.hdf5' % self.identifier))
         hdr_path = glob.glob(op.join(mvp_dir, '*%s*.pickle' % self.identifier))
@@ -72,6 +72,9 @@ class DataHandler(object):
         h5f = h5py.File(data_path[0], 'r')
         mvp.X = h5f['data'][:]
         h5f.close()
+
+        # Update directory to random .feat dir
+        mvp.directory = glob.glob(sub_dir, '*.feat')[0]
 
         if self.shape == '4D':
             s = mvp.mask_shape
