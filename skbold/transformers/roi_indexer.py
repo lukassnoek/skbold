@@ -56,6 +56,7 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
                 laterality = 'bilateral'
 
             epi_dir = op.join(main_dir, 'epi_masks', laterality)
+
             if not op.isdir(epi_dir):
                 os.makedirs(epi_dir)
 

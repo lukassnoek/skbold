@@ -40,8 +40,9 @@ class MeanEuclidean(BaseEstimator, TransformerMixin):
         self.normalize = normalize
         self.fisher = fisher
         self.idx_ = None
-        self.condition_idx_ = None
         self.scores_ = None
+        self.condition_idx_ = None
+        self.condition_scores_ = None
 
     def fit(self, X, y):
         """ Fits MeanEuclidean transformer.
@@ -84,6 +85,7 @@ class MeanEuclidean(BaseEstimator, TransformerMixin):
             diff_patterns[i, :] = np.abs((tmp - tmp.mean()) / tmp.std())
 
         self.condition_idx_ = diff_patterns > self.cutoff
+        self.condition_scores_ = diff_patterns
         mean_diff = np.mean(diff_patterns, axis=0)
 
         self.idx_ = mean_diff > self.cutoff
@@ -104,7 +106,6 @@ class MeanEuclidean(BaseEstimator, TransformerMixin):
         X : ndarray
             Transformed array of shape = [n_samples, n_features] given the
             indices calculated during fit().
-
         """
 
         return X[:, self.idx_]

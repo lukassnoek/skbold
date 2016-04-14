@@ -74,7 +74,7 @@ class DataHandler(object):
         h5f.close()
 
         # Update directory to random .feat dir
-        mvp.directory = glob.glob(sub_dir, '*.feat')[0]
+        mvp.directory = glob.glob(op.join(sub_dir, '*.feat'))[0]
 
         if self.shape == '4D':
             s = mvp.mask_shape
