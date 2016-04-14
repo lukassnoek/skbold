@@ -17,7 +17,8 @@ def test_fsl2mvp():
                    'situation', 'situation', 'situation']
 
     mvp_dir = op.join(testdata_path, 'mvp_data')
-    shutil.rmtree(mvp_dir)
+    if op.exists(mvp_dir):
+        shutil.rmtree(mvp_dir)
     for r in [run1, run2]:
         fsl2mvp = Fsl2mvp(r, mask_threshold=0, beta2tstat=True,
                           ref_space='epi', mask_path=None, remove_class=[])
