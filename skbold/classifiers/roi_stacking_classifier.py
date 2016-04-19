@@ -25,7 +25,8 @@ from sklearn.grid_search import GridSearchCV
 import warnings
 warnings.filterwarnings('ignore')  # hack to turn off UndefinedMetricWarning
 
-from skbold import harvardoxford_path as roi_dir
+import skbold
+roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs', 'harvard_oxford')
 
 
 class RoiStackingClassifier(BaseEstimator, ClassifierMixin):

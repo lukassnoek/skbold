@@ -22,14 +22,8 @@ roidata_path = join(data_path, 'ROIs')
 harvardoxford_path = join(roidata_path, 'harvard_oxford')
 
 loader = DataHandler(identifier='merged')
-<<<<<<< HEAD
-mvp_test = loader.load_separate_sub(testdata_path)
-
-__all__ = ['classifiers', 'core', 'data', 'data2mvp', 'exp_model',
-           'nipype_nodes', 'postproc', 'transformers', 'utils', 'mvp_test']
-=======
 sample_data = loader.load_separate_sub(testdata_path)
 
 __all__ = ['classifiers', 'core', 'data', 'data2mvp', 'exp_model',
-           'nipype_nodes', 'postproc', 'transformers', 'utils', 'sample_data']
->>>>>>> lukas_develop
+           'nipype_nodes', 'postproc', 'transformers', 'utils', 'sample_data',
+           'harvardoxford_path']

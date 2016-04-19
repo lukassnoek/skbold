@@ -208,9 +208,6 @@ class Fsl2mvp(Mvp):
         with open(fn_header, 'wb') as handle:
             cPickle.dump(self, handle)
 
-        nonzero = (mvp_data != 0).sum(axis=0) > 0
-        self.X = mvp_data[:, nonzero]
-        print(self.X.shape)
         fn_data = op.join(mat_dir, '%s_data_run%i.hdf5' % (self.sub_name,
                           n_converted+1))
 
