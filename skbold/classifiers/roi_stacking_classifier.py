@@ -13,11 +13,10 @@ import numpy as np
 import os.path as op
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.svm import SVC
-#from skbold.data.ROIs import harvard_oxford as roi
 from skbold.transformers import RoiIndexer, MeanEuclidean, IncrementalFeatureCombiner
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.cross_validation import StratifiedKFold
+from sklearn.cross_validation import StratifiedKFold, StratifiedShuffleSplit
 from copy import copy, deepcopy
 from sklearn.grid_search import GridSearchCV
 from sklearn.linear_model import LogisticRegression
@@ -26,8 +25,7 @@ from sklearn.grid_search import GridSearchCV
 import warnings
 warnings.filterwarnings('ignore')  # hack to turn off UndefinedMetricWarning
 
-import skbold
-roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs', 'harvard_oxford')
+from skbold import harvardoxford_path as roi_dir
 
 
 class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
@@ -35,8 +33,8 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
     """
 
     def __init__(self, mvp, preproc_pipe='default', base_clf=None, meta_clf=None,
-                 mask_type='unilateral', proba=False, folds=-1, meta_fs='univar',
-                 meta_gs=None):
+                 mask_type='unilateral', proba=True, folds=-1, cv_iter='kfold',
+                 meta_fs='univar', meta_gs=None):
         """ Initializes RoiStackingClassifier object.
 
         Parameters
@@ -109,6 +107,7 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
         if not self.masks:
             raise ValueError('No masks found in specified directory!')
 
+        self.cv_iter = cv_iter
         self.folds = folds
 
         # I guess it's nicer to insert RoiIndexer into the preprocessing
@@ -144,7 +143,11 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
 
         if self.folds == -1:
             self.folds = (y == 0).sum()
-        self.cv = StratifiedKFold(y, n_folds=self.folds)
+
+        if self.cv_iter == 'kfold':
+            self.cv = StratifiedKFold(y, n_folds=self.folds)
+        elif self.cv_iter == 'shuffle':
+            self.cv = StratifiedShuffleSplit(y, n_iter=self.folds, test_size=0.1)
 
         n_trials = X.shape[0]
         n_class = self.n_class

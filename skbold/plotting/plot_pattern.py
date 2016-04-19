@@ -26,7 +26,7 @@ def plot_region(mask_name, filepath=None, pattern_type='random', hemisphere='bil
     Parameters
     ----------
     mask_name : str (or list of str)
-        Name of mask(s); drawn from Harvard-Oxford cortical atlas. 
+        Name of mask(s); drawn from Harvard-Oxford cortical atlas.
 
     """
 
@@ -53,7 +53,7 @@ def plot_region(mask_name, filepath=None, pattern_type='random', hemisphere='bil
     to_plot = np.zeros((91, 109, 91))
     maskdir_path = op.join(harvardoxford_path, laterality)
 
-    for m in mask_name:
+    for i, m in enumerate(mask_name):
         paths = glob(op.join(maskdir_path, '*%s*%s*' % (prefix, m[1:])))
 
         if len(paths) == 0:
@@ -63,16 +63,21 @@ def plot_region(mask_name, filepath=None, pattern_type='random', hemisphere='bil
         else:
             m = paths[0]
 
+        if type(mean) not in [int, float]:
+            mean_tmp = mean[i]
+        else:
+            mean_tmp = mean
+
         mask = nib.load(m)
         affine = mask.affine
         data = mask.get_data()
         n_vox = np.sum(data > mask_threshold)
 
         if pattern_type == 'random':
-            rand = np.random.normal(mean, std, n_vox)
-            to_plot[data > mask_threshold] = rand + mean
+            rand = np.random.normal(mean_tmp, std, n_vox)
+            to_plot[data > mask_threshold] = rand + mean_tmp
         elif pattern_type == 'uniform':
-            to_plot[data > mask_threshold] = mean
+            to_plot[data > mask_threshold] = mean_tmp
         elif pattern_type == 'smooth':
             to_plot[data > mask_threshold] = data[data > mask_threshold] * 1.1
 
@@ -83,7 +88,8 @@ def plot_region(mask_name, filepath=None, pattern_type='random', hemisphere='bil
 
 
 if __name__ == '__main__':
-    masks = ['Angular_gyrus', 'Temporal_pole', 'Supplementary']
-    plot_region(masks, filepath='/home/lukas/testtest.png', hemisphere='left', pattern_type='random', mean=20, std=20,
-                orientation='ortho', mask_threshold=20, cut=None, colorbar=False)
+    masks = ['Postcentral', 'Temporal_pole', 'Temporo-occipital_fusiform', 'Lateral_occipital_cortex_superior', 'Inferior_frontal_gyrus_parsoper']
+    mean = np.arange(40, 100, len(masks))
+    plot_region(masks, filepath='/home/lukas/testtest.png', hemisphere='left', pattern_type='random', mean=30, std=20,
+                orientation='x', mask_threshold=20, cut=13, colorbar=False)
 
