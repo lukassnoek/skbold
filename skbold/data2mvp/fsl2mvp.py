@@ -202,8 +202,6 @@ class Fsl2mvp(Mvp):
 
         mvp_data[np.isnan(mvp_data)] = 0
 
-        
-
         fn_header = op.join(mat_dir, '%s_header_run%i.pickle' % (self.sub_name,
                             n_converted+1))
 
