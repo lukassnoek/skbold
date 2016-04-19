@@ -155,13 +155,11 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
         self.base_pipes = []  # This will gather all roi-specific pipelines
 
         for i, mask in enumerate(self.masks):
-            print('Fitting mask %i / %i' % (i+1, len(self.masks)))
-
             X_roi = X[:, self.indices[:, i]]
 
             ii_pipes = []
             for ii in range(n_folds):
-                folds = StratifiedKFold(y, n_folds=n_iter, random_state=(ii+1))
+                folds = StratifiedKFold(y, n_folds=n_iter, shuffle=True, random_state=(ii+1))
                 base_pipe = deepcopy(self.base_pipe)
 
                 iii_pipes = []
@@ -277,8 +275,8 @@ if __name__ == '__main__':
         results = MvpResults(mvp, iterations=len(cv), resultsdir=resultsdir,
                              method='averaging')
         stackingclassifier = RoiStackingClassifier(mvp, mask_type=mask_dir,
-                                                   folds=10, proba=True,
-                                                   meta_fs=IncrementalFeatureCombiner(scores=None, cutoff=0.33),
+                                                   folds=100, proba=True,
+                                                   meta_fs=IncrementalFeatureCombiner(scores=None, cutoff=5),
                                                    meta_gs=None)
 
         for train_idx, test_idx in cv:
@@ -290,6 +288,6 @@ if __name__ == '__main__':
 
         results.compute_and_write(directory=resultsdir)
 
-    Parallel(n_jobs=1, verbose=5)(delayed(run_parallel)(sub, mask_dir, folds=10) for sub in sub_dirs)
+    Parallel(n_jobs=-1, verbose=5)(delayed(run_parallel)(sub, mask_dir, folds=12) for sub in sub_dirs)
     avresults = MvpAverageResults(op.join(op.dirname(sub_dirs[0]), 'test_stack2'))
     avresults.average()
