@@ -75,6 +75,7 @@ class DataHandler(object):
 
         nonzero = (mvp.X != 0).sum(axis=0) > 0
         mvp.X = mvp.X[:, nonzero]
+        mvp.update_mask(nonzero)
 
         # Update directory to random .feat dir
         mvp.directory = glob.glob(op.join(sub_dir, '*.feat'))[0]
