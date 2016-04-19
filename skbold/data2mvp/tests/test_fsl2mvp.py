@@ -17,9 +17,54 @@ def test_fsl2mvp():
                    'situation', 'situation', 'situation']
 
     mvp_dir = op.join(testdata_path, 'mvp_data')
+<<<<<<< HEAD
     if op.exists(mvp_dir):
         shutil.rmtree(mvp_dir)
+=======
+
+    if op.isdir(mvp_dir):
+        shutil.rmtree(mvp_dir)
+
+>>>>>>> lukas_develop
     for r in [run1, run2]:
+        fsl2mvp = Fsl2mvp(r, mask_threshold=0, beta2tstat=True,
+                          ref_space='mni', mask_path=None, remove_class=[])
+        fsl2mvp.glm2mvp()
+<<<<<<< HEAD
+        assert(fsl2mvp.class_labels == true_labels)
+        assert(op.isdir(mvp_dir))
+
+        data_file = op.join(mvp_dir, 'test_data_data_%s.hdf5' % op.basename(r).split('.')[0])
+        hdr_file = op.join(mvp_dir, 'test_data_header_%s.pickle' % op.basename(r).split('.')[0])
+
+        assert(op.exists(data_file))
+        assert(op.exists(hdr_file))
+=======
+        data_file = op.join(mvp_dir, 'test_data_data_%s.hdf5' %
+                            op.basename(r).split('.')[0])
+        hdr_file = op.join(mvp_dir, 'test_data_header_%s.pickle' %
+                           op.basename(r).split('.')[0])
+        assert (op.exists(data_file))
+        assert (op.exists(hdr_file))
+        shutil.rmtree(op.join(r, 'reg_standard'))
+>>>>>>> lukas_develop
+
+    fsl2mvp.merge_runs(iD='merged')
+    merged_data = op.join(mvp_dir, 'test_data_data_merged.hdf5')
+    merged_hdr = op.join(mvp_dir, 'test_data_header_merged.pickle')
+    assert (op.exists(merged_data))
+    assert (op.exists(merged_hdr))
+
+    h5f = h5py.File(merged_data, 'r')
+    data = h5f['data'][:]
+    h5f.close()
+    assert (data.shape[1] == 91 * 109 * 91)
+
+    shutil.rmtree(mvp_dir)
+
+    shutil.rmtree(mvp_dir)
+    for r in [run1, run2]:
+
         fsl2mvp = Fsl2mvp(r, mask_threshold=0, beta2tstat=True,
                           ref_space='epi', mask_path=None, remove_class=[])
         fsl2mvp.glm2mvp()
@@ -28,7 +73,6 @@ def test_fsl2mvp():
 
         data_file = op.join(mvp_dir, 'test_data_data_%s.hdf5' % op.basename(r).split('.')[0])
         hdr_file = op.join(mvp_dir, 'test_data_header_%s.pickle' % op.basename(r).split('.')[0])
-
         assert(op.exists(data_file))
         assert(op.exists(hdr_file))
 
@@ -44,30 +88,6 @@ def test_fsl2mvp():
 
     assert(data.shape[0] == len(true_labels) * 2)
 
-    shutil.rmtree(mvp_dir)
-    for r in [run1, run2]:
-
-        fsl2mvp = Fsl2mvp(r, mask_threshold=0, beta2tstat=True,
-                          ref_space='mni', mask_path=None, remove_class=[])
-        fsl2mvp.glm2mvp()
-        data_file = op.join(mvp_dir, 'test_data_data_%s.hdf5' % op.basename(r).split('.')[0])
-        hdr_file = op.join(mvp_dir, 'test_data_header_%s.pickle' % op.basename(r).split('.')[0])
-        assert(op.exists(data_file))
-        assert(op.exists(hdr_file))
-        shutil.rmtree(op.join(r, 'reg_standard'))
-
-    fsl2mvp.merge_runs(iD='merged')
-    merged_data = op.join(mvp_dir, 'test_data_data_merged.hdf5')
-    merged_hdr = op.join(mvp_dir, 'test_data_header_merged.pickle')
-    assert(op.exists(merged_data))
-    assert(op.exists(merged_hdr))
-
-    h5f = h5py.File(merged_data, 'r')
-    data = h5f['data'][:]
-    h5f.close()
-    assert(data.shape[1] == 91 * 109 * 91)
-
-    shutil.rmtree(mvp_dir)
 
 if __name__ == '__main__':
 

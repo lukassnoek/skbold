@@ -1,7 +1,14 @@
+<<<<<<< HEAD
 scipy>=0.17
 numpy>=1.10.4
 scikit-learn>=0.17
 pandas>=0.17
+=======
+scipy
+numpy
+sklearn
+pandas
+>>>>>>> lukas_develop
 nibabel
 matplotlib
 nipype
