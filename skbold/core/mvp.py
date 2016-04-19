@@ -112,7 +112,7 @@ class Mvp(object):
 
         tmp_idx = np.zeros(self.mask_shape)
         tmp_idx[self.mask_index.reshape(self.mask_shape)] += new_idx
-        self.mask_index = tmp_idx.astype(bool)
+        self.mask_index = tmp_idx.astype(bool).ravel()
 
     def merge_runs(self, cleanup=True, iD='merged'):
         """ Merges single-trial patterns from different runs.
