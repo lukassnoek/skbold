@@ -35,7 +35,7 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
 
     def __init__(self, mvp, preproc_pipe='default', base_clf=None, meta_clf=None,
                  mask_type='unilateral', proba=True, folds=10, meta_fs='univar',
-                 meta_gs=None):
+                 meta_gs=None, n_cores=1):
         """ Initializes RoiStackingClassifier object.
 
         Parameters
@@ -62,6 +62,7 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
         self.n_class = mvp.n_class
         self.mask_type = mask_type
         self.proba = proba
+        self.n_cores = n_cores
 
         """ STEP 1: PREPROCESSING """
         # If no preprocessing pipeline is defined, we'll assume that at least
@@ -126,9 +127,9 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
         self.test_roi_scores = None
 
     def _fit_parallel(self, X, y):
-        pass
 
-    def fit(self, X=None, y=None):
+
+    def fit(self, X, y):
         """ Fits RoiStackingTransformer.
 
         Parameters
@@ -139,6 +140,8 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
         y : List[str] or numpy ndarray[str]
             List or ndarray with floats corresponding to labels.
         """
+
+        Parallel(n_jobs=self.n_cores)(delayed(self._fit_parallel)(X, y, mask) for mask in self.masks)
 
         n_trials = X.shape[0]
         n_class = self.n_class
@@ -155,6 +158,7 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
         self.base_pipes = []  # This will gather all roi-specific pipelines
 
         for i, mask in enumerate(self.masks):
+            print('fitting mask %i / %i' % ((i + 1), n_masks))
             X_roi = X[:, self.indices[:, i]]
 
             ii_pipes = []
@@ -228,6 +232,7 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
         scores = np.zeros((n_iter, n_folds, n_masks, n_class))
 
         for i, mask_pipe in enumerate(self.base_pipes):
+
             X_roi = X[:, self.indices[:, i]]
             for ii, fold_pipe in enumerate(mask_pipe):
 
@@ -262,6 +267,7 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
 if __name__ == '__main__':
 
     from skbold.utils import DataHandler, MvpResults, MvpAverageResults
+    from sklearn.cross_validation import cross_val_predict
     from joblib import Parallel, delayed
 
     mask_dir = 'bilateral'
@@ -288,6 +294,6 @@ if __name__ == '__main__':
 
         results.compute_and_write(directory=resultsdir)
 
-    Parallel(n_jobs=-1, verbose=5)(delayed(run_parallel)(sub, mask_dir, folds=12) for sub in sub_dirs)
+    Parallel(n_jobs=1, verbose=5)(delayed(run_parallel)(sub, mask_dir, folds=12) for sub in sub_dirs)
     avresults = MvpAverageResults(op.join(op.dirname(sub_dirs[0]), 'test_stack2'))
     avresults.average()
