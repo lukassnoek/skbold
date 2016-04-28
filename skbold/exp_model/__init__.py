@@ -3,6 +3,8 @@
 # License: 3 clause BSD
 
 from .parse_presentation_logfile import parse_presentation_logfile
+from .parse_presentation_logfile import PresentationLogfileCrawler
 from .parse_psychopy_logfile import parse_psychopy_logfile
 
-__all__ = ['parse_presentation_logfile', 'parse_psychopy_logfile']
+__all__ = ['parse_presentation_logfile', 'parse_psychopy_logfile',
+           'PresentationLogfileCrawler']

@@ -7,6 +7,45 @@
 from __future__ import division, print_function
 
 
+class PresentationLogfileCrawler(object):
+    """ Parses a Presentation logfile.
+
+    Logfile crawler for Presentation (Neurobs) files.
+    """
+
+    def __init__(self, in_file, con_names, con_codes, con_design=None,
+                 pulsecode=30, write_bfsl=False, verbose=True):
+
+        if type(in_file) == str:
+            in_file = [in_file]
+
+        self.in_file = in_file
+        self.con_names = con_names
+        self.con_codes = con_codes
+
+        if con_design is None:
+            con_design = ['univar'] * len(con_names)
+
+        self.con_design = con_design
+        self.pulsecode = pulsecode
+        self.write_bfsl = write_bfsl
+        self.verbose = verbose
+        self.df = None
+
+    def clean(self):
+        print('This should be implemented for a specific, subclassed crawler!')
+        # set self.df to cleaned dataframe
+        pass
+
+    def parse(self):
+
+        if self.df is not None:
+            df = self.df
+        else:
+            # load logfile here
+            pass
+
+
 def parse_presentation_logfile(in_file, con_names, con_codes, con_design=None,
                                pulsecode=30, write_bfsl=False, verbose=True):
     """
