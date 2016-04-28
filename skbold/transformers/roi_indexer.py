@@ -60,7 +60,7 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
             if not op.isdir(epi_dir):
                 os.makedirs(epi_dir)
 
-            epi_name = op.basename(self.mask)
+            epi_name = op.basename(self.mask)[:-7]
             epi_exists = glob.glob(op.join(epi_dir, '*%s*.nii.gz' % epi_name))
             if epi_exists:
                 self.mask = epi_exists[0]
