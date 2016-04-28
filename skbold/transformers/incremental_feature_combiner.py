@@ -46,6 +46,8 @@ class IncrementalFeatureCombiner(BaseEstimator, TransformerMixin):
 
             if self.scores.ndim > 1:
                 mean_scores = self.scores.mean(axis=-1)
+            else:
+                mean_scores = self.scores
 
             best = np.argsort(mean_scores)[::-1][0:self.cutoff]
             self.idx_ = np.zeros(mean_scores.size, dtype=bool)
