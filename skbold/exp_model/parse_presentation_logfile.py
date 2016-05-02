@@ -103,13 +103,14 @@ class PresentationLogfileCrawler(object):
             if type(code) == str:
                 code = [code]
 
-            if len(code) > 1:
-                code = [[c] for c in code if type(c) != list]
+#            if len(code) > 1:
+#               code = [[c] for c in code if type(c) != list]
 
             if len(code) > 1:
                 # Code is list of possibilities
                 if all(isinstance(c, int) for c in code):
-                    idx = df['Code'].isin(range(code[0], code[1] + 1))
+                    idx = df['Code'].isin(code)
+
                 elif all(isinstance(c, str) for c in code):
                     idx = [x in code for x in df['Code'] if type(x) == str]
                     idx = np.array(idx)
@@ -257,7 +258,7 @@ def parse_presentation_logfile(in_file, con_names, con_codes, con_design=None,
             to_write = pd.DataFrame()
             if len(code) > 1:
                 if type(code[0]) == int:
-                    idx = df['Code'].isin(range(code[0], code[1]+1))
+                    idx = df['Code'].isin(code)
             elif len(code) == 1 and type(code[0]) == str:
                 idx = [code[0] in x if type(x) == str else False for x in df['Code']]
                 idx = np.array(idx)
@@ -309,14 +310,36 @@ def parse_presentation_logfile(in_file, con_names, con_codes, con_design=None,
 
     return subject_info_files
 
+
 if __name__ == '__main__':
 
-    test_file = '/home/lukas/piopfaces/piopfaces.log'
-    con_names = ['primary', 'secondary']
-    con_codes = [['C', 'A'], ['P', 'J']]
+    test_file = '/Users/steven/Documents/Syncthing/MscProjects/Decoding/dat/piop_logfile_samples/piopharriri/piopharriri.log'
+    con_names = ['control', 'emotion']
+    control = [x for x in range(50, 78)]
+    emotion = [x for x in range(10, 48)]
+#    control = [50, 77]
+#    emotion = [10, 47]
+    con_codes = [control, emotion]
+    print(con_codes)
     con_design = ['univar'] * len(con_codes)
-    con_duration = 6.0
+    con_duration = None
     plc = PresentationLogfileCrawler(in_file=test_file, con_names=con_names, con_codes=con_codes,
-                                     con_design=con_design, con_duration=con_duration, write_bfsl=True)
+                                     con_design=con_design, con_duration=con_duration, pulsecode=255, write_bfsl=True)
+    plc.parse()
 
-    print(plc.parse())
+    test_file = '/Users/steven/Documents/Syncthing/MscProjects/Decoding/dat/piop_logfile_samples/piopgstroop/piopgstroop.log'
+    ff = np.concatenate([np.arange(101, 113), np.arange(201, 213), np.arange(301, 313), np.arange(401, 413)], axis=0)
+    mm = np.concatenate([np.arange(513, 525), np.arange(613, 625), np.arange(713, 725), np.arange(813, 825)], axis=0)
+    fm = np.concatenate([np.arange(113, 125), np.arange(213, 225), np.arange(313, 325), np.arange(413, 424)], axis=0)
+    mf = np.concatenate([np.arange(501, 513), np.arange(601, 613), np.arange(701, 713), np.arange(801, 813)], axis=0)
+
+    congruent = np.concatenate([ff, mm])
+    incongruent = np.concatenate([fm, mf])
+    print(congruent)
+    con_names = ['congruent', 'incongruent']
+    con_codes = [congruent, incongruent]
+    con_design = ['univar'] * len(con_codes)
+    con_duration = None
+    plc = PresentationLogfileCrawler(in_file=test_file, con_names=con_names, con_codes=con_codes,
+                                     con_design=con_design, con_duration=con_duration, pulsecode=255, write_bfsl=True)
+    plc.parse()
