@@ -40,6 +40,21 @@ class PresentationLogfileCrawler(object):
 
         self.con_duration = con_duration
 
+        design_params = ['univar', 'multivar', None]
+        msg = 'Unknown design-parameter; please choose from: %r' % design_params
+        if isinstance(con_design, str):
+            if con_design not in design_params:
+                raise ValueError(msg)
+
+        elif isinstance(con_design, list):
+
+            if not all(d in design_params for d in con_design):
+                raise ValueError(msg)
+
+        else:
+            msg = 'Unknown type for con_design; please specify list or str.'
+            raise ValueError(msg)
+
         if con_design is None:
             con_design = ['univar'] * len(con_names)
 
@@ -216,34 +231,4 @@ def parse_presentation_logfile(in_file, con_names, con_codes, con_design=None,
 
 
 if __name__ == '__main__':
-
-    test_file = '/Users/steven/Documents/Syncthing/MscProjects/Decoding/dat/piop_logfile_samples/piopharriri/piopharriri.log'
-    con_names = ['control', 'emotion']
-    control = [x for x in range(50, 78)]
-    emotion = [x for x in range(10, 48)]
-#    control = [50, 77]
-#    emotion = [10, 47]
-    con_codes = [control, emotion]
-    print(con_codes)
-    con_design = ['univar'] * len(con_codes)
-    con_duration = None
-    plc = PresentationLogfileCrawler(in_file=test_file, con_names=con_names, con_codes=con_codes,
-                                     con_design=con_design, con_duration=con_duration, pulsecode=255, write_bfsl=True)
-    plc.parse()
-
-    test_file = '/Users/steven/Documents/Syncthing/MscProjects/Decoding/dat/piop_logfile_samples/piopgstroop/piopgstroop.log'
-    ff = np.concatenate([np.arange(101, 113), np.arange(201, 213), np.arange(301, 313), np.arange(401, 413)], axis=0)
-    mm = np.concatenate([np.arange(513, 525), np.arange(613, 625), np.arange(713, 725), np.arange(813, 825)], axis=0)
-    fm = np.concatenate([np.arange(113, 125), np.arange(213, 225), np.arange(313, 325), np.arange(413, 424)], axis=0)
-    mf = np.concatenate([np.arange(501, 513), np.arange(601, 613), np.arange(701, 713), np.arange(801, 813)], axis=0)
-
-    congruent = np.concatenate([ff, mm])
-    incongruent = np.concatenate([fm, mf])
-    print(congruent)
-    con_names = ['congruent', 'incongruent']
-    con_codes = [congruent, incongruent]
-    con_design = ['univar'] * len(con_codes)
-    con_duration = None
-    plc = PresentationLogfileCrawler(in_file=test_file, con_names=con_names, con_codes=con_codes,
-                                     con_design=con_design, con_duration=con_duration, pulsecode=255, write_bfsl=True)
-    plc.parse()
+    pass
