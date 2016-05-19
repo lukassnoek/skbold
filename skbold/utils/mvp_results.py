@@ -165,7 +165,7 @@ class MvpResults(object):
             self.accuracy[self.iter] = accuracy_score(y_true, y_pred)
 
             if self.verbose:
-                print('Accuracy: %f' % self.accuracy[iter])
+                print('Accuracy: %f' % self.accuracy[self.iter])
 
         elif self.method == 'voting':
 
