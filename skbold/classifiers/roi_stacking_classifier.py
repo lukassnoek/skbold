@@ -28,9 +28,9 @@ from sklearn.grid_search import GridSearchCV
 import warnings
 warnings.filterwarnings('ignore')  # hack to turn off UndefinedMetricWarning
 import cPickle
-from skbold import roidata_path as roi
+import skbold
 
-roi_dir = op.join(roi, 'harvard_oxford')
+roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs', 'harvard_oxford')
 
 
 class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
@@ -426,5 +426,5 @@ if __name__ == '__main__':
 
         results.compute_and_write(directory=resultsdir)
 
-avresults = MvpAverageResults(op.join(op.dirname(sub_dirs[0]), out_dir))
-avresults.average()
+    avresults = MvpAverageResults(op.join(op.dirname(sub_dirs[0]), out_dir))
+    avresults.average()

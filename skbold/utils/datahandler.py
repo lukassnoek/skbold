@@ -45,7 +45,7 @@ class DataHandler(object):
         self.shape = shape
         self.mvp = None
 
-    def load_separate_sub(self, sub_dir):
+    def load_separate_sub(self, sub_dir, remove_zeros=True):
         """ Loads the (meta)data from a single subject.
 
         Parameters
@@ -73,9 +73,10 @@ class DataHandler(object):
         mvp.X = h5f['data'][:]
         h5f.close()
 
-        nonzero = (mvp.X != 0).sum(axis=0) > 0
-        mvp.X = mvp.X[:, nonzero]
-        mvp.update_mask(nonzero)
+        if remove_zeros:
+            nonzero = (mvp.X != 0).sum(axis=0) > 0
+            mvp.X = mvp.X[:, nonzero]
+            mvp.update_mask(nonzero)
 
         # Update directory to random .feat dir
         mvp.directory = glob.glob(op.join(sub_dir, '*.feat'))[0]
