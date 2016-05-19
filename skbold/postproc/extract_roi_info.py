@@ -64,7 +64,7 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
         data[data < stat_threshold] = 0
 
     stat_name = op.basename(statfile).split('.')[0]
-    masks = glob(op.join(roi_dir, '*.nii.gz'))
+    masks = glob(op.join(roi_dir, roi_type, '*.nii.gz'))
 
     df_list = []
 
@@ -169,34 +169,34 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
 
         # Only loop over masks
         for mask in masks:
-                mask_name = op.basename(mask).split('.')[0].split('_')
+            mask_name = op.basename(mask).split('.')[0].split('_')
 
-                if roi_type == 'unilateral':
-                    mask_name[0] += '.'
-                mask_name = ' '.join(mask_name)
+            if roi_type == 'unilateral':
+                mask_name[0] += '.'
+            mask_name = ' '.join(mask_name)
 
-                roi_mask = nib.load(mask).get_data() > mask_threshold
-                sig_mask = data > 0
-                overlap = sig_mask.astype(int) + roi_mask.astype(int) == 2
-                k = overlap.sum()
-                X, Y, Z = 0, 0, 0
+            roi_mask = nib.load(mask).get_data() > mask_threshold
+            sig_mask = data > 0
+            overlap = sig_mask.astype(int) + roi_mask.astype(int) == 2
+            k = overlap.sum()
+            X, Y, Z = 0, 0, 0
 
-                if k > 0:
-                    mx = data[overlap].max()
-                    mean, std = data[overlap].mean(), data[overlap].std()
-                    tmp = np.zeros(data.shape)
-                    tmp[overlap] = data[overlap] == mx
-                    if save_indices:
-                        X = np.where(tmp == 1)[0]
-                        Y = np.where(tmp == 1)[1]
-                        Z = np.where(tmp == 1)[2]
-                else:
-                    mx, mean, std = 0, 0, 0
+            if k > 0:
+                mx = data[overlap].max()
+                mean, std = data[overlap].mean(), data[overlap].std()
+                tmp = np.zeros(data.shape)
+                tmp[overlap] = data[overlap] == mx
+                if save_indices:
+                    X = np.where(tmp == 1)[0]
+                    Y = np.where(tmp == 1)[1]
+                    Z = np.where(tmp == 1)[2]
+            else:
+                mx, mean, std = 0, 0, 0
 
-                to_append = {'roi': mask_name, 'k': k, 'max': mx, 'mean': mean,
-                             'sd': std, 'X': X, 'Y': Y, 'Z': Z}
-                to_append = pd.DataFrame(to_append, index=[0])
-                df_list.append(to_append)
+            to_append = {'roi': mask_name, 'k': k, 'max': mx, 'mean': mean,
+                         'sd': std, 'X': X, 'Y': Y, 'Z': Z}
+            to_append = pd.DataFrame(to_append, index=[0])
+            df_list.append(to_append)
 
         df = pd.concat(df_list)
         df = df[df.k != 0].sort_values(by='k', ascending=False)
@@ -209,8 +209,7 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
 
     return df
 
-"""
 if __name__ == '__main__':
 
-    extract_roi_info('/home/lukas/DecodingEmotions_searchlight/Other/HWW_002/searchlight_results_2cat.nii')
-"""
+    extract_roi_info('/media/lukas/data/DecodingEmotions/ANALYSES/Plots/modelweights.nii',
+                     per_cluster=False, roi_type='bilateral', stat_threshold=1.75)
