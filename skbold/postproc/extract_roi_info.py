@@ -208,8 +208,3 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
     df.to_csv(filename, index=False, header=True, sep='\t')
 
     return df
-
-if __name__ == '__main__':
-
-    extract_roi_info('/media/lukas/data/DecodingEmotions/ANALYSES/Plots/modelweights.nii',
-                     per_cluster=False, roi_type='bilateral', stat_threshold=1.75)
