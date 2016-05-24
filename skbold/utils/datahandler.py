@@ -27,6 +27,7 @@ class DataHandler(object):
     and are used as samples).
 
     """
+
     def __init__(self, identifier='', shape='2D'):
         """ Initializes DataHandler object.
 
@@ -114,10 +115,14 @@ class DataHandler(object):
         mvp : Mvp object (see scikit_bold.core module)
 
         """
+
         iD = self.identifier
         data_name = op.join(directory, '*', 'mvp_data', '*%s*.hdf5' % iD)
         hdr_name = op.join(directory, '*', 'mvp_data', '*%s*.pickle' % iD)
         data_paths, hdr_paths = glob.glob(data_name), glob.glob(hdr_name)
+
+        if not data_paths or not hdr_paths:
+            print('Did not find any data/hdr paths in %s!' % op.dirname(data_name))
 
         # Peek at first
         for i in range(len(data_paths)):
@@ -137,7 +142,9 @@ class DataHandler(object):
                 data = np.vstack((data, tmp['data'][:]))
                 tmp.close()
                 tmp = cPickle.load(open(hdr_paths[i], 'r'))
-                mvp.class_labels.extend(tmp.class_labels)
+
+                if mvp.class_labels is not None:
+                    mvp.class_labels.extend(tmp.class_labels)
 
         mvp.update_metadata()
         mvp.X = data
@@ -179,7 +186,7 @@ class DataHandler(object):
                 mvp = cPickle.load(open(hdr_paths[i]))
 
                 if mvp.ref_space == 'epi':
-                    msg = 'Cannot concatenate subs from different epi spaces!'
+                    msg = 'Cannot average subjects from different epi spaces!'
                     raise ValueError(msg)
 
                 # Pre-allocation
@@ -212,7 +219,7 @@ class DataHandler(object):
         grouping : list[str]
             Indication of a factorial 'grouping' over which trials should be
             averaged (see for more info the LabelFactorizer class in
-            scikit_bold.transformers.transformers)
+            skbold.transformers)
 
         Returns
         -------
@@ -254,7 +261,7 @@ class DataHandler(object):
 
                 # Pre-allocation
                 data = np.zeros((n_sub * mvp.n_class, data_tmp.shape[1]))
-                data[(i*mvp.n_class):((i+1)*mvp.n_class), :] = data_averaged
+                data[(i * mvp.n_class):((i + 1) * mvp.n_class), :] = data_averaged
 
             # This is executed in the rest of the loop
             else:
@@ -274,7 +281,7 @@ class DataHandler(object):
                     class_data = data_tmp[mvp.class_idx[ii], :]
                     data_averaged[ii, :] = np.mean(class_data, axis=0)
 
-                data[(i*mvp.n_class):((i+1)*mvp.n_class), :] = data_averaged
+                data[(i * mvp.n_class):((i + 1) * mvp.n_class), :] = data_averaged
 
         mvp.X = data
         mvp.sub_name = 'AveragedContrastSubjects'
@@ -286,6 +293,5 @@ class DataHandler(object):
         """ Writes a 4D nifti (x, y, z, trials) of an Mvp. """
 
         print("Creating 4D nifti for %s" % self.mvp.sub_name)
-        mvp = self.load()
-        img = nib.Nifti1Image(mvp.X, np.eye(4))
+        img = nib.Nifti1Image(self.mvp.X, np.eye(4))
         nib.save(img, op.join(self.mvp_dir, 'data_4d.nii.gz'))
