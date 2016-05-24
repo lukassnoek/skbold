@@ -22,15 +22,13 @@ from ..core import convert2mni, convert2epi
 
 
 class Fsl2mvp(Mvp):
-    """ Fsl2mvp (multiVoxel Pattern) class, a subclass of Mvp (scikit_bold.core)
+    """ Fsl2mvp (multiVoxel Pattern) class, a subclass of Mvp (skbold.core)
 
     Creates an object, specialized for storing fMRI data that will be analyzed
     using machine learning or RSA-like analyses, that stores both the data
     (X: an array of samples by features, y: numeric labels corresponding to
     X's classes/conditions) and the corresponding meta-data (e.g. nifti header,
     mask info, etc.).
-
-    To do: add feature to preserve order of presentation in trials!
     """
 
     def __init__(self, directory, mask_threshold=0, beta2tstat=True,
@@ -39,7 +37,7 @@ class Fsl2mvp(Mvp):
         super(Fsl2mvp, self).__init__(directory, mask_threshold, beta2tstat,
                                       ref_space, mask_path, remove_class)
 
-    def extract_class_labels(self):
+    def _extract_class_labels(self):
         """ Extracts class labels as strings from FSL first-level directory.
 
         This method reads in a design.con file, which is by default outputted
@@ -74,8 +72,7 @@ class Fsl2mvp(Mvp):
         remove_idx = np.zeros((len(class_labels), len(remove_class)))
 
         for i, name in enumerate(remove_class):
-            matches = [name in label for label in class_labels]
-            remove_idx[:, i] = np.array(matches)
+            remove_idx[:, i] = np.array([name in label for label in class_labels])
 
         self.remove_idx = np.where(remove_idx.sum(axis=1).astype(int))[0]
         _ = [class_labels.pop(idx) for idx in np.sort(self.remove_idx)[::-1]]
@@ -93,7 +90,7 @@ class Fsl2mvp(Mvp):
             else:
                 self.class_labels.append(c)
 
-    def glm2mvp(self):
+    def glm2mvp(self, extract_labels=True):
         """ Extract (meta)data from FSL first-level directory.
 
         This method extracts the class labels (y) and corresponding data
@@ -133,9 +130,11 @@ class Fsl2mvp(Mvp):
             os.makedirs(mat_dir)
 
         # Extract class vector (class_labels)
-        self.extract_class_labels()
-        self.y = LabelEncoder().fit_transform(self.class_labels)
-        self.update_metadata()
+        if extract_labels:
+            self._extract_class_labels()
+            self.y = LabelEncoder().fit_transform(self.class_labels)
+            self.update_metadata()
+
         print('Processing %s (run %i / %i)...' % (sub_name, n_converted+1,
               n_feat), end='')
 
@@ -157,6 +156,7 @@ class Fsl2mvp(Mvp):
         varcopes = glob.glob(op.join(stat_dir, 'varcope*.nii.gz'))
         copes, varcopes = sort_numbered_list(copes), sort_numbered_list(varcopes)
 
+        # Transform (var)copes if ref_space is 'mni' but files are in 'epi'.
         if transform2mni:
             copes.extend(varcopes)
             out_dir = op.join(sub_path, 'reg_standard')
@@ -203,7 +203,7 @@ class Fsl2mvp(Mvp):
         mvp_data[np.isnan(mvp_data)] = 0
 
         fn_header = op.join(mat_dir, '%s_header_run%i.pickle' % (self.sub_name,
-                            n_converted+1))
+                            n_converted + 1))
 
         with open(fn_header, 'wb') as handle:
             cPickle.dump(self, handle)
