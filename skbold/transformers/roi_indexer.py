@@ -50,7 +50,7 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
         # Check if epi-mask already exists:
         if self.ref_space == 'epi':
 
-            if self.mask[0:2] in ['L_', 'R_']:
+            if op.basename(self.mask)[0:2] in ['L_', 'R_']:
                 laterality = 'unilateral'
             else:
                 laterality = 'bilateral'
