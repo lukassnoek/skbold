@@ -28,6 +28,7 @@ def check_mc_output(directory, sub_id='sub', cutoff_spike=1,
         Dataframe with mc summary statistics
     """
 
+    print(op.join(directory, '%s*' % sub_id))
     sub_dirs = glob.glob(op.join(directory, '%s*' % sub_id))
     df_list = []
 
@@ -141,4 +142,3 @@ def check_nifti_header(directory, sub_id='sub', task_id='func',
     output_dir = output_dir if output_dir is not None else directory
     out_name = op.join(output_dir, 'check_MR_params.tsv')
     df.to_csv(out_name, sep='\t', index=False)
-

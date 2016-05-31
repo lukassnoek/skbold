@@ -1,7 +1,7 @@
 #!/usr/bin/python
 """ check_mc_output - command line tool.
 
-Checks mc-output from FSL motion correction.
+Checks mc-output from FSL motion co rrection.
 
 """
 
@@ -10,7 +10,7 @@ import glob
 import os
 import os.path as op
 import argparse
-from skbold.quality control import check_mc_output
+from skbold.quality_control import check_mc_output
 
 parser = argparse.ArgumentParser(description='This is a command line tool to check fsl mc-output')
 
@@ -25,7 +25,7 @@ if args.directory is None:
 	args.directory = os.getcwd()
 
 if args.sub_id is None:
-	args.id = 'sub'
+	args.sub_id = 'sub'
 
 if args.cutoff is None:
 	args.cutoff = 1
