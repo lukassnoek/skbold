@@ -30,6 +30,6 @@ setup(
     platforms='Linux',
     packages=find_packages(),
     install_requires=requirements,
-    scripts=['bin/glm2mvp'],
+    scripts=['bin/glm2mvp', 'bin/check_mc_output'],
     include_package_data=True,
     zip_safe=False)
