@@ -53,19 +53,22 @@ def check_mc_output(directory, sub_id='sub', cutoff_spike=1,
                 task_name = task_name.split(split)[-1]
 
             X = np.c_[np.ones(disp.size), np.arange(disp.size)]
-            slope = np.linalg.lstsq(X, disp)[0]
+            drift = np.linalg.lstsq(X, disp)[0] # only slope
 
             df_list.append({'Subject': sub_name, 'Task': task_name,
-                            'disp_diff': disp_diff, 'disp_std': disp_std,
-                            'slope': slope[1]*disp.size, 'max_spike': max_spike,
-                            'nr_spikes': nr_spikes})
+                            'Max-min': disp_diff, 'Stdev': disp_std,
+                            'Max. spike': max_spike, 'Nr. spikes': nr_spikes,
+                            'Drift': drift[1]})
 
     df = pd.DataFrame(df_list).sort_values(by='Subject')
+    df.set_index(['Subject', 'Task'], inplace=True)
+    df['Rec. conservative'] = np.all(np.c_[df['Max-min'] < 1.5, df['Nr. spikes'] == 0], axis=1).astype(int)
+    df['Rec. liberal'] = (df['Max-min'] < 1.5).astype(int)
 
     print(df)
     output_dir = output_dir if output_dir is not None else directory
     out_name = op.join(output_dir, 'check_mc_stats.tsv')
-    df.to_csv(out_name, sep='\t', index=False)
+    df.to_csv(out_name, sep='\t', index=True)
 
     return df
 
@@ -144,8 +147,3 @@ def check_nifti_header(directory, sub_id='sub', task_id='func',
     output_dir = output_dir if output_dir is not None else directory
     out_name = op.join(output_dir, 'check_MR_params.tsv')
     df.to_csv(out_name, sep='\t', index=False)
-
-if __name__ == '__main__':
-
-    d = '/media/lukas/data/DecodingEmotions/DATA/DATA_PREPROC/Validation_set'
-    check_mc_output(d, split='')
