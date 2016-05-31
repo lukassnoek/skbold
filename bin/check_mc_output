@@ -18,7 +18,7 @@ parser.add_argument('-d', '--directory', help='Project directory to check.', req
 parser.add_argument('-s', '--sub_id', help='Subject-identifier.', required=False)
 parser.add_argument('-o', '--outdir', help='Output directory.', required=False)
 parser.add_argument('-c', '--cutoff', help='Cutoff for spikes.', required=False)
-
+parser.add_argument('-split', '--split', help='Split for task name.', required=False)
 args = parser.parse_args()
 
 if args.directory is None:
@@ -34,4 +34,4 @@ if args.outdir is None:
 	args.outdir = args.directory
 
 df = check_mc_output(directory=args.directory, sub_id=args.sub_id,
-                     cutoff_spike=args.cutoff, output_dir=args.outdir)
+                     cutoff_spike=args.cutoff, output_dir=args.outdir, split=args.split)

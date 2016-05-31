@@ -8,7 +8,7 @@ import glob
 
 
 def check_mc_output(directory, sub_id='sub', cutoff_spike=1,
-                    output_dir=None):
+                    output_dir=None, split=None):
     """ Check motion-correction output and generate summary statistics.
 
     Parameters
@@ -49,6 +49,8 @@ def check_mc_output(directory, sub_id='sub', cutoff_spike=1,
             nr_spikes = np.sum(disp_spikes > cutoff_spike)
 
             task_name = op.basename(op.dirname(task_dir))
+            if split:
+                task_name = task_name.split(split)[-1]
 
             X = np.c_[np.ones(disp.size), np.arange(disp.size)]
             slope = np.linalg.lstsq(X, disp)[0]
@@ -142,3 +144,8 @@ def check_nifti_header(directory, sub_id='sub', task_id='func',
     output_dir = output_dir if output_dir is not None else directory
     out_name = op.join(output_dir, 'check_MR_params.tsv')
     df.to_csv(out_name, sep='\t', index=False)
+
+if __name__ == '__main__':
+
+    d = '/media/lukas/data/DecodingEmotions/DATA/DATA_PREPROC/Validation_set'
+    check_mc_output(d, split='')
