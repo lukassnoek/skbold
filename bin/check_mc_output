@@ -1,0 +1,37 @@
+#!/usr/bin/python
+""" check_mc_output - command line tool.
+
+Checks mc-output from FSL motion correction.
+
+"""
+
+from __future__ import print_function
+import glob
+import os
+import os.path as op
+import argparse
+from skbold.quality control import check_mc_output
+
+parser = argparse.ArgumentParser(description='This is a command line tool to check fsl mc-output')
+
+parser.add_argument('-d', '--directory', help='Project directory to check.', required=False)
+parser.add_argument('-s', '--sub_id', help='Subject-identifier.', required=False)
+parser.add_argument('-o', '--outdir', help='Output directory.', required=False)
+parser.add_argument('-c', '--cutoff', help='Cutoff for spikes.', required=False)
+
+args = parser.parse_args()
+
+if args.directory is None:
+	args.directory = os.getcwd()
+
+if args.sub_id is None:
+	args.id = 'sub'
+
+if args.cutoff is None:
+	args.cutoff = 1
+
+if args.outdir is None:
+	args.outdir = args.directory
+
+df = check_mc_output(directory=args.directory, sub_id=args.sub_id,
+                     cutoff_spike=args.cutoff, output_dir=args.outdir)
