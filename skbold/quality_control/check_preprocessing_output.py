@@ -6,6 +6,67 @@ import os
 import os.path as op
 import glob
 
+
+def check_mc_output(directory, sub_id='sub', cutoff_spike=1,
+                    output_dir=None):
+    """ Check motion-correction output and generate summary statistics.
+
+    Parameters
+    ----------
+    directory : str
+        Project-root containing subject-directories
+    sub_id : str
+        Subject-identifier (prefix)
+    cutoff_spike : int
+        Minimal movement from one TR to another to count as a 'spike'.
+    output_dir : str
+        Directory to save output to.
+
+    Returns
+    -------
+    df : pandas dataframe
+        Dataframe with mc summary statistics
+    """
+
+    sub_dirs = glob.glob(op.join(directory, '%s*' % sub_id))
+    df_list = []
+
+    for sub_dir in sub_dirs:
+
+        sub_name = op.basename(sub_dir)
+        task_dirs = glob.glob(op.join(sub_dir, '*', 'mc'))
+
+        for task_dir in task_dirs:
+
+            disp_file = glob.glob(op.join(task_dir, '*mcf_abs.rms'))[0]
+            disp = np.loadtxt(disp_file)
+
+            disp_std = disp.std()
+            disp_diff = disp.max() - disp.min()
+            disp_spikes = pd.Series(disp).diff()
+            max_spike = disp_spikes.max()
+            nr_spikes = np.sum(disp_spikes > cutoff_spike)
+
+            task_name = op.basename(op.dirname(task_dir))
+
+            X = np.c_[np.ones(disp.size), np.arange(disp.size)]
+            slope = np.linalg.lstsq(X, disp)[0]
+
+            df_list.append({'Subject': sub_name, 'Task': task_name,
+                            'disp_diff': disp_diff, 'disp_std': disp_std,
+                            'slope': slope[1]*disp.size, 'max_spike': max_spike,
+                            'nr_spikes': nr_spikes})
+
+    df = pd.DataFrame(df_list).sort_values(by='Subject')
+
+    print(df)
+    output_dir = output_dir if output_dir is not None else directory
+    out_name = op.join(output_dir, 'check_mc_stats.tsv')
+    df.to_csv(out_name, sep='\t', index=False)
+
+    return df
+
+
 def check_nifti_header(directory, sub_id='sub', task_id='func',
                        func_id='mcst_sg', calc_zeros=False,
                        output_dir=None):
@@ -34,8 +95,6 @@ def check_nifti_header(directory, sub_id='sub', task_id='func',
 
     sub_dirs = glob.glob(op.join(directory, '%s*' % sub_id))
 
-    df = pd.DataFrame(columns=['Subject', 'Task', 'TR', 'zero_voxels',
-                               'n_slices', 'dim1', 'dim2', 'n_dynamics'])
     df_list = []
     for sub_dir in sub_dirs:
 
@@ -82,3 +141,4 @@ def check_nifti_header(directory, sub_id='sub', task_id='func',
     output_dir = output_dir if output_dir is not None else directory
     out_name = op.join(output_dir, 'check_MR_params.tsv')
     df.to_csv(out_name, sep='\t', index=False)
+
