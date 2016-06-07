@@ -5,7 +5,7 @@
 import os.path as op
 import h5py
 import shutil
-from skbold.data2mvp import Fsl2mvp
+from skbold.data2mvp.fsl2mvp import Fsl2mvpWithin
 from skbold import testdata_path
 
 def test_fsl2mvp():
@@ -23,7 +23,7 @@ def test_fsl2mvp():
         shutil.rmtree(mvp_dir)
 
     for r in [run1, run2]:
-        fsl2mvp = Fsl2mvp(r, mask_threshold=0, beta2tstat=True,
+        fsl2mvp = Fsl2mvpWithin(r, mask_threshold=0, beta2tstat=True,
                           ref_space='mni', mask_path=None, remove_class=[])
         fsl2mvp.glm2mvp()
         data_file = op.join(mvp_dir, 'test_data_data_%s.hdf5' %
@@ -48,7 +48,7 @@ def test_fsl2mvp():
     shutil.rmtree(mvp_dir)
 
     for r in [run1, run2]:
-        fsl2mvp = Fsl2mvp(r, mask_threshold=0, beta2tstat=True,
+        fsl2mvp = Fsl2mvpWithin(r, mask_threshold=0, beta2tstat=True,
                           ref_space='epi', mask_path=None, remove_class=[])
         fsl2mvp.glm2mvp()
         assert(fsl2mvp.class_labels == true_labels)

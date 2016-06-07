@@ -79,7 +79,6 @@ class Fsl2mvp(Mvp):
 
         # Here, numeric extensions of contrast names (e.g. 'positive_003') are
         # removed
-
         self.class_labels = []
         for c in class_labels:
             parts = c.split('_')
