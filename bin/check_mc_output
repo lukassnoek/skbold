@@ -29,6 +29,8 @@ if args.sub_id is None:
 
 if args.cutoff is None:
 	args.cutoff = 1
+else:
+    args.cutoff = int(args.cutoff)
 
 if args.outdir is None:
 	args.outdir = args.directory
