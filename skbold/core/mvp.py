@@ -27,7 +27,7 @@ class Mvp(object):
     """
 
     def __init__(self, directory, mask_threshold=0, beta2tstat=True,
-                 ref_space='mni', mask_path=None, remove_cope=[],
+                 ref_space='mni', mask_path=None, remove_class=[],
                  cleanup=True):
 
         """ Initializes a (bare-bones) Mvp object.
@@ -71,13 +71,20 @@ class Mvp(object):
         else:
             self.mask_name = 'WholeBrain'
 
-        self.cope_labels = None
-        self.n_cope = None
-        self.cope_names = None
-        self.remove_cope = remove_cope
-
         self.mask_index = None
         self.mask_shape = None
+
+        self.class_labels = None
+        self.n_class = None
+        self.class_names = None
+        self.remove_class = remove_class
+        self.remove_idx = None
+
+        self.n_trials = None
+        self.n_features = None
+        self.n_inst = None
+        self.class_idx = None
+        self.trial_idx = None
 
         self.nifti_header = None
         self.affine = None
@@ -87,14 +94,14 @@ class Mvp(object):
 
     def update_metadata(self):
         # Maybe change this to work with @property and setters
-        cl = self.cope_labels
+        cl = self.class_labels
         self.y = LabelEncoder().fit_transform(cl)
         self.n_trials = len(cl)
-        self.cope_names = np.unique(cl)
-        self.n_cope = len(self.cope_names)
+        self.class_names = np.unique(cl)
+        self.n_class = len(self.class_names)
         self.n_inst = [np.sum(cls == cl) for cls in cl]
-        self.class_idx = [cl == cls for cls in self.cope_names]
-        self.trial_idx = [np.where(cl == cls)[0] for cls in self.cope_names]
+        self.class_idx = [cl == cls for cls in self.class_names]
+        self.trial_idx = [np.where(cl == cls)[0] for cls in self.class_names]
 
     def update_mask(self, new_idx):
 

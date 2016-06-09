@@ -32,14 +32,15 @@ class Fsl2mvpBetween(Fsl2mvp):
     """
 
     def __init__(self, directory, mask_threshold=0, beta2tstat=True,
-                 ref_space='mni', mask_path=None, remove_cope=[], invert_selection=False):
+                 ref_space='mni', mask_path=None, remove_class=[], invert_selection=False):
 
         super(Fsl2mvpBetween, self).__init__(directory, mask_threshold, beta2tstat,
-                                      ref_space, mask_path, remove_cope, invert_selection)
+                                      ref_space, mask_path, remove_class, invert_selection)
 
-        self.n_runs = None
-        self.cope_idx = None
-        self.run_idx = None
+    def _add_X_metadata(self):
+
+        self.X_run_name
+        self.X_run_label
 
     def glm2mvp(self, extract_labels=True):
         """ Extract (meta)data from FSL first-level directory.
@@ -78,8 +79,8 @@ class Fsl2mvpBetween(Fsl2mvp):
         elif not op.exists(mat_dir):
             os.makedirs(mat_dir)
 
-        # Extract cope vector (cope_labels)
-        self._extract_labels()
+        # Extract class vector (class_labels)
+        self._extract_class_labels()
         self.y = np.random.normal(100, 15, 1)       ## later: update to intelligence score
 
         print('Processing %s (run %i / %i)...' % (sub_name, n_converted + 1,
@@ -118,6 +119,15 @@ class Fsl2mvpBetween(Fsl2mvp):
         varcopes = sort_numbered_list(varcopes)
         _ = [varcopes.pop(ix) for ix in sorted(self.remove_idx, reverse=True)]
 
+        # if design_type=='within':
+        #     n_stat = len(copes)
+        #     if not n_stat == len(self.class_labels):
+        #         msg = 'The number of trials (%i) do not match the number of ' \
+        #               'class labels (%i)' % (n_stat, len(self.class_labels))
+        #         raise ValueError(msg)
+        # elif design_type=='between':
+        #     n_stat = 1
+        #
         # We need to 'peek' at the first cope to know the dimensions
         if self.mask_path is None:
             tmp = nib.load(copes[0]).get_data()
@@ -125,11 +135,11 @@ class Fsl2mvpBetween(Fsl2mvp):
             self.mask_index = np.ones(tmp.shape, dtype=bool).ravel()
             self.mask_shape = tmp.shape
 
-        columns = self.n_features * len(self.cope_labels)
+        columns = self.n_features * len(self.class_labels)
 
         # Pre-allocate
         mvp_data = np.zeros((1, columns))
-        mvp_meta = {} #empty dictionary, will contain first and last index of contrasts
+        mvp_meta = {} #empty dictionary
 
         # Load in data (COPEs)
         for i, (cope, varcope) in enumerate(zip(copes, varcopes)):
@@ -142,9 +152,8 @@ class Fsl2mvpBetween(Fsl2mvp):
                 copedat = np.divide(copedat, var_sq)
 
             mvp_data[0, (i * self.n_features):(i*self.n_features + self.n_features)] = copedat
-            mvp_meta[self.cope_labels[i]] = np.array([(i * self.n_features), (i*self.n_features + self.n_features)])
+            mvp_meta[self.class_labels[i]] = np.array([(i * self.n_features), (i*self.n_features + self.n_features)])
 
-        self.X_dict = mvp_meta
         self.nifti_header = cope_img.header
         self.affine = cope_img.affine
 
@@ -153,11 +162,11 @@ class Fsl2mvpBetween(Fsl2mvp):
         fn_header = op.join(mat_dir, '%s_header_run%i.pickle' % (self.sub_name,
                             n_converted+1))
 
-
         with open(fn_header, 'wb') as handle:
             cPickle.dump(self, handle)
 
         self.X = mvp_data
+        self.X_dict = mvp_meta
 
         fn_data = op.join(mat_dir, '%s_data_run%i.hdf5' % (self.sub_name,
                           n_converted+1))
@@ -167,13 +176,6 @@ class Fsl2mvpBetween(Fsl2mvp):
         h5f.close()
 
         print(' done.')
-
-    def _update_metadata(self):
-        # Maybe change this to work with @property and setters
-        contr = self.cope_labels
-        self.cope_names = np.unique(contr)
-        self.n_cope= len(self.cope_names)
-        self.cope_idx = [contr == contrast for contrast in self.cope_names]
 
     def merge_runs(self, cleanup=True, iD='merged'):
         """ Merges single-trial patterns from different runs.
@@ -210,30 +212,26 @@ class Fsl2mvpBetween(Fsl2mvp):
                     h5f.close()
                     hdr = cPickle.load(open(run_headers[i]))
                 else:
-                    # Concatenate data to first run and extend cope_labels
+                    # Concatenate data to first run and extend class_labels
                     tmp = h5py.File(run_data[i])
                     data = np.concatenate((data, tmp['data'][:]), axis=1)
                     tmp.close()
 
                     tmp = cPickle.load(open(run_headers[i], 'r'))
-                    hdr.cope_labels.extend(tmp.cope_labels)
+                    hdr.class_labels.extend(tmp.class_labels)
+                    print(tmp.class_labels)
 
-                    # update hdr.X_dict
-                    for key, value in tmp.X_dict.iteritems():
-                        tmp.X_dict[key] = value + tmp.n_features * len(hdr.X_dict)
+                    for ii in range(len(tmp.class_labels)):
+                        print(tmp.class_labels[ii])
+#                        hdr.X_meta[tmp.class_labels[ii]] =+ hdr.n_
 
-                    hdr.X_dict.update(tmp.X_dict)
-
-            hdr._update_metadata()
-
-#            hdr.y = LabelEncoder().fit_transform(hdr.cope_labels)
-
+            hdr.update_metadata()
+#            hdr.y = LabelEncoder().fit_transform(hdr.class_labels)
 
             fn_header = op.join(mat_dir, '%s_header_%s.pickle' %
                                 (self.sub_name, iD))
             fn_data = op.join(mat_dir, '%s_data_%s.hdf5' %
                               (self.sub_name, iD))
-
 
             with open(fn_header, 'wb') as handle:
                 cPickle.dump(hdr, handle)
@@ -265,8 +263,8 @@ if __name__ == '__main__':
 
     gm_mask = os.path.join(op.dirname(op.dirname(skbold.utils.__file__)), 'data', 'ROIs', 'GrayMatter.nii.gz')
 
-    contr = {'faces': ['emo-neu'],
-             'wm': ['act-pas', 'act'],
+    contr = {'faces': ['emo-neu', 'pos-neu'],
+             'wm': ['act-pas'],
              'harriri': ['emo-control'],
              'anticipatie': ['mismatch-match'],
              'gstroop': ['con-incon']}
@@ -279,16 +277,16 @@ if __name__ == '__main__':
         for task in taskdirs:
             taskname = os.path.basename(os.path.normpath(task)).split('piop')[1][:-5]
             fsl2mvpb = Fsl2mvpBetween(directory=task, mask_threshold=0, beta2tstat=True,
-                                  ref_space='mni', mask_path=gm_mask, remove_cope=contr[taskname], invert_selection=True)
+                                  ref_space='mni', mask_path=gm_mask, remove_class=contr[taskname], invert_selection=True)
             fsl2mvpb.glm2mvp()
         #            l = l.append(fsl2mvpb.X.shape[1])
 #            print(fsl2mvpb.X.shape[1])
         #            print(fsl2mvpb.sub_name)
 #            print(fsl2mvpb.y)
-            print(fsl2mvpb.cope_labels)
-            print(fsl2mvpb.cope_idx)
-            print(fsl2mvpb.cope_names)
-            print(fsl2mvpb.X_dict)
+#            print(fsl2mvpb.class_labels)
+#            print(fsl2mvpb.class_idx)
+#            print(fsl2mvpb.class_names)
+#            print(fsl2mvpb.X_dict)
         #            print(fsl2mvpb.__class__.__name__)
 
         fsl2mvpb.merge_runs()

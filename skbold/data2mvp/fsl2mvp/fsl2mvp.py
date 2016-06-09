@@ -65,44 +65,43 @@ class Fsl2mvp(Mvp):
         df = pd.read_csv(design_file, delimiter='\t', header=None,
                          skipfooter=n_lines-contrasts, engine='python')
 
-        cope_labels = list(df[1])
-        return cope_labels
+        class_labels = list(df[1])
+        return class_labels
 
-    def _extract_labels(self):
+    def _extract_class_labels(self):
         """ Extracts class labels as strings from FSL first-level directory.
 
         This method reads in a design.con file, which is by default outputted
-        in an FSL first-level directory, and sets self.cope_labels to a list
+        in an FSL first-level directory, and sets self.class_labels to a list
         with labels, and in addition sets self.remove_idx with indices which
         trials (contrasts) were removed as indicated by the remove_class
         attribute from the Fsl2mvp object.
         """
 
-        remove_labels = self.remove_cope
-
-        labels = self._read_design()
+        remove_class = self.remove_class
+        class_labels = self._read_design()
 
         # Remove to-be-ignored contrasts (e.g. cues)
-        remove_idx = np.zeros((len(labels), len(remove_labels)))
+        remove_idx = np.zeros((len(class_labels), len(remove_class)))
 
-        for i, name in enumerate(remove_labels):
-            remove_idx[:, i] = np.array([name in label for label in labels])
+        for i, name in enumerate(remove_class):
+            remove_idx[:, i] = np.array([name in label for label in class_labels])
 
         self.remove_idx = np.where(remove_idx.sum(axis=1).astype(int))[0]
 
         if self.invert_selection:
-            self.remove_idx = [x for x in np.arange(len(labels)) if not x in self.remove_idx]
+            self.remove_idx = [x for x in np.arange(len(class_labels)) if not x in self.remove_idx]
 
-        _ = [labels.pop(idx) for idx in np.sort(self.remove_idx)[::-1]]
+        _ = [class_labels.pop(idx) for idx in np.sort(self.remove_idx)[::-1]]
 
         # Here, numeric extensions of contrast names (e.g. 'positive_003') are
         # removed
-        self.cope_labels = []
-        for c in labels:
+        self.class_labels = []
+        for c in class_labels:
             parts = c.split('_')
             parts = [x.strip() for x in parts]
             if parts[-1].isdigit():
                 label = '_'.join(parts[:-1])
-                self.cope_labels.append(label)
+                self.class_labels.append(label)
             else:
-                self.cope_labels.append(c)
+                self.class_labels.append(c)

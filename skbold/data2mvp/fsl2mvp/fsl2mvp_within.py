@@ -32,18 +32,10 @@ class Fsl2mvpWithin(Fsl2mvp):
     """
 
     def __init__(self, directory, mask_threshold=0, beta2tstat=True,
-                 ref_space='epi', mask_path=None, remove_cope=[], invert_selection=False):
+                 ref_space='epi', mask_path=None, remove_class=[], invert_selection=False):
 
         super(Fsl2mvpWithin, self).__init__(directory, mask_threshold, beta2tstat,
-                                            ref_space, mask_path, remove_cope, invert_selection)
-
-
-        self.n_trials = None
-        self.n_features = None
-        self.n_inst = None
-        self.class_idx = None
-        self.trial_idx = None
-
+                                      ref_space, mask_path, remove_class, invert_selection)
 
     def glm2mvp(self, extract_labels=True):
         """ Extract (meta)data from FSL first-level directory.
@@ -83,10 +75,10 @@ class Fsl2mvpWithin(Fsl2mvp):
         elif not op.exists(mat_dir):
             os.makedirs(mat_dir)
 
-        # Extract class vector (cope_labels)
+        # Extract class vector (class_labels)
         if extract_labels:
-            self._extract_labels()
-            self.y = LabelEncoder().fit_transform(self.cope_labels)
+            self._extract_class_labels()
+            self.y = LabelEncoder().fit_transform(self.class_labels)
             self.update_metadata()
 
         print('Processing %s (run %i / %i)...' % (sub_name, n_converted+1,
@@ -126,9 +118,9 @@ class Fsl2mvpWithin(Fsl2mvp):
         _ = [varcopes.pop(ix) for ix in sorted(self.remove_idx, reverse=True)]
 
         n_stat = len(copes)
-        if not n_stat == len(self.cope_labels):
+        if not n_stat == len(self.class_labels):
             msg = 'The number of trials (%i) do not match the number of ' \
-                  'class labels (%i)' % (n_stat, len(self.cope_labels))
+                  'class labels (%i)' % (n_stat, len(self.class_labels))
             raise ValueError(msg)
 
         # We need to 'peek' at the first cope to know the dimensions
@@ -207,15 +199,15 @@ class Fsl2mvpWithin(Fsl2mvp):
                     h5f.close()
                     hdr = cPickle.load(open(run_headers[i]))
                 else:
-                    # Concatenate data to first run and extend cope_labels
+                    # Concatenate data to first run and extend class_labels
                     tmp = h5py.File(run_data[i])
                     data = np.concatenate((data, tmp['data'][:]), axis=0)
                     tmp.close()
                     tmp = cPickle.load(open(run_headers[i], 'r'))
-                    hdr.cope_labels.extend(tmp.cope_labels)
+                    hdr.class_labels.extend(tmp.class_labels)
 
             hdr.update_metadata()
-            hdr.y = LabelEncoder().fit_transform(hdr.cope_labels)
+            hdr.y = LabelEncoder().fit_transform(hdr.class_labels)
 
             fn_header = op.join(mat_dir, '%s_header_%s.pickle' %
                                 (self.sub_name, iD))

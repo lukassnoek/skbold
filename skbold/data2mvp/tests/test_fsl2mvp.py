@@ -24,7 +24,7 @@ def test_fsl2mvp_within():
 
     for r in [run1, run2]:
         fsl2mvp = Fsl2mvpWithin(r, mask_threshold=0, beta2tstat=True,
-                          ref_space='mni', mask_path=None, remove_cope=[])
+                          ref_space='mni', mask_path=None, remove_class=[])
         fsl2mvp.glm2mvp()
         data_file = op.join(mvp_dir, 'test_data_data_%s.hdf5' %
                             op.basename(r).split('.')[0])
@@ -49,9 +49,9 @@ def test_fsl2mvp_within():
 
     for r in [run1, run2]:
         fsl2mvp = Fsl2mvpWithin(r, mask_threshold=0, beta2tstat=True,
-                          ref_space='epi', mask_path=None, remove_cope=[])
+                          ref_space='epi', mask_path=None, remove_class=[])
         fsl2mvp.glm2mvp()
-        assert(fsl2mvp.cope_labels == true_labels)
+        assert(fsl2mvp.class_labels == true_labels)
         assert(op.isdir(mvp_dir))
 
         data_file = op.join(mvp_dir, 'test_data_data_%s.hdf5' % op.basename(r).split('.')[0])
