@@ -32,10 +32,18 @@ class Fsl2mvpWithin(Fsl2mvp):
     """
 
     def __init__(self, directory, mask_threshold=0, beta2tstat=True,
-                 ref_space='epi', mask_path=None, remove_class=[]):
+                 ref_space='epi', mask_path=None, remove_cope=[], invert_selection=False):
 
         super(Fsl2mvpWithin, self).__init__(directory, mask_threshold, beta2tstat,
-                                      ref_space, mask_path, remove_class)
+                                            ref_space, mask_path, remove_cope, invert_selection)
+
+
+        self.n_trials = None
+        self.n_features = None
+        self.n_inst = None
+        self.class_idx = None
+        self.trial_idx = None
+
 
     def glm2mvp(self, extract_labels=True):
         """ Extract (meta)data from FSL first-level directory.
@@ -47,7 +55,6 @@ class Fsl2mvpWithin(Fsl2mvp):
         """
         sub_path = self.directory
         sub_name = self.sub_name
-        run_name = self.run_name
 
         reg_dir = op.join(sub_path, 'reg')
 
@@ -76,10 +83,10 @@ class Fsl2mvpWithin(Fsl2mvp):
         elif not op.exists(mat_dir):
             os.makedirs(mat_dir)
 
-        # Extract class vector (class_labels)
+        # Extract class vector (cope_labels)
         if extract_labels:
-            self._extract_class_labels()
-            self.y = LabelEncoder().fit_transform(self.class_labels)
+            self._extract_labels()
+            self.y = LabelEncoder().fit_transform(self.cope_labels)
             self.update_metadata()
 
         print('Processing %s (run %i / %i)...' % (sub_name, n_converted+1,
@@ -119,9 +126,9 @@ class Fsl2mvpWithin(Fsl2mvp):
         _ = [varcopes.pop(ix) for ix in sorted(self.remove_idx, reverse=True)]
 
         n_stat = len(copes)
-        if not n_stat == len(self.class_labels):
+        if not n_stat == len(self.cope_labels):
             msg = 'The number of trials (%i) do not match the number of ' \
-                  'class labels (%i)' % (n_stat, len(self.class_labels))
+                  'class labels (%i)' % (n_stat, len(self.cope_labels))
             raise ValueError(msg)
 
         # We need to 'peek' at the first cope to know the dimensions
@@ -167,73 +174,69 @@ class Fsl2mvpWithin(Fsl2mvp):
 
         return self
 
+    def merge_runs(self, cleanup=True, iD='merged'):
+        """ Merges single-trial patterns from different runs.
+
+        Given m runs, this method merges patterns by simple concatenation.
+        Concatenation either occurs along the vertical axis. Importantly,
+        it assumes that runs are identical in their set-up (e.g., conditions).
+
+        Parameters
+        ----------
+        cleanup : bool
+            Whether to clean up the run-wise data and thus to keep only the
+            merged data.
+        id : str
+            Identifier to give the merged runs, such that the data and header
+            files have the structure of: <subname>_header/data_<id>.extension
+        """
+
+        mat_dir = op.join(op.dirname(self.directory), 'mvp_data')
+        run_headers = glob.glob(op.join(mat_dir, '*pickle*'))
+        run_data = glob.glob(op.join(mat_dir, '*hdf5*'))
+
+        if len(run_headers) > 1:
+            print('Merging runs for %s' % self.sub_name)
+
+            for i in range(len(run_data)):
+
+                # 'Peek' at first run
+                if i == 0:
+                    h5f = h5py.File(run_data[i], 'r')
+                    data = h5f['data'][:]
+                    h5f.close()
+                    hdr = cPickle.load(open(run_headers[i]))
+                else:
+                    # Concatenate data to first run and extend cope_labels
+                    tmp = h5py.File(run_data[i])
+                    data = np.concatenate((data, tmp['data'][:]), axis=0)
+                    tmp.close()
+                    tmp = cPickle.load(open(run_headers[i], 'r'))
+                    hdr.cope_labels.extend(tmp.cope_labels)
+
+            hdr.update_metadata()
+            hdr.y = LabelEncoder().fit_transform(hdr.cope_labels)
+
+            fn_header = op.join(mat_dir, '%s_header_%s.pickle' %
+                                (self.sub_name, iD))
+            fn_data = op.join(mat_dir, '%s_data_%s.hdf5' %
+                              (self.sub_name, iD))
+
+            with open(fn_header, 'wb') as handle:
+                cPickle.dump(hdr, handle)
+
+            h5f = h5py.File(fn_data, 'w')
+            h5f.create_dataset('data', data=data)
+            h5f.close()
+
+            if cleanup:
+                run_headers.extend(run_data)
+                _ = [os.remove(f) for f in run_headers]
+        else:
+            # If there's only one file, don't merge
+            pass
+
     def glm2mvp_and_merge(self):
         """ Chains glm2mvp() and merge_runs(). """
         self.glm2mvp().merge_runs()
         return self
-
-
-# if __name__ == '__main__':
-#     testdata_path = '/users/steven/Documents/Syncthing/MscProjects/Decoding/code/skbold/skbold/data/test_data'
-#     run1 = op.join(testdata_path, 'run1.feat')
-#     run2 = op.join(testdata_path, 'run2.feat')
-#
-#     true_labels = ['actie', 'actie', 'actie',
-#                'interoception', 'interoception', 'interoception',
-#                'situation', 'situation', 'situation']
-#
-#     mvp_dir = op.join(testdata_path, 'mvp_data')
-#     print(mvp_dir)
-#
-#     for r in [run1, run2]:
-#         fsl2mvpc = Fsl2mvpWithin(r, mask_threshold=0, beta2tstat=True,
-#                             ref_space='mni', mask_path=None, remove_class=[])
-#         fsl2mvpc.glm2mvp()
-#         print(fsl2mvpc.directory)
-#         print(fsl2mvpc.sub_name)
-#         print(fsl2mvpc.run_name)
-#         data_file = op.join(mvp_dir, 'test_data_data_%s.hdf5' %
-#                         op.basename(r).split('.')[0])
-#         hdr_file = op.join(mvp_dir, 'test_data_header_%s.pickle' %
-#                         op.basename(r).split('.')[0])
-#         print(data_file)
-#         assert (op.exists(data_file))
-#         assert (op.exists(hdr_file))
-#         shutil.rmtree(op.join(r, 'reg_standard'))
-#
-#     fsl2mvpc.merge_runs(iD='merged')
-#     merged_data = op.join(mvp_dir, 'test_data_data_merged.hdf5')
-#     merged_hdr = op.join(mvp_dir, 'test_data_header_merged.pickle')
-#     assert (op.exists(merged_data))
-#     assert (op.exists(merged_hdr))
-#
-#     h5f = h5py.File(merged_data, 'r')
-#     data = h5f['data'][:]
-#     h5f.close()
-#     assert (data.shape[1] == 91 * 109 * 91)
-#
-#     shutil.rmtree(mvp_dir)
-#
-#     for r in [run1, run2]:
-#         fsl2mvpc = Fsl2mvpWithin(r, mask_threshold=0, beta2tstat=True,
-#                                ref_space='epi', mask_path=None, remove_class=[])
-#         fsl2mvpc.glm2mvp()
-#     assert (fsl2mvpc.class_labels == true_labels)
-#     assert (op.isdir(mvp_dir))
-#
-#     data_file = op.join(mvp_dir, 'test_data_data_%s.hdf5' % op.basename(r).split('.')[0])
-#     hdr_file = op.join(mvp_dir, 'test_data_header_%s.pickle' % op.basename(r).split('.')[0])
-#     assert (op.exists(data_file))
-#     assert (op.exists(hdr_file))
-#
-#     fsl2mvpc.merge_runs(iD='merged')
-#     merged_data = op.join(mvp_dir, 'test_data_data_merged.hdf5')
-#     merged_hdr = op.join(mvp_dir, 'test_data_header_merged.pickle')
-#     assert (op.exists(merged_data))
-#     assert (op.exists(merged_hdr))
-#
-#     h5f = h5py.File(merged_data, 'r')
-#     data = h5f['data'][:]
-#     h5f.close()
-#
-#     assert (data.shape[0] == len(true_labels) * 2)

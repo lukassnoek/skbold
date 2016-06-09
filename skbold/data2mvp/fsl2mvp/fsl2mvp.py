@@ -31,10 +31,24 @@ class Fsl2mvp(Mvp):
     """
 
     def __init__(self, directory, mask_threshold=0, beta2tstat=True,
-                 ref_space='epi', mask_path=None, remove_class=[]):
+                 ref_space='epi', mask_path=None, remove_class=[],
+                 invert_selection=False):
+        '''
+
+        Parameters
+        ----------
+        directory : feat directory of subject
+        mask_threshold : threshold for masking
+        beta2tstat : convert beta to t-stat?
+        ref_space : 'mni' or 'epi'
+        mask_path : path to mask (can be None)
+        remove_class : which contrasts to remove
+        invert_selection : if True, remove_class = which contrasts to include
+        '''
 
         super(Fsl2mvp, self).__init__(directory, mask_threshold, beta2tstat,
                                       ref_space, mask_path, remove_class)
+        self.invert_selection = invert_selection
 
     def _read_design(self):
         design_file = op.join(self.directory, 'design.con')
@@ -51,40 +65,44 @@ class Fsl2mvp(Mvp):
         df = pd.read_csv(design_file, delimiter='\t', header=None,
                          skipfooter=n_lines-contrasts, engine='python')
 
-        class_labels = list(df[1])
-        return class_labels
+        cope_labels = list(df[1])
+        return cope_labels
 
-    def _extract_class_labels(self):
+    def _extract_labels(self):
         """ Extracts class labels as strings from FSL first-level directory.
 
         This method reads in a design.con file, which is by default outputted
-        in an FSL first-level directory, and sets self.class_labels to a list
+        in an FSL first-level directory, and sets self.cope_labels to a list
         with labels, and in addition sets self.remove_idx with indices which
         trials (contrasts) were removed as indicated by the remove_class
         attribute from the Fsl2mvp object.
-
         """
 
-        remove_class = self.remove_class
-        class_labels = self._read_design()
+        remove_labels = self.remove_cope
+
+        labels = self._read_design()
 
         # Remove to-be-ignored contrasts (e.g. cues)
-        remove_idx = np.zeros((len(class_labels), len(remove_class)))
+        remove_idx = np.zeros((len(labels), len(remove_labels)))
 
-        for i, name in enumerate(remove_class):
-            remove_idx[:, i] = np.array([name in label for label in class_labels])
+        for i, name in enumerate(remove_labels):
+            remove_idx[:, i] = np.array([name in label for label in labels])
 
         self.remove_idx = np.where(remove_idx.sum(axis=1).astype(int))[0]
-        _ = [class_labels.pop(idx) for idx in np.sort(self.remove_idx)[::-1]]
+
+        if self.invert_selection:
+            self.remove_idx = [x for x in np.arange(len(labels)) if not x in self.remove_idx]
+
+        _ = [labels.pop(idx) for idx in np.sort(self.remove_idx)[::-1]]
 
         # Here, numeric extensions of contrast names (e.g. 'positive_003') are
         # removed
-        self.class_labels = []
-        for c in class_labels:
+        self.cope_labels = []
+        for c in labels:
             parts = c.split('_')
             parts = [x.strip() for x in parts]
             if parts[-1].isdigit():
                 label = '_'.join(parts[:-1])
-                self.class_labels.append(label)
+                self.cope_labels.append(label)
             else:
-                self.class_labels.append(c)
+                self.cope_labels.append(c)

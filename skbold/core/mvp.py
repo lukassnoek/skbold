@@ -27,7 +27,7 @@ class Mvp(object):
     """
 
     def __init__(self, directory, mask_threshold=0, beta2tstat=True,
-                 ref_space='mni', mask_path=None, remove_class=[],
+                 ref_space='mni', mask_path=None, remove_cope=[],
                  cleanup=True):
 
         """ Initializes a (bare-bones) Mvp object.
@@ -71,20 +71,13 @@ class Mvp(object):
         else:
             self.mask_name = 'WholeBrain'
 
+        self.cope_labels = None
+        self.n_cope = None
+        self.cope_names = None
+        self.remove_cope = remove_cope
+
         self.mask_index = None
         self.mask_shape = None
-
-        self.class_labels = None
-        self.n_class = None
-        self.class_names = None
-        self.remove_class = remove_class
-        self.remove_idx = None
-
-        self.n_trials = None
-        self.n_features = None
-        self.n_inst = None
-        self.class_idx = None
-        self.trial_idx = None
 
         self.nifti_header = None
         self.affine = None
@@ -94,14 +87,14 @@ class Mvp(object):
 
     def update_metadata(self):
         # Maybe change this to work with @property and setters
-        cl = self.class_labels
+        cl = self.cope_labels
         self.y = LabelEncoder().fit_transform(cl)
         self.n_trials = len(cl)
-        self.class_names = np.unique(cl)
-        self.n_class = len(self.class_names)
+        self.cope_names = np.unique(cl)
+        self.n_cope = len(self.cope_names)
         self.n_inst = [np.sum(cls == cl) for cls in cl]
-        self.class_idx = [cl == cls for cls in self.class_names]
-        self.trial_idx = [np.where(cl == cls)[0] for cls in self.class_names]
+        self.class_idx = [cl == cls for cls in self.cope_names]
+        self.trial_idx = [np.where(cl == cls)[0] for cls in self.cope_names]
 
     def update_mask(self, new_idx):
 
@@ -114,63 +107,3 @@ class Mvp(object):
         tmp_idx[self.mask_index.reshape(self.mask_shape)] += new_idx
         self.mask_index = tmp_idx.astype(bool).ravel()
 
-    def merge_runs(self, cleanup=True, iD='merged'):
-        """ Merges single-trial patterns from different runs.
-
-        Given two runs, this method merges their single-trial patterns by
-        simple concatenation; importantly, it assumes that the runs are
-        identical in their set-up (e.g. conditions).
-
-        Parameters
-        ----------
-        cleanup : bool
-            Whether to clean up the run-wise data and thus to keep only the
-            merged data.
-        id : str
-            Identifier to give the merged runs, such that the data and header
-            files have the structure of: <subname>_header/data_<id>.extension
-        """
-
-        mat_dir = op.join(op.dirname(self.directory), 'mvp_data')
-        run_headers = glob.glob(op.join(mat_dir, '*pickle*'))
-        run_data = glob.glob(op.join(mat_dir, '*hdf5*'))
-
-        if len(run_headers) > 1:
-            print('Merging runs for %s' % self.sub_name)
-
-            for i in range(len(run_data)):
-
-                # 'Peek' at first run
-                if i == 0:
-                    h5f = h5py.File(run_data[i], 'r')
-                    data = h5f['data'][:]
-                    h5f.close()
-                    hdr = cPickle.load(open(run_headers[i]))
-                else:
-                    # Concatenate data to first run and extend class_labels
-                    tmp = h5py.File(run_data[i])
-                    data = np.vstack((data, tmp['data'][:]))
-                    tmp.close()
-                    tmp = cPickle.load(open(run_headers[i], 'r'))
-                    hdr.class_labels.extend(tmp.class_labels)
-
-            hdr.update_metadata()
-            hdr.y = LabelEncoder().fit_transform(hdr.class_labels)
-            fn_header = op.join(mat_dir, '%s_header_%s.pickle' %
-                                (self.sub_name, iD))
-            fn_data = op.join(mat_dir, '%s_data_%s.hdf5' %
-                              (self.sub_name, iD))
-
-            with open(fn_header, 'wb') as handle:
-                cPickle.dump(hdr, handle)
-
-            h5f = h5py.File(fn_data, 'w')
-            h5f.create_dataset('data', data=data)
-            h5f.close()
-
-            if cleanup:
-                run_headers.extend(run_data)
-                _ = [os.remove(f) for f in run_headers]
-        else:
-            # If there's only one file, don't merge
-            pass

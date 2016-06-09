@@ -8,7 +8,7 @@ import shutil
 from skbold.data2mvp.fsl2mvp import Fsl2mvpWithin
 from skbold import testdata_path
 
-def test_fsl2mvp():
+def test_fsl2mvp_within():
 
     run1 = op.join(testdata_path, 'run1.feat')
     run2 = op.join(testdata_path, 'run2.feat')
@@ -24,7 +24,7 @@ def test_fsl2mvp():
 
     for r in [run1, run2]:
         fsl2mvp = Fsl2mvpWithin(r, mask_threshold=0, beta2tstat=True,
-                          ref_space='mni', mask_path=None, remove_class=[])
+                          ref_space='mni', mask_path=None, remove_cope=[])
         fsl2mvp.glm2mvp()
         data_file = op.join(mvp_dir, 'test_data_data_%s.hdf5' %
                             op.basename(r).split('.')[0])
@@ -49,9 +49,9 @@ def test_fsl2mvp():
 
     for r in [run1, run2]:
         fsl2mvp = Fsl2mvpWithin(r, mask_threshold=0, beta2tstat=True,
-                          ref_space='epi', mask_path=None, remove_class=[])
+                          ref_space='epi', mask_path=None, remove_cope=[])
         fsl2mvp.glm2mvp()
-        assert(fsl2mvp.class_labels == true_labels)
+        assert(fsl2mvp.cope_labels == true_labels)
         assert(op.isdir(mvp_dir))
 
         data_file = op.join(mvp_dir, 'test_data_data_%s.hdf5' % op.basename(r).split('.')[0])
@@ -74,4 +74,4 @@ def test_fsl2mvp():
 
 if __name__ == '__main__':
 
-    test_fsl2mvp()
+    test_fsl2mvp_within()
