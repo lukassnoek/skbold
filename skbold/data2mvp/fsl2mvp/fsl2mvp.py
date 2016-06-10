@@ -65,8 +65,8 @@ class Fsl2mvp(Mvp):
         df = pd.read_csv(design_file, delimiter='\t', header=None,
                          skipfooter=n_lines-contrasts, engine='python')
 
-        class_labels = list(df[1])
-        return class_labels
+        cope_labels = list(df[1])
+        return cope_labels
 
     def _extract_labels(self):
         """ Extracts class labels as strings from FSL first-level directory.

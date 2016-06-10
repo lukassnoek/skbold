@@ -143,10 +143,14 @@ class DataHandler(object):
                 tmp.close()
                 tmp = cPickle.load(open(hdr_paths[i], 'r'))
 
-                if mvp.class_labels is not None:
-                    mvp.class_labels.extend(tmp.class_labels)
+                if self.__class__.__name__ == 'Fsl2mvpWithin':
+                    if mvp.class_labels is not None:
+                        mvp.class_labels.extend(tmp.class_labels)
+                else:
+                    if mvp.cope_labels is not None:
+                        mvp.cope_labels.extend(tmp.cope_labels)
 
-        mvp.update_metadata()
+        mvp._update_metadata()
         mvp.X = data
         mvp.sub_name = 'ConcatenatedSubjects'
         self.mvp = mvp

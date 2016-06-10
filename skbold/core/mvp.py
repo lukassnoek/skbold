@@ -82,17 +82,6 @@ class Mvp(object):
         self.X = None
         self.y = None
 
-    def update_metadata(self):
-        # Maybe change this to work with @property and setters
-        cl = self.class_labels
-        self.y = LabelEncoder().fit_transform(cl)
-        self.n_trials = len(cl)
-        self.class_names = np.unique(cl)
-        self.n_class = len(self.class_names)
-        self.n_inst = [np.sum(cls == cl) for cls in cl]
-        self.class_idx = [cl == cls for cls in self.class_names]
-        self.trial_idx = [np.where(cl == cls)[0] for cls in self.class_names]
-
     def update_mask(self, new_idx):
 
         if new_idx.size != self.mask_index.sum():
@@ -103,4 +92,3 @@ class Mvp(object):
         tmp_idx = np.zeros(self.mask_shape)
         tmp_idx[self.mask_index.reshape(self.mask_shape)] += new_idx
         self.mask_index = tmp_idx.astype(bool).ravel()
-

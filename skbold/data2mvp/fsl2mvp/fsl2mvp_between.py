@@ -44,7 +44,57 @@ class Fsl2mvpBetween(Fsl2mvp):
         self.remove_idx = None
         self.invert_selection = invert_selection
 
+        self.X_dict = {}
         self.n_runs = None
+
+    # def update_metadata(self):
+    #     # Maybe change this to work with @property and setters
+    #     cl = self.class_labels
+    #     self.y = LabelEncoder().fit_transform(cl)
+    #     self.n_trials = len(cl)
+    #     self.class_names = np.unique(cl)
+    #     self.n_class = len(self.class_names)
+    #     self.n_inst = [np.sum(cls == cl) for cls in cl]
+    #     self.class_idx = [cl == cls for cls in self.class_names]
+    #     self.trial_idx = [np.where(cl == cls)[0] for cls in self.class_names]
+
+
+    def _update_metadata(self):
+        copes = self.cope_labels
+        self.n_cope = len(copes)
+        self.cope_names = np.unique(copes)
+
+    def _update_X_dict(self, mvp_meta):
+        for key, value in mvp_meta.iteritems():
+            mvp_meta[key] = value + len(self.X_dict) * self.n_features
+
+        self.X_dict.update(mvp_meta)
+
+    def get_contrast(self, idx):
+        '''
+        Gets contrast names from list of idx
+
+        Parameters
+        ----------
+        idx : int, indices of X
+
+        Returns
+        -------
+        '''
+
+        if type(idx) is not list:
+            idx = [idx]
+
+        labels = []
+        for id in idx:
+            label = [x[0] for x in self.X_dict.items() if id >= x[1][0] and id < x[1][1]]
+            labels.append(label)
+
+        return labels
+
+    def _add_outcome_var(self, filename):
+
+        #self.y =
 
 
     def glm2mvp(self, extract_labels=True):
@@ -85,8 +135,9 @@ class Fsl2mvpBetween(Fsl2mvp):
             os.makedirs(mat_dir)
 
         # Extract class vector (class_labels)
-        self._extract_class_labels()
-        self.y = np.random.normal(100, 15, 1)       ## later: update to intelligence score
+        self._extract_labels()
+        # Update metadata, excluding X_dict
+        self._update_metadata()
 
         print('Processing %s (run %i / %i)...' % (sub_name, n_converted + 1,
                                                       n_feat), end='')
@@ -132,7 +183,7 @@ class Fsl2mvpBetween(Fsl2mvp):
         #         raise ValueError(msg)
         # elif design_type=='between':
         #     n_stat = 1
-        #
+
         # We need to 'peek' at the first cope to know the dimensions
         if self.mask_path is None:
             tmp = nib.load(copes[0]).get_data()
@@ -140,11 +191,11 @@ class Fsl2mvpBetween(Fsl2mvp):
             self.mask_index = np.ones(tmp.shape, dtype=bool).ravel()
             self.mask_shape = tmp.shape
 
-        columns = self.n_features * len(self.class_labels)
+        columns = self.n_features * len(self.cope_labels)
 
         # Pre-allocate
         mvp_data = np.zeros((1, columns))
-        mvp_meta = {} #empty dictionary
+        mvp_meta = {} #empty dictionary for X_dict
 
         # Load in data (COPEs)
         for i, (cope, varcope) in enumerate(zip(copes, varcopes)):
@@ -157,12 +208,15 @@ class Fsl2mvpBetween(Fsl2mvp):
                 copedat = np.divide(copedat, var_sq)
 
             mvp_data[0, (i * self.n_features):(i*self.n_features + self.n_features)] = copedat
-            mvp_meta[self.class_labels[i]] = np.array([(i * self.n_features), (i*self.n_features + self.n_features)])
+            mvp_meta[self.cope_labels[i]] = np.array([(i * self.n_features), (i*self.n_features + self.n_features)])
 
         self.nifti_header = cope_img.header
         self.affine = cope_img.affine
 
         mvp_data[np.isnan(mvp_data)] = 0
+
+        # Update metadata, including X_types
+        self._update_X_dict(mvp_meta)
 
         fn_header = op.join(mat_dir, '%s_header_run%i.pickle' % (self.sub_name,
                             n_converted+1))
@@ -171,7 +225,6 @@ class Fsl2mvpBetween(Fsl2mvp):
             cPickle.dump(self, handle)
 
         self.X = mvp_data
-        self.X_dict = mvp_meta
 
         fn_data = op.join(mat_dir, '%s_data_run%i.hdf5' % (self.sub_name,
                           n_converted+1))
@@ -217,21 +270,18 @@ class Fsl2mvpBetween(Fsl2mvp):
                     h5f.close()
                     hdr = cPickle.load(open(run_headers[i]))
                 else:
-                    # Concatenate data to first run and extend class_labels
+                    # Concatenate data to first run and extend cope_labels
                     tmp = h5py.File(run_data[i])
                     data = np.concatenate((data, tmp['data'][:]), axis=1)
                     tmp.close()
 
                     tmp = cPickle.load(open(run_headers[i], 'r'))
-                    hdr.class_labels.extend(tmp.class_labels)
-                    print(tmp.class_labels)
+                    hdr.cope_labels.extend(tmp.cope_labels)
 
-                    for ii in range(len(tmp.class_labels)):
-                        print(tmp.class_labels[ii])
-#                        hdr.X_meta[tmp.class_labels[ii]] =+ hdr.n_
+                    hdr._update_X_dict(tmp.X_dict)
 
-            hdr.update_metadata()
-#            hdr.y = LabelEncoder().fit_transform(hdr.class_labels)
+            hdr._update_metadata()
+#            hdr.y = LabelEncoder().fit_transform(hdr.cope_labels)
 
             fn_header = op.join(mat_dir, '%s_header_%s.pickle' %
                                 (self.sub_name, iD))
@@ -282,13 +332,13 @@ if __name__ == '__main__':
         for task in taskdirs:
             taskname = os.path.basename(os.path.normpath(task)).split('piop')[1][:-5]
             fsl2mvpb = Fsl2mvpBetween(directory=task, mask_threshold=0, beta2tstat=True,
-                                  ref_space='mni', mask_path=gm_mask, remove_class=contr[taskname], invert_selection=True)
+                                  ref_space='mni', mask_path=gm_mask, remove_cope=contr[taskname], invert_selection=True)
             fsl2mvpb.glm2mvp()
         #            l = l.append(fsl2mvpb.X.shape[1])
 #            print(fsl2mvpb.X.shape[1])
         #            print(fsl2mvpb.sub_name)
 #            print(fsl2mvpb.y)
-#            print(fsl2mvpb.class_labels)
+#            print(fsl2mvpb.cope_labels)
 #            print(fsl2mvpb.class_idx)
 #            print(fsl2mvpb.class_names)
 #            print(fsl2mvpb.X_dict)
@@ -301,5 +351,9 @@ if __name__ == '__main__':
 
     alldat = DataHandler()
     alldat = alldat.load_concatenated_subs(directory=feat_dir)
-#    print(alldat.X.shape)
+    print(alldat.X_dict)
+    print(alldat.X.shape)
+
+    print(alldat.get_contrast(10))
+    print(alldat.get_contrast([10, 20, 30, 500000]))
 #    print(alldat.y)

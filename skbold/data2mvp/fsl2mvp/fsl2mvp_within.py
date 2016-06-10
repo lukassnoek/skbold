@@ -49,6 +49,17 @@ class Fsl2mvpWithin(Fsl2mvp):
         self.class_idx = None
         self.trial_idx = None
 
+    def _update_metadata(self):
+        # Maybe change this to work with @property and setters
+        cl = self.class_labels
+        self.y = LabelEncoder().fit_transform(cl)
+        self.n_trials = len(cl)
+        self.class_names = np.unique(cl)
+        self.n_class = len(self.class_names)
+        self.n_inst = [np.sum(cls == cl) for cls in cl]
+        self.class_idx = [cl == cls for cls in self.class_names]
+        self.trial_idx = [np.where(cl == cls)[0] for cls in self.class_names]
+
     def glm2mvp(self, extract_labels=True):
         """ Extract (meta)data from FSL first-level directory.
 
@@ -91,7 +102,7 @@ class Fsl2mvpWithin(Fsl2mvp):
         if extract_labels:
             self._extract_labels()
             self.y = LabelEncoder().fit_transform(self.class_labels)
-            self.update_metadata()
+            self._update_metadata()
 
         print('Processing %s (run %i / %i)...' % (sub_name, n_converted+1,
               n_feat), end='')
@@ -219,7 +230,7 @@ class Fsl2mvpWithin(Fsl2mvp):
                     tmp = cPickle.load(open(run_headers[i], 'r'))
                     hdr.class_labels.extend(tmp.class_labels)
 
-            hdr.update_metadata()
+            hdr._update_metadata()
             hdr.y = LabelEncoder().fit_transform(hdr.class_labels)
 
             fn_header = op.join(mat_dir, '%s_header_%s.pickle' %
