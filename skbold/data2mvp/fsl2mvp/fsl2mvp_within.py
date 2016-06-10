@@ -35,7 +35,19 @@ class Fsl2mvpWithin(Fsl2mvp):
                  ref_space='epi', mask_path=None, remove_class=[], invert_selection=False):
 
         super(Fsl2mvpWithin, self).__init__(directory, mask_threshold, beta2tstat,
-                                      ref_space, mask_path, remove_class, invert_selection)
+                                      ref_space, mask_path)
+
+        self.class_labels = None
+        self.n_class = None
+        self.class_names = None
+        self.remove_class = remove_class
+        self.remove_idx = None
+        self.invert_selection = invert_selection
+
+        self.n_trials = None
+        self.n_inst = None
+        self.class_idx = None
+        self.trial_idx = None
 
     def glm2mvp(self, extract_labels=True):
         """ Extract (meta)data from FSL first-level directory.
@@ -77,7 +89,7 @@ class Fsl2mvpWithin(Fsl2mvp):
 
         # Extract class vector (class_labels)
         if extract_labels:
-            self._extract_class_labels()
+            self._extract_labels()
             self.y = LabelEncoder().fit_transform(self.class_labels)
             self.update_metadata()
 
@@ -203,6 +215,7 @@ class Fsl2mvpWithin(Fsl2mvp):
                     tmp = h5py.File(run_data[i])
                     data = np.concatenate((data, tmp['data'][:]), axis=0)
                     tmp.close()
+
                     tmp = cPickle.load(open(run_headers[i], 'r'))
                     hdr.class_labels.extend(tmp.class_labels)
 

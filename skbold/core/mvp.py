@@ -27,7 +27,7 @@ class Mvp(object):
     """
 
     def __init__(self, directory, mask_threshold=0, beta2tstat=True,
-                 ref_space='mni', mask_path=None, remove_class=[],
+                 ref_space='mni', mask_path=None,
                  cleanup=True):
 
         """ Initializes a (bare-bones) Mvp object.
@@ -71,20 +71,10 @@ class Mvp(object):
         else:
             self.mask_name = 'WholeBrain'
 
+        self.n_features = None
+
         self.mask_index = None
         self.mask_shape = None
-
-        self.class_labels = None
-        self.n_class = None
-        self.class_names = None
-        self.remove_class = remove_class
-        self.remove_idx = None
-
-        self.n_trials = None
-        self.n_features = None
-        self.n_inst = None
-        self.class_idx = None
-        self.trial_idx = None
 
         self.nifti_header = None
         self.affine = None

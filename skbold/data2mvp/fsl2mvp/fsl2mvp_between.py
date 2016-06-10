@@ -32,15 +32,20 @@ class Fsl2mvpBetween(Fsl2mvp):
     """
 
     def __init__(self, directory, mask_threshold=0, beta2tstat=True,
-                 ref_space='mni', mask_path=None, remove_class=[], invert_selection=False):
+                 ref_space='mni', mask_path=None, remove_cope=[], invert_selection=False):
 
         super(Fsl2mvpBetween, self).__init__(directory, mask_threshold, beta2tstat,
-                                      ref_space, mask_path, remove_class, invert_selection)
+                                      ref_space, mask_path)
 
-    def _add_X_metadata(self):
+        self.cope_labels = None
+        self.n_cope = None
+        self.cope_names = None
+        self.remove_cope = remove_cope
+        self.remove_idx = None
+        self.invert_selection = invert_selection
 
-        self.X_run_name
-        self.X_run_label
+        self.n_runs = None
+
 
     def glm2mvp(self, extract_labels=True):
         """ Extract (meta)data from FSL first-level directory.

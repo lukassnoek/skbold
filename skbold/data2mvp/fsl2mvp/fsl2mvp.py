@@ -31,7 +31,7 @@ class Fsl2mvp(Mvp):
     """
 
     def __init__(self, directory, mask_threshold=0, beta2tstat=True,
-                 ref_space='epi', mask_path=None, remove_class=[],
+                 ref_space='epi', mask_path=None,
                  invert_selection=False):
         '''
 
@@ -47,7 +47,7 @@ class Fsl2mvp(Mvp):
         '''
 
         super(Fsl2mvp, self).__init__(directory, mask_threshold, beta2tstat,
-                                      ref_space, mask_path, remove_class)
+                                      ref_space, mask_path)
         self.invert_selection = invert_selection
 
     def _read_design(self):
@@ -68,7 +68,7 @@ class Fsl2mvp(Mvp):
         class_labels = list(df[1])
         return class_labels
 
-    def _extract_class_labels(self):
+    def _extract_labels(self):
         """ Extracts class labels as strings from FSL first-level directory.
 
         This method reads in a design.con file, which is by default outputted
@@ -78,30 +78,39 @@ class Fsl2mvp(Mvp):
         attribute from the Fsl2mvp object.
         """
 
-        remove_class = self.remove_class
-        class_labels = self._read_design()
+        if self.__class__.__name__ == 'Fsl2mvpWithin':
+            remove_label = self.remove_class
+        else:
+            remove_label = self.remove_cope
+
+        cope_labels = self._read_design()
 
         # Remove to-be-ignored contrasts (e.g. cues)
-        remove_idx = np.zeros((len(class_labels), len(remove_class)))
+        remove_idx = np.zeros((len(cope_labels), len(remove_label)))
 
-        for i, name in enumerate(remove_class):
-            remove_idx[:, i] = np.array([name in label for label in class_labels])
+        for i, name in enumerate(remove_label):
+            remove_idx[:, i] = np.array([name in label for label in cope_labels])
 
         self.remove_idx = np.where(remove_idx.sum(axis=1).astype(int))[0]
 
         if self.invert_selection:
-            self.remove_idx = [x for x in np.arange(len(class_labels)) if not x in self.remove_idx]
+            self.remove_idx = [x for x in np.arange(len(cope_labels)) if not x in self.remove_idx]
 
-        _ = [class_labels.pop(idx) for idx in np.sort(self.remove_idx)[::-1]]
+        _ = [cope_labels.pop(idx) for idx in np.sort(self.remove_idx)[::-1]]
 
         # Here, numeric extensions of contrast names (e.g. 'positive_003') are
         # removed
-        self.class_labels = []
-        for c in class_labels:
+        labels = []
+        for c in cope_labels:
             parts = c.split('_')
             parts = [x.strip() for x in parts]
             if parts[-1].isdigit():
                 label = '_'.join(parts[:-1])
-                self.class_labels.append(label)
+                labels.append(label)
             else:
-                self.class_labels.append(c)
+                labels.append(c)
+
+        if self.__class__.__name__ == 'Fsl2mvpWithin':
+            self.class_labels = labels
+        else:
+            self.cope_labels = labels
