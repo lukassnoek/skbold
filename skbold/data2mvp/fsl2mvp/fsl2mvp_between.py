@@ -31,11 +31,13 @@ class Fsl2mvpBetween(Fsl2mvp):
     mask info, etc.).
     """
 
-    def __init__(self, directory, mask_threshold=0, beta2tstat=True,
+    def __init__(self, directory, output_var_file, mask_threshold=0, beta2tstat=True,
                  ref_space='mni', mask_path=None, remove_cope=[], invert_selection=False):
 
         super(Fsl2mvpBetween, self).__init__(directory, mask_threshold, beta2tstat,
                                       ref_space, mask_path)
+
+        self.output_var_file = output_var_file
 
         self.cope_labels = None
         self.n_cope = None
@@ -45,6 +47,7 @@ class Fsl2mvpBetween(Fsl2mvp):
         self.invert_selection = invert_selection
 
         self.X_dict = {}
+        self.X_labels = np.zeros(0, dtype=np.uint8)
         self.n_runs = None
 
     # def update_metadata(self):
@@ -93,8 +96,11 @@ class Fsl2mvpBetween(Fsl2mvp):
         return labels
 
     def _add_outcome_var(self, filename):
+        file_path = op.join(op.dirname(self.directory), filename)
 
-        #self.y =
+        with open(file_path, 'r') as f:
+            y = int(f.readline())
+        self.y = [y]
 
 
     def glm2mvp(self, extract_labels=True):
@@ -208,6 +214,7 @@ class Fsl2mvpBetween(Fsl2mvp):
                 copedat = np.divide(copedat, var_sq)
 
             mvp_data[0, (i * self.n_features):(i*self.n_features + self.n_features)] = copedat
+            self.X_labels = np.concatenate((self.X_labels, np.ones(self.n_features, dtype=np.uint8) * i), axis=0)
             mvp_meta[self.cope_labels[i]] = np.array([(i * self.n_features), (i*self.n_features + self.n_features)])
 
         self.nifti_header = cope_img.header
@@ -278,9 +285,12 @@ class Fsl2mvpBetween(Fsl2mvp):
                     tmp = cPickle.load(open(run_headers[i], 'r'))
                     hdr.cope_labels.extend(tmp.cope_labels)
 
+                    hdr.X_labels = np.concatenate((hdr.X_labels, tmp.X_labels + len(np.unique(hdr.X_labels))), axis=0)
+
                     hdr._update_X_dict(tmp.X_dict)
 
             hdr._update_metadata()
+            hdr._add_outcome_var(self.output_var_file)
 #            hdr.y = LabelEncoder().fit_transform(hdr.cope_labels)
 
             fn_header = op.join(mat_dir, '%s_header_%s.pickle' %
@@ -308,12 +318,11 @@ class Fsl2mvpBetween(Fsl2mvp):
         return self
 
 
-
-
 if __name__ == '__main__':
     import skbold
+
     feat_dir = '/Users/steven/Desktop/pioptest'
-#    feat_dir = '/Users/steven/Documents/Syncthing/MscProjects/Decoding/code/oefendata/piopoefen'
+
     subdir = glob.glob(os.path.join(feat_dir, 'pi*'))
 
     gm_mask = os.path.join(op.dirname(op.dirname(skbold.utils.__file__)), 'data', 'ROIs', 'GrayMatter.nii.gz')
@@ -324,7 +333,7 @@ if __name__ == '__main__':
              'anticipatie': ['mismatch-match'],
              'gstroop': ['con-incon']}
 
-    sub = subdir[0]
+    true_labels = ['pos-neu', 'emo-neu', 'con-incon', 'emo-control', 'act-pas', 'mismatch-match']
 
     for sub in subdir:
         taskdirs = glob.glob(os.path.join(sub, '*.feat'))
@@ -332,28 +341,16 @@ if __name__ == '__main__':
         for task in taskdirs:
             taskname = os.path.basename(os.path.normpath(task)).split('piop')[1][:-5]
             fsl2mvpb = Fsl2mvpBetween(directory=task, mask_threshold=0, beta2tstat=True,
-                                  ref_space='mni', mask_path=gm_mask, remove_cope=contr[taskname], invert_selection=True)
+                                ref_space='mni', mask_path=gm_mask, remove_cope=contr[taskname],
+                                invert_selection=True, output_var_file='raven.txt')
             fsl2mvpb.glm2mvp()
-        #            l = l.append(fsl2mvpb.X.shape[1])
-#            print(fsl2mvpb.X.shape[1])
-        #            print(fsl2mvpb.sub_name)
-#            print(fsl2mvpb.y)
-#            print(fsl2mvpb.cope_labels)
-#            print(fsl2mvpb.class_idx)
-#            print(fsl2mvpb.class_names)
-#            print(fsl2mvpb.X_dict)
-        #            print(fsl2mvpb.__class__.__name__)
-
         fsl2mvpb.merge_runs()
-
 
     from skbold.utils import DataHandler
 
     alldat = DataHandler()
     alldat = alldat.load_concatenated_subs(directory=feat_dir)
-    print(alldat.X_dict)
-    print(alldat.X.shape)
 
-    print(alldat.get_contrast(10))
-    print(alldat.get_contrast([10, 20, 30, 500000]))
-#    print(alldat.y)
+    assert(alldat.cope_labels == true_labels)
+    assert(alldat.X.shape == (3, 269412 * 6))
+    assert(alldat.y == [14, 25, 19])

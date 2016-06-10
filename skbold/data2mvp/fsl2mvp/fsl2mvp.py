@@ -65,6 +65,7 @@ class Fsl2mvp(Mvp):
         df = pd.read_csv(design_file, delimiter='\t', header=None,
                          skipfooter=n_lines-contrasts, engine='python')
 
+        df[1] = df[1].str.strip() #remove spaces
         cope_labels = list(df[1])
         return cope_labels
 

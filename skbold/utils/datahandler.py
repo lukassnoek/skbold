@@ -147,8 +147,7 @@ class DataHandler(object):
                     if mvp.class_labels is not None:
                         mvp.class_labels.extend(tmp.class_labels)
                 else:
-                    if mvp.cope_labels is not None:
-                        mvp.cope_labels.extend(tmp.cope_labels)
+                    mvp.y.extend(tmp.y)
 
         mvp._update_metadata()
         mvp.X = data
