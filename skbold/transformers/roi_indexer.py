@@ -15,14 +15,12 @@ from ..core import convert2epi
 
 class RoiIndexer(BaseEstimator, TransformerMixin):
     """ Indexes a whole-brain pattern with a certain ROI.
-
     Given a certain ROI-mask, this class allows transformation
     from a whole-brain pattern to the mask-subset.
     """
 
     def __init__(self, mvp, mask, mask_threshold=0):
         """ Initializes RoiIndexer object.
-
         Parameters
         ----------
         mvp : mvp-object (see scikit_bold.core)
@@ -79,14 +77,12 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
 
     def transform(self, X, y=None):
         """ Transforms features from X (voxels) to a mask-subset.
-
         Parameters
         ----------
         X : ndarray
             Numeric (float) array of shape = [n_samples, n_features]
         y : Optional[List[str] or numpy ndarray[str]]
             List of ndarray with strings indicating label-names
-
         Returns
         -------
         X_new : ndarray
