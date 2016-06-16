@@ -24,11 +24,11 @@ class MultiPatternAverager(BaseEstimator, TransformerMixin):
         self.method = method
         self.mvp = mvp
 
-    def fit(self):
+    def fit(self, X=None, y=None):
         """ Does nothing, but included to be used in sklearn's Pipeline. """
         return self
 
-    def transform(self, X):
+    def transform(self, X, y=None):
         """ Transforms patterns to its average.
 
         Parameters

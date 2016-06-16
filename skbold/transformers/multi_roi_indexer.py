@@ -18,7 +18,7 @@ class MultiRoiIndexer(BaseEstimator, TransformerMixin):
     """ Wrapper that calls RoiIndexer multiple times for Fsl2mvpBetween mvps.
     """
 
-    def __init__(self, mvp, maskdict):
+    def __init__(self, mvp, maskdict, verbose=False):
         """ Initializes RoiIndexer object.
 
         Parameters
@@ -37,6 +37,7 @@ class MultiRoiIndexer(BaseEstimator, TransformerMixin):
         self.directory = mvp.directory
         self.ref_space = mvp.ref_space
         self.idx_ = None
+        self.verbose = verbose
 
     def fit(self, X=None, y=None):
         """ Fits multiple times. """
@@ -48,12 +49,14 @@ class MultiRoiIndexer(BaseEstimator, TransformerMixin):
         roi_idx = np.ones(0, dtype=bool)
 
         for copeindex, cope in enumerate(cope_labels):
-            print('Cope: %s, path: %s, threshold: %f' %(cope, maskdict[cope]['path'], maskdict[cope]['threshold']))
+            if self.verbose:
+                print('Cope: %s, path: %s, threshold: %f' %(cope, maskdict[cope]['path'], maskdict[cope]['threshold']))
             roi_idx_cope = nib.load(maskdict[cope]['path']).get_data() > maskdict[cope]['threshold']
             overlap = roi_idx_cope.astype(int).ravel() + self.orig_mask.astype(int)
             roi_idx_thiscope = (overlap==2)[self.orig_mask]
             roi_idx = np.hstack([roi_idx, roi_idx_thiscope])
-            print('Size of roi_idx: %f' %(roi_idx[roi_idx==True]).size)
+            if self.verbose:
+                print('Size of roi_idx: %f' %(roi_idx[roi_idx==True]).size)
 
         self.idx_ = roi_idx
         self.mvp.X_labels = self.mvp.X_labels[roi_idx]
