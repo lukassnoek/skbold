@@ -11,7 +11,7 @@ import os.path as op
 import nibabel as nib
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
-from ..core import convert2epi
+#from ..core import convert2epi
 
 
 class MultiRoiIndexer(BaseEstimator, TransformerMixin):
@@ -51,9 +51,12 @@ class MultiRoiIndexer(BaseEstimator, TransformerMixin):
         for copeindex, cope in enumerate(cope_labels):
             if self.verbose:
                 print('Cope: %s, path: %s, threshold: %f' %(cope, maskdict[cope]['path'], maskdict[cope]['threshold']))
+
             roi_idx_cope = nib.load(maskdict[cope]['path']).get_data() > maskdict[cope]['threshold']
             overlap = roi_idx_cope.astype(int).ravel() + self.orig_mask.astype(int)
+
             roi_idx_thiscope = (overlap==2)[self.orig_mask]
+
             roi_idx = np.hstack([roi_idx, roi_idx_thiscope])
             if self.verbose:
                 print('Size of roi_idx: %f' %(roi_idx[roi_idx==True]).size)
@@ -83,3 +86,32 @@ class MultiRoiIndexer(BaseEstimator, TransformerMixin):
         X_new = X[:, self.idx_]
 
         return X_new
+
+if __name__ == '__main__':
+    from skbold.data2mvp.fsl2mvp import Fsl2mvpBetween
+    from skbold.transformers.multi_pattern_averager import MultiPatternAverager
+    from skbold import DataHandler
+    import os.path as op
+    subdir = '/users/steven/Desktop/pioptest/'
+    maskdir = op.join(subdir, 'masks')
+
+    tmp = DataHandler()
+    dat = tmp.load_concatenated_subs(directory=subdir)
+
+    dicti = {'act-pas' : {'threshold': 2.3,
+                         'path': op.join(maskdir, 'wm', 'zstat3.nii.gz')},
+            'emo-control' : {'threshold' : 2.3,
+                             'path': op.join(maskdir, 'harriri', 'zstat1.nii.gz')},
+            'con-incon' : {'threshold': 2.3,
+                           'path' : op.join(maskdir, 'gstroop', 'zstat2.nii.gz')}
+            }
+    indexer = MultiRoiIndexer(mvp=dat, maskdict=dicti, verbose=True)
+
+#    print(dat.X[:, dat.X_labels==0])
+    Xnew = indexer.fit_transform(X=dat.X)
+
+#    print(dat.X[:, indexer.mvp.X_labels==0])
+
+#    av = MultiPatternAverager(mvp=indexer.mvp)
+#    Xnew = av.fit_transform(X=Xnew)
+#    print(Xnew)

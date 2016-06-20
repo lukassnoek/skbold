@@ -317,3 +317,52 @@ class Fsl2mvpBetween(Fsl2mvp):
         return self
 
 
+
+
+if __name__ == '__main__':
+    import skbold.utils
+    from skbold import DataHandler
+    import os.path as op
+    import glob
+
+    feat_dir = '/users/steven/Desktop/pioptest'
+    subs = glob.glob(op.join(feat_dir, 'pi*'))
+    gm_mask = op.join(op.dirname(op.dirname(skbold.utils.__file__)), 'data', 'ROIs', 'GrayMatter.nii.gz')
+
+    copes = {'wm': ['act-pas'],
+             'harriri': ['emo-control'],
+             'gstroop': ['con-incon']}
+
+    # loop over subjects & tasks
+    for sub in subs:
+        tasks = glob.glob(op.join(sub, '*.feat'))
+        tasks = [x for x in tasks if x.split('piop')[-1][:-5] in copes.keys()]
+        tasknames = [x.split('piop')[-1][:-5] for x in tasks]
+
+        for (taskdir, taskname) in zip(tasks, tasknames):
+            tmp = Fsl2mvpBetween(directory=taskdir, mask_threshold=0, beta2tstat=True,
+                                 ref_space='mni', mask_path=gm_mask, remove_cope=copes[taskname],
+                                 invert_selection=True, output_var_file='zraven.txt')
+            tmp.glm2mvp()
+
+            # print('\nSub %s, task %s, data (GM-masked):' %(sub[-4:], taskname))
+            # print(tmp.X)
+
+        tmp.merge_runs()
+
+    tmp = DataHandler()
+    data = tmp.load_concatenated_subs(directory=op.dirname(subs[0]))
+
+#    print('Merged %s data, GM masked: ' %(data.cope_labels[0]))
+#    idx = data.X_labels==0
+#    print(idx.shape)
+#    print(data.X.shape)
+#    print(data.X[:, idx])
+
+#    print('\n Merged %s data, GM masked:' %(data.cope_labels[1]))
+#    idx = data.X_labels==1
+#    print(data.X[:, idx])
+#
+#    print('\n Merged %s data, GM masked:' %(data.cope_labels[2]))
+#    idx = data.X_labels == 2
+#    print(data.X[:, idx])
