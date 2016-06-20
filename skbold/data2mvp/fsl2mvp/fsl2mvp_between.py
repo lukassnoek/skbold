@@ -99,7 +99,7 @@ class Fsl2mvpBetween(Fsl2mvp):
         file_path = op.join(op.dirname(self.directory), filename)
 
         with open(file_path, 'r') as f:
-            y = int(f.readline())
+            y = float(f.readline())
         self.y = [y]
 
 
