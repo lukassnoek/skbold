@@ -152,7 +152,7 @@ class Fsl2mvpBetween(Fsl2mvp):
         if self.ref_space == 'epi':
             stat_dir = op.join(sub_path, 'stats')
         elif self.ref_space == 'mni':
-            stat_dir = op.join(sub_path, 'reg_standard', 'stats')
+            stat_dir = op.join(sub_path, 'reg_standard')
         else:
             raise ValueError('Specify valid reference-space (ref_space)')
 
