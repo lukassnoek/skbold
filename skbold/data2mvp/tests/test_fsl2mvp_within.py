@@ -1,12 +1,8 @@
-# Author: Lukas Snoek [lukassnoek.github.io]
-# Contact: lukassnoek@gmail.com
-# License: 3 clause BSD
-
 import os.path as op
-import h5py
-import shutil
 from skbold.data2mvp.fsl2mvp import Fsl2mvpWithin
 from skbold import testdata_path
+import shutil
+import h5py
 
 def test_fsl2mvp_within():
 
@@ -74,5 +70,4 @@ def test_fsl2mvp_within():
 
 
 if __name__ == '__main__':
-
     test_fsl2mvp_within()

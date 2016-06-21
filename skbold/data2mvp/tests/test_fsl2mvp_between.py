@@ -62,5 +62,5 @@ def test_fsl2mvp_between():
     data = h5f['data'][:]
     h5f.close()
 
-if __name__== '__main__':
+if __name__ == '__main__':
     test_fsl2mvp_between()

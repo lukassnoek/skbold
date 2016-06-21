@@ -143,6 +143,7 @@ class Fsl2mvpWithin(Fsl2mvp):
         _ = [varcopes.pop(ix) for ix in sorted(self.remove_idx, reverse=True)]
 
         n_stat = len(copes)
+
         if not n_stat == len(self.contrast_labels):
             msg = 'The number of trials (%i) do not match the number of ' \
                   'class labels (%i)' % (n_stat, len(self.contrast_labels))
