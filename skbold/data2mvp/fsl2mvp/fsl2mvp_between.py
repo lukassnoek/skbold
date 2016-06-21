@@ -31,7 +31,7 @@ class Fsl2mvpBetween(Fsl2mvp):
     mask info, etc.).
     """
 
-    def __init__(self, directory, output_var_file, mask_threshold=0, beta2tstat=True,
+    def __init__(self, directory, output_var_file=None, mask_threshold=0, beta2tstat=True,
                  ref_space='mni', mask_path=None, remove_cope=[], invert_selection=False):
 
         super(Fsl2mvpBetween, self).__init__(directory, mask_threshold, beta2tstat,
@@ -49,18 +49,6 @@ class Fsl2mvpBetween(Fsl2mvp):
         self.X_dict = {}
         self.X_labels = np.zeros(0, dtype=np.uint8)
         self.n_runs = None
-
-    # def update_metadata(self):
-    #     # Maybe change this to work with @property and setters
-    #     cl = self.class_labels
-    #     self.y = LabelEncoder().fit_transform(cl)
-    #     self.n_trials = len(cl)
-    #     self.class_names = np.unique(cl)
-    #     self.n_class = len(self.class_names)
-    #     self.n_inst = [np.sum(cls == cl) for cls in cl]
-    #     self.class_idx = [cl == cls for cls in self.class_names]
-    #     self.trial_idx = [np.where(cl == cls)[0] for cls in self.class_names]
-
 
     def _update_metadata(self):
         copes = self.cope_labels
@@ -288,8 +276,9 @@ class Fsl2mvpBetween(Fsl2mvp):
                     hdr._update_X_dict(tmp.X_dict)
 
             hdr._update_metadata()
-            hdr._add_outcome_var(self.output_var_file)
-#            hdr.y = LabelEncoder().fit_transform(hdr.cope_labels)
+
+            if self.output_var_file is not None:
+                hdr._add_outcome_var(self.output_var_file)
 
             fn_header = op.join(mat_dir, '%s_header_%s.pickle' %
                                 (self.sub_name, iD))
@@ -314,56 +303,3 @@ class Fsl2mvpBetween(Fsl2mvp):
         """ Chains glm2mvp() and merge_runs(). """
         self.glm2mvp().merge_runs()
         return self
-
-
-
-
-if __name__ == '__main__':
-    import skbold.utils
-    from skbold import DataHandler
-    import os.path as op
-    import glob
-
-    feat_dir = '/users/steven/Desktop/pioptest'
-    subs = glob.glob(op.join(feat_dir, 'pi*'))
-    gm_mask = op.join(op.dirname(op.dirname(skbold.utils.__file__)), 'data', 'ROIs', 'GrayMatter.nii.gz')
-
-    copes = {'wm': ['act-pas'],
-             'harriri': ['emo-control'],
-             'gstroop': ['con-incon']}
-
-    # loop over subjects & tasks
-    for sub in subs:
-        tasks = glob.glob(op.join(sub, '*.feat'))
-        tasks = [x for x in tasks if x.split('piop')[-1][:-5] in copes.keys()]
-        tasknames = [x.split('piop')[-1][:-5] for x in tasks]
-
-        for (taskdir, taskname) in zip(tasks, tasknames):
-            tmp = Fsl2mvpBetween(directory=taskdir, mask_threshold=0, beta2tstat=True,
-                                 ref_space='mni', mask_path=gm_mask, remove_cope=copes[taskname],
-                                 invert_selection=True, output_var_file='zraven.txt')
-            tmp.glm2mvp()
-
-            # print('\nSub %s, task %s, data (GM-masked):' %(sub[-4:], taskname))
-            # print(tmp.X)
-
-        tmp.merge_runs()
-
-    tmp = DataHandler()
-    data = tmp.load_concatenated_subs(directory=op.dirname(subs[0]))
-
-    print('Merged %s data, GM masked: ' %(data.cope_labels[0]))
-    idx = data.X_labels==0
-    print(idx.shape)
-    print(data.X.shape)
-    print(data.X[:, idx])
-
-    print('\n Merged %s data, GM masked:' %(data.cope_labels[1]))
-    idx = data.X_labels==1
-    print(data.X[:, idx])
-
-    print('\n Merged %s data, GM masked:' %(data.cope_labels[2]))
-    idx = data.X_labels == 2
-    print(data.X[:, idx])
-
-    print(data.y)
