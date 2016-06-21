@@ -147,7 +147,7 @@ class DataHandler(object):
                     if mvp.class_labels is not None:
                         mvp.class_labels.extend(tmp.class_labels)
                 else:
-                    mvp.y.extend(tmp.y)
+                    mvp.y = np.append(mvp.y, tmp.y)
 
         mvp._update_metadata()
         mvp.X = data

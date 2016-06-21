@@ -107,11 +107,13 @@ if __name__ == '__main__':
             }
     indexer = MultiRoiIndexer(mvp=dat, maskdict=dicti, verbose=True)
 
-#    print(dat.X[:, dat.X_labels==0])
+    print(dat.X[:, dat.X_labels==0])
     Xnew = indexer.fit_transform(X=dat.X)
 
-#    print(dat.X[:, indexer.mvp.X_labels==0])
+    print(dat.X[:, indexer.mvp.X_labels==0])
 
-#    av = MultiPatternAverager(mvp=indexer.mvp)
-#    Xnew = av.fit_transform(X=Xnew)
-#    print(Xnew)
+    av = MultiPatternAverager(mvp=indexer.mvp)
+    Xnew = av.fit_transform(X=Xnew)
+    print(dat.cope_labels)
+    print(Xnew)
+    print(dat.y)

@@ -100,7 +100,7 @@ class Fsl2mvpBetween(Fsl2mvp):
 
         with open(file_path, 'r') as f:
             y = float(f.readline())
-        self.y = [y]
+        self.y = np.array(y)
 
 
     def glm2mvp(self, extract_labels=True):
@@ -238,7 +238,6 @@ class Fsl2mvpBetween(Fsl2mvp):
         h5f = h5py.File(fn_data, 'w')
         h5f.create_dataset('data', data=mvp_data)
         h5f.close()
-
         print(' done.')
 
     def merge_runs(self, cleanup=True, iD='merged'):
@@ -353,16 +352,18 @@ if __name__ == '__main__':
     tmp = DataHandler()
     data = tmp.load_concatenated_subs(directory=op.dirname(subs[0]))
 
-#    print('Merged %s data, GM masked: ' %(data.cope_labels[0]))
-#    idx = data.X_labels==0
-#    print(idx.shape)
-#    print(data.X.shape)
-#    print(data.X[:, idx])
+    print('Merged %s data, GM masked: ' %(data.cope_labels[0]))
+    idx = data.X_labels==0
+    print(idx.shape)
+    print(data.X.shape)
+    print(data.X[:, idx])
 
-#    print('\n Merged %s data, GM masked:' %(data.cope_labels[1]))
-#    idx = data.X_labels==1
-#    print(data.X[:, idx])
-#
-#    print('\n Merged %s data, GM masked:' %(data.cope_labels[2]))
-#    idx = data.X_labels == 2
-#    print(data.X[:, idx])
+    print('\n Merged %s data, GM masked:' %(data.cope_labels[1]))
+    idx = data.X_labels==1
+    print(data.X[:, idx])
+
+    print('\n Merged %s data, GM masked:' %(data.cope_labels[2]))
+    idx = data.X_labels == 2
+    print(data.X[:, idx])
+
+    print(data.y)

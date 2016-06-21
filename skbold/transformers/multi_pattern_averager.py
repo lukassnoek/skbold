@@ -46,6 +46,7 @@ class MultiPatternAverager(BaseEstimator, TransformerMixin):
 
         for copeindex, cope in enumerate(self.mvp.cope_labels):
             if self.method == 'mean':
+                print(X.shape)
                 current_cope_stat = X[:,self.mvp.X_labels==copeindex].mean(1)
             elif self.method == 'median':
                 current_cope_stat = X[:,self.mvp.X_labels==copeindex].median(1)
