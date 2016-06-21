@@ -12,8 +12,9 @@ import os
 import os.path as op
 import argparse
 from skbold.data2mvp import Fsl2mvp
-
 import skbold
+from joblib import Parallel, delayed
+
 roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs')
 
 parser = argparse.ArgumentParser(description='This is a command line tool to convert an FSL first-level directory.')
@@ -24,30 +25,40 @@ parser.add_argument('-t', '--threshold', help='Threshold for probabilistic mask.
 parser.add_argument('-b', '--beta2t', help='Whether to convert to tstats.', required=False)
 parser.add_argument('-s', '--space', help='epi or mni', required=False)
 parser.add_argument('-r', '--remove', nargs='*', help='Class to remove', required=False)
+parser.add_argument('-c', '--cores', type=int, help='Number of cores to run on', required=False)
 
 args = parser.parse_args()
 
 if args.directory is None:
-	args.directory = os.getcwd()
+    args.directory = os.getcwd()
 
 if args.mask is None:
-	args.mask = op.join(roi_dir, 'GrayMatter.nii.gz')
+    args.mask = op.join(roi_dir, 'GrayMatter.nii.gz')
 
 if args.threshold is None:
-	args.threshold = 0
+    args.threshold = 0
 
 if args.beta2t is None:
-	args.beta2t = True
+    args.beta2t = True
 
 if args.space is None:
-	args.space = 'epi'
+    args.space = 'epi'
 
 if args.remove is None:
-	args.remove = []
+    args.remove = []
+
+if args.cores is None:
+    args.cores = -1
 
 to_convert = glob.glob(op.join(args.directory, '*', '*.feat'))
 
-for d in to_convert:
-	converter = Fsl2mvp(d, mask_threshold=args.threshold, beta2tstat=args.beta2t,
-						ref_space=args.space, mask_path=args.mask, remove_class=args.remove)
-	converter.glm2mvp().merge_runs()
+def convert(directory, args):
+
+    converter = Fsl2mvp(directory, mask_threshold=args.threshold, beta2tstat=args.beta2t,
+                        ref_space=args.space, mask_path=args.mask, remove_class=args.remove)
+    converter.glm2mvp().merge_runs()
+
+Parallel(n_jobs=args.cores)(delayed(convert)(d, args) for d in to_convert)
+
+
+
