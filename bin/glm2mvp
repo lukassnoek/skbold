@@ -11,7 +11,7 @@ import glob
 import os
 import os.path as op
 import argparse
-from skbold.data2mvp import Fsl2mvp
+from skbold.data2mvp.fsl2mvp import Fsl2mvp
 import skbold
 from joblib import Parallel, delayed
 
