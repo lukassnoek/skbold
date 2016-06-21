@@ -16,12 +16,12 @@ import os
 import glob
 import os.path as op
 from skbold.utils import sort_numbered_list
-from skbold.core import Mvp
 from sklearn.preprocessing import LabelEncoder
-from ..core import convert2mni, convert2epi
+from skbold.data2mvp.fsl2mvp import Fsl2mvp
+from skbold.core import convert2epi, convert2mni
 
 
-class Fsl2mvp(Mvp):
+class Fsl2mvpWithin(Fsl2mvp):
     """ Fsl2mvp (multiVoxel Pattern) class, a subclass of Mvp (skbold.core)
 
     Creates an object, specialized for storing fMRI data that will be analyzed
@@ -32,63 +32,33 @@ class Fsl2mvp(Mvp):
     """
 
     def __init__(self, directory, mask_threshold=0, beta2tstat=True,
-                 ref_space='epi', mask_path=None, remove_class=[]):
+                 ref_space='epi', mask_path=None, remove_class=[], invert_selection=False):
 
-        super(Fsl2mvp, self).__init__(directory, mask_threshold, beta2tstat,
-                                      ref_space, mask_path, remove_class)
+        super(Fsl2mvpWithin, self).__init__(directory, mask_threshold, beta2tstat,
+                                      ref_space, mask_path)
 
-    def _extract_class_labels(self):
-        """ Extracts class labels as strings from FSL first-level directory.
+        self.class_labels = None
+        self.n_class = None
+        self.class_names = None
+        self.remove_class = remove_class
+        self.remove_idx = None
+        self.invert_selection = invert_selection
 
-        This method reads in a design.con file, which is by default outputted
-        in an FSL first-level directory, and sets self.class_labels to a list
-        with labels, and in addition sets self.remove_idx with indices which
-        trials (contrasts) were removed as indicated by the remove_class
-        attribute from the Fsl2mvp object.
+        self.n_trials = None
+        self.n_inst = None
+        self.class_idx = None
+        self.trial_idx = None
 
-        """
-
-        sub_path = self.directory
-        sub_name = self.sub_name
-        remove_class = self.remove_class
-
-        design_file = op.join(sub_path, 'design.con')
-
-        if not os.path.isfile(design_file):
-            raise IOError('There is no design.con file for %s' % sub_name)
-
-        # Find number of contrasts and read in accordingly
-        contrasts = sum(1 if 'ContrastName' in line else 0
-                        for line in open(design_file))
-
-        n_lines = sum(1 for line in open(design_file))
-
-        df = pd.read_csv(design_file, delimiter='\t', header=None,
-                         skipfooter=n_lines-contrasts, engine='python')
-
-        class_labels = list(df[1])
-
-        # Remove to-be-ignored contrasts (e.g. cues)
-        remove_idx = np.zeros((len(class_labels), len(remove_class)))
-
-        for i, name in enumerate(remove_class):
-            remove_idx[:, i] = np.array([name in label for label in class_labels])
-
-        self.remove_idx = np.where(remove_idx.sum(axis=1).astype(int))[0]
-        _ = [class_labels.pop(idx) for idx in np.sort(self.remove_idx)[::-1]]
-
-        # Here, numeric extensions of contrast names (e.g. 'positive_003') are
-        # removed
-
-        self.class_labels = []
-        for c in class_labels:
-            parts = c.split('_')
-            parts = [x.strip() for x in parts]
-            if parts[-1].isdigit():
-                label = '_'.join(parts[:-1])
-                self.class_labels.append(label)
-            else:
-                self.class_labels.append(c)
+    def _update_metadata(self):
+        # Maybe change this to work with @property and setters
+        cl = self.class_labels
+        self.y = LabelEncoder().fit_transform(cl)
+        self.n_trials = len(cl)
+        self.class_names = np.unique(cl)
+        self.n_class = len(self.class_names)
+        self.n_inst = [np.sum(cls == cl) for cls in cl]
+        self.class_idx = [cl == cls for cls in self.class_names]
+        self.trial_idx = [np.where(cl == cls)[0] for cls in self.class_names]
 
     def glm2mvp(self, extract_labels=True):
         """ Extract (meta)data from FSL first-level directory.
@@ -100,7 +70,6 @@ class Fsl2mvp(Mvp):
         """
         sub_path = self.directory
         sub_name = self.sub_name
-        run_name = self.run_name
 
         reg_dir = op.join(sub_path, 'reg')
 
@@ -131,9 +100,9 @@ class Fsl2mvp(Mvp):
 
         # Extract class vector (class_labels)
         if extract_labels:
-            self._extract_class_labels()
+            self._extract_labels()
             self.y = LabelEncoder().fit_transform(self.class_labels)
-            self.update_metadata()
+            self._update_metadata()
 
         print('Processing %s (run %i / %i)...' % (sub_name, n_converted+1,
               n_feat), end='')
@@ -157,6 +126,7 @@ class Fsl2mvp(Mvp):
         copes, varcopes = sort_numbered_list(copes), sort_numbered_list(varcopes)
 
         # Transform (var)copes if ref_space is 'mni' but files are in 'epi'.
+
         if transform2mni:
             copes.extend(varcopes)
             out_dir = op.join(sub_path, 'reg_standard')
@@ -218,6 +188,69 @@ class Fsl2mvp(Mvp):
         print(' done.')
 
         return self
+
+    def merge_runs(self, cleanup=True, iD='merged'):
+        """ Merges single-trial patterns from different runs.
+
+        Given m runs, this method merges patterns by simple concatenation.
+        Concatenation either occurs along the vertical axis. Importantly,
+        it assumes that runs are identical in their set-up (e.g., conditions).
+
+        Parameters
+        ----------
+        cleanup : bool
+            Whether to clean up the run-wise data and thus to keep only the
+            merged data.
+        id : str
+            Identifier to give the merged runs, such that the data and header
+            files have the structure of: <subname>_header/data_<id>.extension
+        """
+
+        mat_dir = op.join(op.dirname(self.directory), 'mvp_data')
+        run_headers = glob.glob(op.join(mat_dir, '*pickle*'))
+        run_data = glob.glob(op.join(mat_dir, '*hdf5*'))
+
+        if len(run_headers) > 1:
+            print('Merging runs for %s' % self.sub_name)
+
+            for i in range(len(run_data)):
+
+                # 'Peek' at first run
+                if i == 0:
+                    h5f = h5py.File(run_data[i], 'r')
+                    data = h5f['data'][:]
+                    h5f.close()
+                    hdr = cPickle.load(open(run_headers[i]))
+                else:
+                    # Concatenate data to first run and extend class_labels
+                    tmp = h5py.File(run_data[i])
+                    data = np.concatenate((data, tmp['data'][:]), axis=0)
+                    tmp.close()
+
+                    tmp = cPickle.load(open(run_headers[i], 'r'))
+                    hdr.class_labels.extend(tmp.class_labels)
+
+            hdr._update_metadata()
+            hdr.y = LabelEncoder().fit_transform(hdr.class_labels)
+
+            fn_header = op.join(mat_dir, '%s_header_%s.pickle' %
+                                (self.sub_name, iD))
+            fn_data = op.join(mat_dir, '%s_data_%s.hdf5' %
+                              (self.sub_name, iD))
+
+            with open(fn_header, 'wb') as handle:
+                cPickle.dump(hdr, handle)
+
+            h5f = h5py.File(fn_data, 'w')
+            h5f.create_dataset('data', data=data)
+            h5f.close()
+
+            if cleanup:
+                run_headers.extend(run_data)
+                _ = [os.remove(f) for f in run_headers]
+        else:
+            # If there's only one file, don't merge
+            pass
 
     def glm2mvp_and_merge(self):
         """ Chains glm2mvp() and merge_runs(). """

@@ -16,9 +16,12 @@ from .roi_indexer import RoiIndexer
 from .incremental_feature_combiner import IncrementalFeatureCombiner
 from .pca_filter import PCAfilter
 from .mean_euclidean_balanced import MeanEuclideanBalanced
+from .multi_roi_indexer import MultiRoiIndexer
+from .multi_pattern_averager import MultiPatternAverager
+
 
 __all__ = ['PatternAverager', 'FeaturesToContrast', 'ClusterThreshold',
            'AnovaCutoff', 'ArrayPermuter', 'LabelFactorizer',
            'AverageRegionTransformer', 'MeanEuclidean', 'PCAfilter',
-           'SpatialFilter', 'RoiIndexer', 'IncrementalFeatureCombiner',
-           'PCAfilter', 'MeanEuclideanBalanced']
+           'SpatialFilter', 'RoiIndexer', 'IncrementalFeatureCombiner', 'PCAfilter', 'MeanEuclideanBalanced',
+           'MultiRoiIndexer', 'MultiPatternAverager']

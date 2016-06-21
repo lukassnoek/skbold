@@ -119,7 +119,7 @@ class DataHandler(object):
         iD = self.identifier
         data_name = op.join(directory, '*', 'mvp_data', '*%s*.hdf5' % iD)
         hdr_name = op.join(directory, '*', 'mvp_data', '*%s*.pickle' % iD)
-        data_paths, hdr_paths = glob.glob(data_name), glob.glob(hdr_name)
+        data_paths, hdr_paths = sorted(glob.glob(data_name)), sorted(glob.glob(hdr_name))
 
         if not data_paths or not hdr_paths:
             print('Did not find any data/hdr paths in %s!' % op.dirname(data_name))
@@ -143,10 +143,13 @@ class DataHandler(object):
                 tmp.close()
                 tmp = cPickle.load(open(hdr_paths[i], 'r'))
 
-                if mvp.class_labels is not None:
-                    mvp.class_labels.extend(tmp.class_labels)
+                if self.__class__.__name__ == 'Fsl2mvpWithin':
+                    if mvp.class_labels is not None:
+                        mvp.class_labels.extend(tmp.class_labels)
+                else:
+                    mvp.y = np.append(mvp.y, tmp.y)
 
-        mvp.update_metadata()
+        mvp._update_metadata()
         mvp.X = data
         mvp.sub_name = 'ConcatenatedSubjects'
         self.mvp = mvp
