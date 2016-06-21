@@ -26,6 +26,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import precision_score
 from sklearn.grid_search import GridSearchCV
 import warnings
+from skbold.core import convert2epi
 warnings.filterwarnings('ignore')  # hack to turn off UndefinedMetricWarning
 import cPickle
 import skbold
@@ -110,12 +111,35 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
         if not self.masks:
             raise ValueError('No masks found in specified directory!')
 
+        if mvp.ref_space == 'epi':
+
+            for i, mask in enumerate(self.masks):
+
+                if op.basename(mask)[0:2] in ['L_', 'R_']:
+                    laterality = 'unilateral'
+                else:
+                    laterality = 'bilateral'
+
+                main_dir = op.dirname(mvp.directory)
+                epi_dir = op.join(main_dir, 'epi_masks', laterality)
+
+                if not op.isdir(epi_dir):
+                    os.makedirs(epi_dir)
+
+                epi_name = op.basename(mask)[:-7]
+                epi_exists = glob.glob(op.join(epi_dir, '*%s*.nii.gz' % epi_name))
+
+                if epi_exists:
+                    self.masks[i] = epi_exists[0]
+                else:
+                    reg_dir = op.join(mvp.directory, 'reg')
+                    self.masks[i] = convert2epi(mask, reg_dir, epi_dir)[0]
+
         self.folds = folds
 
         # Metrics
         self.train_roi_scores = None
         self.test_roi_scores = None
-
         self.stack_dir = op.join(op.dirname(mvp.directory), 'stack_dir')
 
         if not op.isdir(self.stack_dir):
@@ -398,11 +422,11 @@ if __name__ == '__main__':
     # Params
     mask_dir = 'unilateral'
     test_folds = 15
-    cv_folds = 5
-    meta_fs = IncrementalFeatureCombiner(scores=None, cutoff=5)
-    meta_gs = None
+    cv_folds = 3
+    meta_fs = IncrementalFeatureCombiner(scores=None, cutoff=56)
+    meta_gs = None#np.arange(0.33, .55, 0.05)
     n_cores = -1
-    out_dir = 'teststack3'
+    out_dir = 'UnilateralAllROIsFolds15'
 
     for sub_dir in sub_dirs:
 
@@ -421,7 +445,7 @@ if __name__ == '__main__':
             X_train, y_train = mvp.X[train_idx, :], mvp.y[train_idx]
             X_test, y_test = mvp.X[test_idx, :], mvp.y[test_idx]
             rsc.fit(X_train, y_train)
-            pred = rsc.predict(X_test, y_test)
+            pred = np.argmax(rsc.predict(X_test, y_test), axis=1)
             results.update_results(test_idx=test_idx, y_pred=pred, pipeline=None)
 
         results.compute_and_write(directory=resultsdir)

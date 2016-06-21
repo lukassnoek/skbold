@@ -27,8 +27,7 @@ class Mvp(object):
     """
 
     def __init__(self, directory, mask_threshold=0, beta2tstat=True,
-                 ref_space='mni', mask_path=None,
-                 cleanup=True):
+                 ref_space='mni', mask_path=None):
 
         """ Initializes a (bare-bones) Mvp object.
 
@@ -59,6 +58,10 @@ class Mvp(object):
         """
 
         self.directory = directory
+
+        if not op.exists(directory):
+            raise OSError("The directory '%s' doesn't seem to exist!" % directory)
+
         self.sub_name = op.basename(op.dirname(directory))
         self.run_name = op.basename(directory).split('.')[0].split('_')[-1]
         self.ref_space = ref_space
@@ -92,3 +95,7 @@ class Mvp(object):
         tmp_idx = np.zeros(self.mask_shape)
         tmp_idx[self.mask_index.reshape(self.mask_shape)] += new_idx
         self.mask_index = tmp_idx.astype(bool).ravel()
+
+    def glm2mvp(self):
+        msg = "This method can only be called by subclasses of Mvp!"
+        raise ValueError(msg)

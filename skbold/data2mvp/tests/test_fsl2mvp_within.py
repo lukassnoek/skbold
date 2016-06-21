@@ -24,7 +24,7 @@ def test_fsl2mvp_within():
 
     for r in [run1, run2]:
         fsl2mvp = Fsl2mvpWithin(r, mask_threshold=0, beta2tstat=True,
-                          ref_space='mni', mask_path=None, remove_class=[])
+                          ref_space='mni', mask_path=None, remove_contrast=[])
         fsl2mvp.glm2mvp()
         data_file = op.join(mvp_dir, 'test_data_data_%s.hdf5' %
                             op.basename(r).split('.')[0])
@@ -34,7 +34,7 @@ def test_fsl2mvp_within():
         assert (op.exists(hdr_file))
         shutil.rmtree(op.join(r, 'reg_standard'))
 
-    fsl2mvp.merge_runs(iD='merged')
+    fsl2mvp.merge_runs(idf='merged')
     merged_data = op.join(mvp_dir, 'test_data_data_merged.hdf5')
     merged_hdr = op.join(mvp_dir, 'test_data_header_merged.pickle')
     assert (op.exists(merged_data))
@@ -43,15 +43,16 @@ def test_fsl2mvp_within():
     h5f = h5py.File(merged_data, 'r')
     data = h5f['data'][:]
     h5f.close()
+    assert (data.shape[0] == 18)
     assert (data.shape[1] == 91 * 109 * 91)
 
     shutil.rmtree(mvp_dir)
 
     for r in [run1, run2]:
         fsl2mvp = Fsl2mvpWithin(r, mask_threshold=0, beta2tstat=True,
-                          ref_space='epi', mask_path=None, remove_class=[])
+                          ref_space='epi', mask_path=None, remove_contrast=[])
         fsl2mvp.glm2mvp()
-        assert(fsl2mvp.class_labels == true_labels)
+        assert(fsl2mvp.contrast_labels == true_labels)
         assert(op.isdir(mvp_dir))
 
         data_file = op.join(mvp_dir, 'test_data_data_%s.hdf5' % op.basename(r).split('.')[0])
@@ -59,7 +60,7 @@ def test_fsl2mvp_within():
         assert(op.exists(data_file))
         assert(op.exists(hdr_file))
 
-    fsl2mvp.merge_runs(iD='merged')
+    fsl2mvp.merge_runs(idf='merged')
     merged_data = op.join(mvp_dir, 'test_data_data_merged.hdf5')
     merged_hdr = op.join(mvp_dir, 'test_data_header_merged.pickle')
     assert(op.exists(merged_data))

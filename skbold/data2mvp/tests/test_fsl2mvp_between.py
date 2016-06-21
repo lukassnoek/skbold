@@ -1,43 +1,66 @@
-import glob
-import os
 import os.path as op
-import skbold
 from skbold.data2mvp.fsl2mvp import Fsl2mvpBetween
+from skbold import testdata_path
+import shutil
+import h5py
 
 def test_fsl2mvp_between():
-    feat_dir = '/Users/steven/Desktop/pioptest'
 
-    subdir = glob.glob(os.path.join(feat_dir, 'pi*'))
+    run1 = op.join(testdata_path, 'run1.feat')
+    run2 = op.join(testdata_path, 'run2.feat')
 
-    gm_mask = op.join(op.dirname(op.dirname(skbold.utils.__file__)), 'data', 'ROIs', 'GrayMatter.nii.gz')
+    mvp_dir = op.join(testdata_path, 'mvp_data')
 
-    contr = {'faces': ['emo-neu', 'pos-neu'],
-             'wm': ['act-pas'],
-             'harriri': ['emo-control'],
-             'anticipatie': ['mismatch-match'],
-             'gstroop': ['con-incon']}
+    if op.isdir(mvp_dir):
+        shutil.rmtree(mvp_dir)
 
-    true_labels = ['pos-neu', 'emo-neu', 'con-incon', 'emo-control', 'act-pas', 'mismatch-match']
+    for r in [run1, run2]:
+        fsl2mvp = Fsl2mvpBetween(r, mask_threshold=0, beta2tstat=True,
+                          ref_space='mni', mask_path=None, remove_contrast=[])
+        fsl2mvp.glm2mvp()
 
-    for sub in subdir:
-        taskdirs = glob.glob(os.path.join(sub, '*.feat'))
+        data_file = op.join(mvp_dir, 'test_data_data_%s.hdf5' %
+                            op.basename(r).split('.')[0])
+        hdr_file = op.join(mvp_dir, 'test_data_header_%s.pickle' %
+                           op.basename(r).split('.')[0])
+        assert (op.exists(data_file))
+        assert (op.exists(hdr_file))
+        shutil.rmtree(op.join(r, 'reg_standard'))
 
-        for task in taskdirs:
-            taskname = os.path.basename(os.path.normpath(task)).split('piop')[1][:-5]
-            fsl2mvpb = Fsl2mvpBetween(directory=task, mask_threshold=0, beta2tstat=True,
-                                ref_space='mni', mask_path=gm_mask, remove_cope=contr[taskname],
-                                invert_selection=True, output_var_file='raven.txt')
-            fsl2mvpb.glm2mvp()
-        fsl2mvpb.merge_runs()
+    fsl2mvp.merge_runs(idf='merged')
+    merged_data = op.join(mvp_dir, 'test_data_data_merged.hdf5')
+    merged_hdr = op.join(mvp_dir, 'test_data_header_merged.pickle')
+    assert (op.exists(merged_data))
+    assert (op.exists(merged_hdr))
 
-    from skbold.utils import DataHandler
+    h5f = h5py.File(merged_data, 'r')
+    data = h5f['data'][:]
+    h5f.close()
+    assert(data.shape[0] == 1)
+    assert(data.shape[1] == 91 * 109 * 91 * 9 * 2)
 
-    alldat = DataHandler()
-    alldat = alldat.load_concatenated_subs(directory=feat_dir)
+    shutil.rmtree(mvp_dir)
 
-    assert(alldat.cope_labels == true_labels)
-    assert(alldat.X.shape == (3, 269412 * 6))
-    assert(alldat.y == [14, 25, 19])
+    for r in [run1, run2]:
+        fsl2mvp = Fsl2mvpBetween(r, mask_threshold=0, beta2tstat=True,
+                          ref_space='epi', mask_path=None, remove_contrast=[])
+        fsl2mvp.glm2mvp()
+        assert(op.isdir(mvp_dir))
 
-if __name__=='__main__':
+        data_file = op.join(mvp_dir, 'test_data_data_%s.hdf5' % op.basename(r).split('.')[0])
+        hdr_file = op.join(mvp_dir, 'test_data_header_%s.pickle' % op.basename(r).split('.')[0])
+        assert(op.exists(data_file))
+        assert(op.exists(hdr_file))
+
+    fsl2mvp.merge_runs(idf='merged')
+    merged_data = op.join(mvp_dir, 'test_data_data_merged.hdf5')
+    merged_hdr = op.join(mvp_dir, 'test_data_header_merged.pickle')
+    assert(op.exists(merged_data))
+    assert(op.exists(merged_hdr))
+
+    h5f = h5py.File(merged_data, 'r')
+    data = h5f['data'][:]
+    h5f.close()
+
+if __name__== '__main__':
     test_fsl2mvp_between()

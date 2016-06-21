@@ -32,18 +32,20 @@ class Fsl2mvpWithin(Fsl2mvp):
     """
 
     def __init__(self, directory, mask_threshold=0, beta2tstat=True,
-                 ref_space='epi', mask_path=None, remove_class=[], invert_selection=False):
+                 ref_space='epi', mask_path=None, remove_contrast=[],
+                 invert_selection=False):
 
-        super(Fsl2mvpWithin, self).__init__(directory, mask_threshold, beta2tstat,
-                                      ref_space, mask_path)
-
-        self.class_labels = None
+        super(Fsl2mvpWithin, self).__init__(directory=directory,
+                                            mask_threshold=mask_threshold,
+                                            beta2tstat=beta2tstat,
+                                            remove_contrast=remove_contrast,
+                                            ref_space=ref_space,
+                                            mask_path=mask_path,
+                                            invert_selection=invert_selection)
+        self.contrast_labels = None
         self.n_class = None
         self.class_names = None
-        self.remove_class = remove_class
         self.remove_idx = None
-        self.invert_selection = invert_selection
-
         self.n_trials = None
         self.n_inst = None
         self.class_idx = None
@@ -51,7 +53,7 @@ class Fsl2mvpWithin(Fsl2mvp):
 
     def _update_metadata(self):
         # Maybe change this to work with @property and setters
-        cl = self.class_labels
+        cl = self.contrast_labels
         self.y = LabelEncoder().fit_transform(cl)
         self.n_trials = len(cl)
         self.class_names = np.unique(cl)
@@ -101,7 +103,7 @@ class Fsl2mvpWithin(Fsl2mvp):
         # Extract class vector (class_labels)
         if extract_labels:
             self._extract_labels()
-            self.y = LabelEncoder().fit_transform(self.class_labels)
+            self.y = LabelEncoder().fit_transform(self.contrast_labels)
             self._update_metadata()
 
         print('Processing %s (run %i / %i)...' % (sub_name, n_converted+1,
@@ -141,9 +143,9 @@ class Fsl2mvpWithin(Fsl2mvp):
         _ = [varcopes.pop(ix) for ix in sorted(self.remove_idx, reverse=True)]
 
         n_stat = len(copes)
-        if not n_stat == len(self.class_labels):
+        if not n_stat == len(self.contrast_labels):
             msg = 'The number of trials (%i) do not match the number of ' \
-                  'class labels (%i)' % (n_stat, len(self.class_labels))
+                  'class labels (%i)' % (n_stat, len(self.contrast_labels))
             raise ValueError(msg)
 
         # We need to 'peek' at the first cope to know the dimensions
@@ -184,73 +186,10 @@ class Fsl2mvpWithin(Fsl2mvp):
         h5f = h5py.File(fn_data, 'w')
         h5f.create_dataset('data', data=mvp_data)
         h5f.close()
-
+        self.X = mvp_data
         print(' done.')
 
         return self
-
-    def merge_runs(self, cleanup=True, iD='merged'):
-        """ Merges single-trial patterns from different runs.
-
-        Given m runs, this method merges patterns by simple concatenation.
-        Concatenation either occurs along the vertical axis. Importantly,
-        it assumes that runs are identical in their set-up (e.g., conditions).
-
-        Parameters
-        ----------
-        cleanup : bool
-            Whether to clean up the run-wise data and thus to keep only the
-            merged data.
-        id : str
-            Identifier to give the merged runs, such that the data and header
-            files have the structure of: <subname>_header/data_<id>.extension
-        """
-
-        mat_dir = op.join(op.dirname(self.directory), 'mvp_data')
-        run_headers = glob.glob(op.join(mat_dir, '*pickle*'))
-        run_data = glob.glob(op.join(mat_dir, '*hdf5*'))
-
-        if len(run_headers) > 1:
-            print('Merging runs for %s' % self.sub_name)
-
-            for i in range(len(run_data)):
-
-                # 'Peek' at first run
-                if i == 0:
-                    h5f = h5py.File(run_data[i], 'r')
-                    data = h5f['data'][:]
-                    h5f.close()
-                    hdr = cPickle.load(open(run_headers[i]))
-                else:
-                    # Concatenate data to first run and extend class_labels
-                    tmp = h5py.File(run_data[i])
-                    data = np.concatenate((data, tmp['data'][:]), axis=0)
-                    tmp.close()
-
-                    tmp = cPickle.load(open(run_headers[i], 'r'))
-                    hdr.class_labels.extend(tmp.class_labels)
-
-            hdr._update_metadata()
-            hdr.y = LabelEncoder().fit_transform(hdr.class_labels)
-
-            fn_header = op.join(mat_dir, '%s_header_%s.pickle' %
-                                (self.sub_name, iD))
-            fn_data = op.join(mat_dir, '%s_data_%s.hdf5' %
-                              (self.sub_name, iD))
-
-            with open(fn_header, 'wb') as handle:
-                cPickle.dump(hdr, handle)
-
-            h5f = h5py.File(fn_data, 'w')
-            h5f.create_dataset('data', data=data)
-            h5f.close()
-
-            if cleanup:
-                run_headers.extend(run_data)
-                _ = [os.remove(f) for f in run_headers]
-        else:
-            # If there's only one file, don't merge
-            pass
 
     def glm2mvp_and_merge(self):
         """ Chains glm2mvp() and merge_runs(). """
