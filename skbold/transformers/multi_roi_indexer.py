@@ -42,13 +42,13 @@ class MultiRoiIndexer(BaseEstimator, TransformerMixin):
     def fit(self, X=None, y=None):
         """ Fits multiple times. """
 
-        cope_labels = self.mvp.cope_labels
+        contrast_labels = self.mvp.contrast_labels
         maskdict = self.maskdict
 
         #initialize roi_idx list
         roi_idx = np.ones(0, dtype=bool)
 
-        for copeindex, cope in enumerate(cope_labels):
+        for copeindex, cope in enumerate(contrast_labels):
             if self.verbose:
                 print('Cope: %s, path: %s, threshold: %f' %(cope, maskdict[cope]['path'], maskdict[cope]['threshold']))
 
@@ -114,6 +114,6 @@ if __name__ == '__main__':
 
     av = MultiPatternAverager(mvp=indexer.mvp)
     Xnew = av.fit_transform(X=Xnew)
-    print(dat.cope_labels)
+    print(dat.contrast_labels)
     print(Xnew)
     print(dat.y)
