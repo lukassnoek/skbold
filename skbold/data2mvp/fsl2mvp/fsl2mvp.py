@@ -148,12 +148,11 @@ class Fsl2mvp(Mvp):
                     # Concatenate data to first run and extend cope_labels
                     tmp = h5py.File(run_data[i])
 
-                    if self.__class__.__name__ == 'Fsl2mvpWithin':
-                        data = np.concatenate((data, tmp['data'][:]), axis=0)
-                    elif self.__class__.__name__ == 'Fsl2mvpBetween':
-                        # add data, do not add dim (if you add a dim, the number of dims == number of runs -> only works for 2 runs)
-                        tmpdat = tmp['data'][:]
-                        data = np.concatenate((data, tmpdat), axis=0)
+#                    if self.__class__.__name__ == 'Fsl2mvpWithin':
+                    data = np.concatenate((data, tmp['data'][:]), axis=0)
+#                    elif self.__class__.__name__ == 'Fsl2mvpBetween':
+                    tmpdat = tmp['data'][:]
+                    data = np.concatenate((data, tmpdat), axis=0)
                     tmp.close()
 
                     tmp = cPickle.load(open(run_headers[i], 'r'))
