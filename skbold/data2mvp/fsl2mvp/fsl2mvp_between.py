@@ -207,31 +207,53 @@ class Fsl2mvpBetween(Fsl2mvp):
         self.glm2mvp().merge_runs()
         return self
 
+
 if __name__ == '__main__':
+    import skbold.utils
+    from skbold import DataHandler
+    import os.path as op
+    from glob import glob
 
-    import skbold
-    mask = op.join(op.dirname(skbold.__file__), 'data', 'ROIs', 'GrayMatter.nii.gz')
-    directory = '/media/lukas/data/MorbidCuriosity/mri/pi0246/pi0246-20160407-0010-WIPpiopanticipatie.feat'
-    output_var_file = None
-    mask_threshold = 0
-    beta2tstat = True,
-    ref_space = 'mni'
-    mask_path = mask
-    remove_contrast = ['antneg-antneu']
-    invert_selection = False
+    feat_dir = '/users/steven/Desktop/pioptest'
+    subs = glob(op.join(feat_dir, 'pi*'))
+    gm_mask = op.join(op.dirname(skbold.__file__), 'data', 'ROIs', 'GrayMatter.nii.gz')
 
-    f2mb = Fsl2mvpBetween(directory=directory,
-                          output_var_file=output_var_file,
-                          mask_threshold=mask_threshold,
-                          beta2tstat=beta2tstat,
-                          ref_space=ref_space,
-                          mask_path=mask_path,
-                          remove_contrast=remove_contrast,
-                          invert_selection=invert_selection)
+    copes = {'wm': ['act-pas'],
+             'harriri': ['emo-control'],
+             'gstroop': ['con-incon']}
 
-    f2mb.glm2mvp_and_merge()
+    # loop over subjects & tasks
+    for sub in subs:
+        tasks = glob(op.join(sub, '*.feat'))
+        tasks = [x for x in tasks if x.split('piop')[-1][:-5] in copes.keys()]
+        tasknames = [x.split('piop')[-1][:-5] for x in tasks]
 
-    from skbold.utils import DataHandler
+        for (taskdir, taskname) in zip(tasks, tasknames):
+            tmp = Fsl2mvpBetween(directory=taskdir, mask_threshold=0, beta2tstat=True,
+                                 ref_space='mni', mask_path=gm_mask, remove_contrast=copes[taskname],
+                                 invert_selection=True, output_var_file='zraven.txt')
+            tmp.glm2mvp()
 
-    mvp = DataHandler().load_separate_sub(op.dirname(directory), remove_zeros=False)
-    # print(mvp.X_dict)
+            # print('\nSub %s, task %s, data (GM-masked):' %(sub[-4:], taskname))
+            # print(tmp.X)
+
+        tmp.merge_runs()
+
+    tmp = DataHandler()
+    data = tmp.load_concatenated_subs(directory=op.dirname(subs[0]))
+
+    print('Merged %s data, GM masked: ' % (data.contrast_labels[0]))
+    idx = data.contrast_id == 0
+    print(idx.shape)
+    print(data.X.shape)
+    print(data.X[:, idx])
+
+    print('\n Merged %s data, GM masked:' % (data.contrast_labels[1]))
+    idx = data.contrast_id == 1
+    print(data.X[:, idx])
+
+    print('\n Merged %s data, GM masked:' % (data.contrast_labels[2]))
+    idx = data.contrast_id == 2
+    print(data.X[:, idx])
+
+    print(data.y)
