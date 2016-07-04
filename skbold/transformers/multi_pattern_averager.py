@@ -42,14 +42,13 @@ class MultiPatternAverager(BaseEstimator, TransformerMixin):
             Transformed ndarray of shape = [n_samples, 1]
         """
 
-        X_new = np.empty([X.shape[0], len(self.mvp.cope_labels)])
+        X_new = np.empty([X.shape[0], len(self.mvp.contrast_labels)])
 
-        for copeindex, cope in enumerate(self.mvp.cope_labels):
+        for copeindex, cope in enumerate(self.mvp.contrast_labels):
             if self.method == 'mean':
-                print(X.shape)
-                current_cope_stat = X[:,self.mvp.X_labels==copeindex].mean(1)
+                current_cope_stat = X[:,self.mvp.contrast_id==copeindex].mean(1)
             elif self.method == 'median':
-                current_cope_stat = X[:,self.mvp.X_labels==copeindex].median(1)
+                current_cope_stat = X[:,self.mvp.contrast_id==copeindex].median(1)
             else:
                 raise ValueError('Invalid method: choose mean or median.')
             X_new[:, copeindex] = current_cope_stat

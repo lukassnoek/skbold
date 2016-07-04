@@ -18,10 +18,11 @@ from .pca_filter import PCAfilter
 from .mean_euclidean_balanced import MeanEuclideanBalanced
 from .multi_roi_indexer import MultiRoiIndexer
 from .multi_pattern_averager import MultiPatternAverager
+from .correlation_selector import CorrelationSelector
 
 
 __all__ = ['PatternAverager', 'FeaturesToContrast', 'ClusterThreshold',
            'AnovaCutoff', 'ArrayPermuter', 'LabelFactorizer',
            'AverageRegionTransformer', 'MeanEuclidean', 'PCAfilter',
            'SpatialFilter', 'RoiIndexer', 'IncrementalFeatureCombiner', 'PCAfilter', 'MeanEuclideanBalanced',
-           'MultiRoiIndexer', 'MultiPatternAverager']
+           'MultiRoiIndexer', 'MultiPatternAverager', 'CorrelationSelector']

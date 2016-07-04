@@ -154,22 +154,20 @@ class Fsl2mvp(Mvp):
                     # Concatenate data to first run and extend cope_labels
                     tmp = h5py.File(run_data[i])
 
-                    if self.__class__.__name__ == 'Fsl2mvpWithin':
-                        data = np.concatenate((data, tmp['data'][:]), axis=0)
-                    elif self.__class__.__name__ == 'Fsl2mvpBetween':
-                        # add dim
-                        tmpdat = tmp['data'][:]
-                        tmpdat = tmpdat[np.newaxis, :]
-                        data = np.concatenate((data[np.newaxis, :], tmpdat), axis=1)
+#                    if self.__class__.__name__ == 'Fsl2mvpWithin':
+#                    data = np.concatenate((data, tmp['data'][:]), axis=0)
+#                    elif self.__class__.__name__ == 'Fsl2mvpBetween':
+                    tmpdat = tmp['data'][:]
+                    data = np.concatenate((data, tmpdat), axis=0)
                     tmp.close()
 
                     tmp = cPickle.load(open(run_headers[i], 'r'))
                     hdr.contrast_labels.extend(tmp.contrast_labels)
 
                     if self.__class__.__name__ == 'Fsl2mvpBetween':
-                        to_concat = tmp.X_labels + len(np.unique(hdr.X_labels))
-                        hdr.X_labels = np.concatenate((hdr.X_labels, to_concat), axis=0)
-                        hdr._update_X_dict(tmp.X_dict)
+                        to_concat = tmp.contrast_id + len(np.unique(hdr.contrast_id))
+                        hdr.contrast_id = np.concatenate((hdr.contrast_id, to_concat), axis=0)
+                        # hdr._update_X_dict(tmp.X_dict)
 
                 if self.__class__.__name__ == 'Fsl2mvpWithin':
                     hdr.y = LabelEncoder().fit_transform(hdr.contrast_labels)

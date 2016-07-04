@@ -43,8 +43,8 @@ class Fsl2mvpBetween(Fsl2mvp):
                                              invert_selection=invert_selection)
 
         self.output_var_file = output_var_file
-        self.X_dict = {}
-        self.X_labels = np.zeros(0, dtype=np.uint8)
+#        self.X_dict = {}
+        self.contrast_id = np.zeros(0, dtype=np.uint8)
         self.contrast_labels = None
         self.n_cope = None
         self.n_runs = None
@@ -54,11 +54,11 @@ class Fsl2mvpBetween(Fsl2mvp):
         self.n_contrast = len(contrasts)
         self.contrast_names = np.unique(contrasts)
 
-    def _update_X_dict(self, mvp_meta):
-        for key, value in mvp_meta.iteritems():
-            mvp_meta[key] = value + len(self.X_dict) * self.n_features
-
-        self.X_dict.update(mvp_meta)
+    # def _update_X_dict(self, mvp_meta):
+    #     for key, value in mvp_meta.iteritems():
+    #         mvp_meta[key] = value + len(self.X_dict) * self.n_features
+    #
+    #     self.X_dict.update(mvp_meta)
 
     def _add_outcome_var(self, filename):
         file_path = op.join(op.dirname(self.directory), filename)
@@ -162,7 +162,7 @@ class Fsl2mvpBetween(Fsl2mvp):
 
         # Pre-allocate
         mvp_data = np.zeros(columns)
-        mvp_meta = {} #empty dictionary for X_dict
+        # mvp_meta = {} #empty dictionary for X_dict
 
         # Load in data (COPEs)
         for i, (cope, varcope) in enumerate(zip(copes, varcopes)):
@@ -175,13 +175,13 @@ class Fsl2mvpBetween(Fsl2mvp):
                 copedat = np.divide(copedat, var_sq)
 
             mvp_data[(i * self.n_features):(i*self.n_features + self.n_features)] = copedat
-            self.X_labels = np.concatenate((self.X_labels, np.ones(self.n_features, dtype=np.uint8) * i), axis=0)
-            mvp_meta[self.contrast_labels[i]] = np.array([(i * self.n_features), (i*self.n_features + self.n_features)])
+            self.contrast_id = np.concatenate((self.contrast_id, np.ones(self.n_features, dtype=np.uint8) * i), axis=0)
+#            mvp_meta[self.contrast_labels[i]] = np.array([(i * self.n_features), (i*self.n_features + self.n_features)])
 
         mvp_data[np.isnan(mvp_data)] = 0
         self.nifti_header = cope_img.header  # pick header from last cope
         self.affine = cope_img.affine
-        self._update_X_dict(mvp_meta)
+#        self._update_X_dict(mvp_meta)
 
         fn_header = op.join(mat_dir, '%s_header_run%i.pickle' % (self.sub_name,
                             n_converted+1))
@@ -207,31 +207,53 @@ class Fsl2mvpBetween(Fsl2mvp):
         self.glm2mvp().merge_runs()
         return self
 
+
 if __name__ == '__main__':
+    import skbold.utils
+    from skbold import DataHandler
+    import os.path as op
+    from glob import glob
 
-    import skbold
-    mask = op.join(op.dirname(skbold.__file__), 'data', 'ROIs', 'GrayMatter.nii.gz')
-    directory = '/media/lukas/data/MorbidCuriosity/mri/pi0246/pi0246-20160407-0010-WIPpiopanticipatie.feat'
-    output_var_file = None
-    mask_threshold = 0
-    beta2tstat = True,
-    ref_space = 'mni'
-    mask_path = mask
-    remove_contrast = ['antneg-antneu']
-    invert_selection = False
+    feat_dir = '/users/steven/Desktop/pioptest'
+    subs = glob(op.join(feat_dir, 'pi*'))
+    gm_mask = op.join(op.dirname(skbold.__file__), 'data', 'ROIs', 'GrayMatter.nii.gz')
 
-    f2mb = Fsl2mvpBetween(directory=directory,
-                          output_var_file=output_var_file,
-                          mask_threshold=mask_threshold,
-                          beta2tstat=beta2tstat,
-                          ref_space=ref_space,
-                          mask_path=mask_path,
-                          remove_contrast=remove_contrast,
-                          invert_selection=invert_selection)
+    copes = {'wm': ['act-pas'],
+             'harriri': ['emo-control'],
+             'gstroop': ['con-incon']}
 
-    f2mb.glm2mvp_and_merge()
+    # loop over subjects & tasks
+    for sub in subs:
+        tasks = glob(op.join(sub, '*.feat'))
+        tasks = [x for x in tasks if x.split('piop')[-1][:-5] in copes.keys()]
+        tasknames = [x.split('piop')[-1][:-5] for x in tasks]
 
-    from skbold.utils import DataHandler
+        for (taskdir, taskname) in zip(tasks, tasknames):
+            tmp = Fsl2mvpBetween(directory=taskdir, mask_threshold=0, beta2tstat=True,
+                                 ref_space='mni', mask_path=gm_mask, remove_contrast=copes[taskname],
+                                 invert_selection=True, output_var_file='zraven.txt')
+            tmp.glm2mvp()
 
-    mvp = DataHandler().load_separate_sub(op.dirname(directory), remove_zeros=False)
-    print(mvp.X_dict)
+            # print('\nSub %s, task %s, data (GM-masked):' %(sub[-4:], taskname))
+            # print(tmp.X)
+
+        tmp.merge_runs()
+
+    tmp = DataHandler()
+    data = tmp.load_concatenated_subs(directory=op.dirname(subs[0]))
+
+    print('Merged %s data, GM masked: ' % (data.contrast_labels[0]))
+    idx = data.contrast_id == 0
+    print(idx.shape)
+    print(data.X.shape)
+    print(data.X[:, idx])
+
+    print('\n Merged %s data, GM masked:' % (data.contrast_labels[1]))
+    idx = data.contrast_id == 1
+    print(data.X[:, idx])
+
+    print('\n Merged %s data, GM masked:' % (data.contrast_labels[2]))
+    idx = data.contrast_id == 2
+    print(data.X[:, idx])
+
+    print(data.y)

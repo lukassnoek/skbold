@@ -36,8 +36,7 @@ def test_fsl2mvp_between():
     h5f = h5py.File(merged_data, 'r')
     data = h5f['data'][:]
     h5f.close()
-    assert(data.shape[0] == 1)
-    assert(data.shape[1] == 91 * 109 * 91 * 9 * 2)
+    assert(data.shape[0] == 91 * 109 * 91 * 9 * 2)
 
     shutil.rmtree(mvp_dir)
 
