@@ -6,13 +6,14 @@
 # License: 3 clause BSD
 
 from __future__ import print_function, absolute_import, division
-import glob
-import cPickle
-import h5py
+
+import nibabel as nib
 import numpy as np
 import os
 import os.path as op
-from sklearn.preprocessing import LabelEncoder
+import cPickle
+import h5py
+import copy
 
 
 class Mvp(object):
@@ -26,8 +27,8 @@ class Mvp(object):
 
     """
 
-    def __init__(self, directory, mask_threshold=0, beta2tstat=True,
-                 ref_space='mni', mask_path=None):
+    def __init__(self, mask_threshold=0, run_name='generic', sub_name='generic',
+                 ref_space='mni', mask_path=None, X=None, y=None):
 
         """ Initializes a (bare-bones) Mvp object.
 
@@ -57,33 +58,39 @@ class Mvp(object):
 
         """
 
-        self.directory = directory
-
-        if not op.exists(directory):
-            raise OSError("The directory '%s' doesn't seem to exist!" % directory)
-
-        self.sub_name = op.basename(op.dirname(directory))
-        self.run_name = op.basename(directory).split('.')[0].split('_')[-1]
+        self.run_name = run_name
+        self.sub_name = sub_name
         self.ref_space = ref_space
-        self.beta2tstat = beta2tstat
         self.mask_path = mask_path
         self.mask_threshold = mask_threshold
 
         if mask_path is not None:
-            self.mask_name = op.basename(op.dirname(mask_path))
+            self.mask_name = op.basename(mask_path).split('.')[0]
         else:
             self.mask_name = 'WholeBrain'
 
         self.n_features = None
-
         self.mask_index = None
         self.mask_shape = None
-
         self.nifti_header = None
         self.affine = None
 
-        self.X = None
-        self.y = None
+        self.X = X
+        self.y = y
+
+        # Update some attributes if an mvp object is initialized
+        # (and not a subclass!)
+        if self.__class__.__name__ == 'Mvp':
+            self._set_attributes()
+
+    def _set_attributes(self):
+
+        mask_vol = nib.load(self.mask_path)
+        mask_data = mask_vol.get_data()
+        self.mask_shape = mask_vol.shape
+        self.nifti_header = mask_vol.header
+        self.mask_index = (mask_data > self.mask_threshold).ravel()
+        self.n_features = np.sum(self.mask_index)
 
     def update_mask(self, new_idx):
 
@@ -96,6 +103,38 @@ class Mvp(object):
         tmp_idx[self.mask_index.reshape(self.mask_shape)] += new_idx
         self.mask_index = tmp_idx.astype(bool).ravel()
 
+    def save(self, directory, name):
+
+        fn_data = op.join(directory, '%s_data.hdf5' % name)
+        h5f = h5py.File(fn_data, 'w')
+        h5f.create_dataset('data', data=self.X)
+        h5f.close()
+
+        self.X = None
+        fn_header = op.join(directory, '%s_header.pickle' % name)
+        with open(fn_header, 'wb') as handle:
+            cPickle.dump(self, handle)
+
     def glm2mvp(self):
         msg = "This method can only be called by subclasses of Mvp!"
         raise ValueError(msg)
+
+if __name__ == '__main__':
+
+    import os.path as op
+    base_dir = '/media/lukas/piop/GenderIntelligence'
+
+    tbss_file_gender = op.join(base_dir, 'GenderDecoding', 'tbss_train_B.npy')
+    tbss_file_intell = op.join(base_dir, 'IntelligenceDecoding', 'tbss_train_BG.npy')
+    vbm_file_gender = op.join(base_dir, 'GenderDecoding', 'vbm_train_B.npy')
+    vbm_file_intell = op.join(base_dir, 'IntelligenceDecoding', 'vbm_train_BG.npy')
+
+    data = np.load(tbss_file_gender)
+    mvp = Mvp(mask_path='/media/lukas/piop/GenderIntelligence/TBSS_mask.nii.gz',
+              ref_space='mni1mm', mask_threshold=0, X=data)
+
+    mni = np.zeros(mvp.mask_shape).ravel()
+    mni[mvp.mask_index.ravel()] = data[0, :]
+    mni = mni.reshape(mvp.mask_shape)
+    img = nib.Nifti1Image(mni, affine=mvp.affine)
+    img.to_filename('/home/lukas/test')
