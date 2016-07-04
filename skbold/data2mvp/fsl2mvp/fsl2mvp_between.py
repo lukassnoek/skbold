@@ -43,8 +43,8 @@ class Fsl2mvpBetween(Fsl2mvp):
                                              invert_selection=invert_selection)
 
         self.output_var_file = output_var_file
-        self.X_dict = {}
-        self.X_labels = np.zeros(0, dtype=np.uint8)
+#        self.X_dict = {}
+        self.contrast_id = np.zeros(0, dtype=np.uint8)
         self.contrast_labels = None
         self.n_cope = None
         self.n_runs = None
@@ -54,11 +54,11 @@ class Fsl2mvpBetween(Fsl2mvp):
         self.n_contrast = len(contrasts)
         self.contrast_names = np.unique(contrasts)
 
-    def _update_X_dict(self, mvp_meta):
-        for key, value in mvp_meta.iteritems():
-            mvp_meta[key] = value + len(self.X_dict) * self.n_features
-
-        self.X_dict.update(mvp_meta)
+    # def _update_X_dict(self, mvp_meta):
+    #     for key, value in mvp_meta.iteritems():
+    #         mvp_meta[key] = value + len(self.X_dict) * self.n_features
+    #
+    #     self.X_dict.update(mvp_meta)
 
     def _add_outcome_var(self, filename):
         file_path = op.join(op.dirname(self.directory), filename)
@@ -162,7 +162,7 @@ class Fsl2mvpBetween(Fsl2mvp):
 
         # Pre-allocate
         mvp_data = np.zeros(columns)
-        mvp_meta = {} #empty dictionary for X_dict
+        # mvp_meta = {} #empty dictionary for X_dict
 
         # Load in data (COPEs)
         for i, (cope, varcope) in enumerate(zip(copes, varcopes)):
@@ -175,13 +175,13 @@ class Fsl2mvpBetween(Fsl2mvp):
                 copedat = np.divide(copedat, var_sq)
 
             mvp_data[(i * self.n_features):(i*self.n_features + self.n_features)] = copedat
-            self.X_labels = np.concatenate((self.X_labels, np.ones(self.n_features, dtype=np.uint8) * i), axis=0)
-            mvp_meta[self.contrast_labels[i]] = np.array([(i * self.n_features), (i*self.n_features + self.n_features)])
+            self.contrast_id = np.concatenate((self.contrast_id, np.ones(self.n_features, dtype=np.uint8) * i), axis=0)
+#            mvp_meta[self.contrast_labels[i]] = np.array([(i * self.n_features), (i*self.n_features + self.n_features)])
 
         mvp_data[np.isnan(mvp_data)] = 0
         self.nifti_header = cope_img.header  # pick header from last cope
         self.affine = cope_img.affine
-        self._update_X_dict(mvp_meta)
+#        self._update_X_dict(mvp_meta)
 
         fn_header = op.join(mat_dir, '%s_header_run%i.pickle' % (self.sub_name,
                             n_converted+1))
@@ -234,4 +234,4 @@ if __name__ == '__main__':
     from skbold.utils import DataHandler
 
     mvp = DataHandler().load_separate_sub(op.dirname(directory), remove_zeros=False)
-    print(mvp.X_dict)
+    # print(mvp.X_dict)

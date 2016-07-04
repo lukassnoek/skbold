@@ -89,7 +89,7 @@ class MultiRoiIndexer(BaseEstimator, TransformerMixin):
 
         self.idx_ = roi_idx
         self.mvp.cluster_id = cluster_id
-        self.mvp.X_labels = self.mvp.X_labels[roi_idx]
+        self.mvp.contrast_id = self.mvp.contrast_id[roi_idx]
 
         return self
 
