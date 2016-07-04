@@ -9,7 +9,6 @@ from __future__ import print_function, division, absolute_import
 import cPickle
 from sklearn.metrics import precision_score, recall_score, accuracy_score, \
      confusion_matrix
-from skbold.transformers import *
 import numpy as np
 import os.path as op
 import os
@@ -29,7 +28,7 @@ class MvpResults(object):
     different ways.
 
     """
-    def __init__(self, mvp, iterations, resultsdir='analysis_results',
+    def __init__(self, iterations, mvp=None, resultsdir='analysis_results',
                  method='voting', verbose=False, feature_scoring=None):
 
         """ Initializes MvpResults object.
@@ -78,6 +77,9 @@ class MvpResults(object):
         self.iter = 0
         self.feature_scoring = feature_scoring
         self.feature_selection = np.zeros(np.sum(mvp.mask_index))
+        self.precision = None
+        self.accuracy = None
+        self.recall = None
 
         n_voxels = np.sum(mvp.mask_index)
 
@@ -85,15 +87,17 @@ class MvpResults(object):
             if 'coef' in feature_scoring:
                 n_models = mvp.n_class * (mvp.n_class - 1) / 2
                 self.feature_scores = np.zeros((n_voxels, n_models))
-            elif feature_scoring == 'accuracy':
-                self.feature_scores = np.zeros((n_voxels, mvp.n_class))
-            else: # if 'distance'
+            elif feature_scoring == 'accuracy' or feature_scoring == 'forward':
+
+                if mvp.n_class > 2:
+                    self.feature_scores = np.zeros((n_voxels, mvp.n_class))
+                else:
+                    self.feature_scores = np.zeros(n_voxels)
+
+            elif feature_scoring == 'distance': # if 'distance'
                 self.feature_scores = np.zeros(n_voxels)
 
         self.n_features = np.zeros(iterations)
-        self.precision = None
-        self.accuracy = None
-        self.recall = None
         self.conf_mat = np.zeros((mvp.n_class, mvp.n_class))
 
         if method == 'averaging':
@@ -135,7 +139,7 @@ class MvpResults(object):
             if hasattr(pipeline, 'best_estimator_'):
                 pipeline = pipeline.best_estimator_
 
-            clf = pipeline.named_steps['classifier']
+            clf = pipeline.named_steps['estimator']
             transformer = pipeline.named_steps['transformer']
             idx, scores = transformer.idx_, transformer.scores_
             self.feature_selection[idx] += 1
@@ -156,6 +160,23 @@ class MvpResults(object):
                 score_tmp = np.diag(cm_tmp / cm_tmp.sum(axis=1))
                 score_tmp = np.expand_dims(score_tmp, 0)
                 self.feature_scores[idx] += score_tmp
+
+            elif fs_method == 'forward':
+                # Haufe, S., Meinecke, F., Gorgen, K., Dahne, S., Haynes, J. D.,
+                # Blankertz, B., & Biessmann, F. (2014). On the interpretation of
+                # weight vectors of linear models in multivariate neuroimaging. Neuroimage, 87, 96-110.
+
+                W = clf.coef_.T
+                X = self.X[:, transformer.idx_]
+                s = W.T.dot(X.T)
+
+                if self.n_class < 3:
+                    A = np.cov(X.T).dot(W)
+                else:
+                    X_cov = np.cov(X.T)
+                    A = X_cov.dot(W).dot(np.linalg.pinv(np.cov(s)))
+
+                self.feature_scores[idx] += A
 
         if self.method == 'averaging':
             y_true = self.y_true[test_idx]
@@ -227,7 +248,7 @@ class MvpResults(object):
 
             # n_selected = (av_feature_info != 0.0).sum(axis=0)
             # av_feature_info = self.feature_scores.sum(axis=0) / n_selected
-            if 'coef' in fs or fs == 'accuracy':
+            if 'coef' in fs or fs == 'accuracy' or fs == 'forward':
                 self.feature_selection = np.expand_dims(self.feature_selection, axis=1)
 
             av_feature_info = self.feature_scores / self.feature_selection
