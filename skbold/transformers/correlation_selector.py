@@ -38,6 +38,8 @@ class CorrelationSelector(BaseEstimator, TransformerMixin):
             idx[idvals] = True
 
         self.idx_ = idx
+
+        self.mvp.voxel_idx = self.mvp.voxel_idx[idx]
         return self
 
     def transform(self, X, y=None):
