@@ -46,8 +46,14 @@ class Fsl2mvp(Mvp):
         invert_selection : if True, remove_class = which contrasts to include
         """
 
-        super(Fsl2mvp, self).__init__(directory, mask_threshold, beta2tstat,
-                                      ref_space, mask_path)
+        super(Fsl2mvp, self).__init__(mask_threshold, beta2tstat, ref_space, mask_path)
+        self.directory = directory
+
+        if not op.exists(directory):
+            raise OSError("The directory '%s' doesn't seem to exist!" % directory)
+        self.beta2tstat = beta2tstat
+        self.sub_name = op.basename(op.dirname(directory))
+        self.run_name = op.basename(self.directory).split('.')[0].split('_')[-1]
         self.remove_contrast = remove_contrast
         self.invert_selection = invert_selection
         self.contrast_labels = None
