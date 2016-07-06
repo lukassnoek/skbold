@@ -80,5 +80,8 @@ def convert2mni(file2transform, reg_dir, out_dir=None, interpolation='trilinear'
         out_all.append(out_file)
         out_name = None
 
+    if len(out_name) == 1:
+        out_name = out_name[0]
+
     return out_all
 

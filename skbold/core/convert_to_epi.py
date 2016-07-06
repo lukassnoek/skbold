@@ -82,5 +82,9 @@ def convert2epi(file2transform, reg_dir, out_dir=None,
             os.remove(out_matrix_file)
 
         out_all.append(out_file)
+
+    if len(out_all) == 1:
+        out_all = out_all[0]
+
     return out_all
 
