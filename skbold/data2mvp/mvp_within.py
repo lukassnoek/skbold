@@ -163,7 +163,7 @@ class MvpWithin(Mvp):
             else:
                 labels.append(c)
 
-        return cope_labels
+        return labels
 
     def _extract_labels(self, design_file):
 
