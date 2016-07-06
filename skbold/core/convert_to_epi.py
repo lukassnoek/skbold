@@ -11,7 +11,7 @@ from nipype.interfaces import fsl
 
 
 def convert2epi(file2transform, reg_dir, out_dir=None,
-                interpolation='trilinear'):
+                interpolation='trilinear', suffix='epi'):
     """ Transforms a nifti from mni152 (2mm) to EPI (native) format.
 
     Assuming that reg_dir is a directory with transformation-files (warps)
@@ -48,7 +48,11 @@ def convert2epi(file2transform, reg_dir, out_dir=None,
         if out_dir is None:
             out_dir = op.dirname(f)
 
-        out_name = op.basename(f).split('.')[0] + '_epi.nii.gz'
+        if suffix is not None:
+            out_name = op.basename(f).split('.')[0] + '_%s.nii.gz' % suffix
+        else:
+            out_name = op.basename(f)
+
         out_file = op.join(out_dir, out_name)
 
         if op.exists(out_file):
