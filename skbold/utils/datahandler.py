@@ -46,6 +46,28 @@ class DataHandler(object):
         self.shape = shape
         self.mvp = None
 
+    def load_generic(self, directory, remove_zeros=False):
+
+        data_path = glob.glob(op.join(directory, '*%s*.hdf5' % self.identifier))
+        hdr_path = glob.glob(op.join(directory, '*%s*.pickle' % self.identifier))
+
+        if len(data_path) > 1 or len(hdr_path) > 1:
+            raise ValueError('Try to load more than one data/hdr file ...')
+        elif len(data_path) == 0 or len(hdr_path) == 0:
+            raise ValueError('No data and/or header paths found!')
+
+        mvp = cPickle.load(open(hdr_path[0]))
+        h5f = h5py.File(data_path[0], 'r')
+        mvp.X = h5f['data'][:]
+        h5f.close()
+
+        if remove_zeros:
+            nonzero = (mvp.X != 0).sum(axis=0) > 0
+            mvp.X = mvp.X[:, nonzero]
+            mvp.update_mask(nonzero)
+
+        return mvp
+
     def load_separate_sub(self, sub_dir, remove_zeros=True):
         """ Loads the (meta)data from a single subject.
 
