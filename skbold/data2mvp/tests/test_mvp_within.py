@@ -1,7 +1,7 @@
 import os.path as op
 from skbold.data2mvp import MvpWithin
 from skbold import testdata_path
-import shutil
+import os
 
 
 def test_fsl2mvp_within():
@@ -19,7 +19,13 @@ def test_fsl2mvp_within():
                            mask=None)
 
     mvp_within.create()
-    print(mvp_within.contrast_labels)
+    assert len(mvp_within.contrast_labels) == 2 * len(true_labels)
+
+    fn = op.dirname(testfeats[0])
+    mvp_within.write(path=fn, backend='joblib')
+    assert op.isfile(op.join(fn, 'mvp.jl'))
+    os.remove(op.join(fn, 'mvp.jl'))
+
 
 if __name__ == '__main__':
     test_fsl2mvp_within()
