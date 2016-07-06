@@ -6,7 +6,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 class CorrelationSelector(BaseEstimator, TransformerMixin):
 
-    def __init__(self, min_correlation=None, n_voxels=None):
+    def __init__(self, mvp, min_correlation=None, n_voxels=None):
         '''
         SEMI-TESTED!!!
 
@@ -21,6 +21,7 @@ class CorrelationSelector(BaseEstimator, TransformerMixin):
 
         self.min_correlation = min_correlation
         self.n_voxels = n_voxels
+        self.mvp = mvp
 
 
     def fit(self, X, y):
@@ -39,7 +40,9 @@ class CorrelationSelector(BaseEstimator, TransformerMixin):
 
         self.idx_ = idx
 
+        #Apply new indices to voxel_idx and contrast_id
         self.mvp.voxel_idx = self.mvp.voxel_idx[idx]
+        self.mvp.contrast_id = self.mvp.contrast_id[idx]
         return self
 
     def transform(self, X, y=None):
