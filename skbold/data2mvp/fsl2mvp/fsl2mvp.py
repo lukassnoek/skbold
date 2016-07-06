@@ -57,6 +57,7 @@ class Fsl2mvp(Mvp):
         self.remove_contrast = remove_contrast
         self.invert_selection = invert_selection
         self.contrast_labels = None
+        self.voxel_idx = np.zeros(0, dtype=np.uint32)
 
     def _read_design(self):
         design_file = op.join(self.directory, 'design.con')
@@ -167,6 +168,7 @@ class Fsl2mvp(Mvp):
                     if self.__class__.__name__ == 'Fsl2mvpBetween':
                         to_concat = tmp.contrast_id + len(np.unique(hdr.contrast_id))
                         hdr.contrast_id = np.concatenate((hdr.contrast_id, to_concat), axis=0)
+                        hdr.voxel_idx = np.concatenate((hdr.voxel_idx, tmp.voxel_idx))
                         # hdr._update_X_dict(tmp.X_dict)
 
                 if self.__class__.__name__ == 'Fsl2mvpWithin':

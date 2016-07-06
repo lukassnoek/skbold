@@ -162,12 +162,14 @@ class Fsl2mvpBetween(Fsl2mvp):
 
         # Pre-allocate
         mvp_data = np.zeros(columns)
-        # mvp_meta = {} #empty dictionary for X_dict
 
         # Load in data (COPEs)
         for i, (cope, varcope) in enumerate(zip(copes, varcopes)):
             cope_img = nib.load(cope)
+            cope_shape = cope_img.header.get_data_shape()
             copedat = cope_img.get_data().ravel()[self.mask_index]
+
+            vox_idx = np.arange(np.prod(cope_shape, dtype=np.uint32), dtype=np.uint32).reshape(cope_shape).ravel()[self.mask_index]
 
             if self.beta2tstat:
                 var = nib.load(varcope).get_data()
@@ -176,6 +178,8 @@ class Fsl2mvpBetween(Fsl2mvp):
 
             mvp_data[(i * self.n_features):(i*self.n_features + self.n_features)] = copedat
             self.contrast_id = np.concatenate((self.contrast_id, np.ones(self.n_features, dtype=np.uint8) * i), axis=0)
+            self.voxel_idx = np.concatenate((self.voxel_idx, vox_idx))
+
 #            mvp_meta[self.contrast_labels[i]] = np.array([(i * self.n_features), (i*self.n_features + self.n_features)])
 
         mvp_data[np.isnan(mvp_data)] = 0
@@ -218,7 +222,7 @@ if __name__ == '__main__':
     subs = glob(op.join(feat_dir, 'pi*'))
     gm_mask = op.join(op.dirname(skbold.__file__), 'data', 'ROIs', 'GrayMatter.nii.gz')
 
-    copes = {'wm': ['act-pas'],
+    copes = {'wm': ['act-pas', 'act'],
              'harriri': ['emo-control'],
              'gstroop': ['con-incon']}
 
@@ -242,18 +246,25 @@ if __name__ == '__main__':
     tmp = DataHandler()
     data = tmp.load_concatenated_subs(directory=op.dirname(subs[0]))
 
+    print(data.voxel_idx)
+    print(data.voxel_idx.shape)
+
     print('Merged %s data, GM masked: ' % (data.contrast_labels[0]))
     idx = data.contrast_id == 0
     print(idx.shape)
     print(data.X.shape)
     print(data.X[:, idx])
+    print(data.voxel_idx[idx])
 
     print('\n Merged %s data, GM masked:' % (data.contrast_labels[1]))
     idx = data.contrast_id == 1
     print(data.X[:, idx])
+    print(data.voxel_idx[idx])
 
     print('\n Merged %s data, GM masked:' % (data.contrast_labels[2]))
     idx = data.contrast_id == 2
     print(data.X[:, idx])
+    print(data.voxel_idx[idx])
+
 
     print(data.y)
