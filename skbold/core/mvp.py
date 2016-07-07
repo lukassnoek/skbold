@@ -12,7 +12,7 @@ import joblib
 import nibabel as nib
 import os.path as op
 import numpy as np
-import cPickle
+from glob import glob
 
 
 class Mvp(object):
@@ -46,6 +46,7 @@ class Mvp(object):
         fn = op.join(path, name)
 
         print("Saving file '%s' to disk." % fn)
+
         if backend == 'joblib':
             try:
                 joblib.dump(self, fn + '.jl', compress=3)
@@ -53,13 +54,13 @@ class Mvp(object):
                 msg = "Array too large to save with joblib; using Numpy ... "
                 print(msg)
                 backend = 'numpy'
+                to_remove = glob(op.join(path, '*npy.z'))
+                _ = [os.remove(f) for f in to_remove]
 
         if backend == 'numpy':
             np.save(fn + '_data.npy', self.X)
-
-            with open(fn + '_header.pickle', 'wb') as hdr:
-                self.X = None
-                cPickle.dump(self, hdr)
+            self.X = None
+            joblib.dump(self, fn + '_header.jl', compress=3)
 
     def load(self, path):
         # Load Mvp-object from disk
