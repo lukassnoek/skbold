@@ -1,11 +1,9 @@
 import os
 import os.path as op
 from fnmatch import fnmatch
-import pandas as pd
 import numpy as np
 import nibabel as nib
-from skbold.core import Mvp, convert2epi, convert2mni
-from skbold.utils import sort_numbered_list
+from skbold.core import Mvp
 from glob import glob
 
 
@@ -60,7 +58,6 @@ class MvpBetween(Mvp):
         # MvpWithin)
         self.X = np.concatenate(self.X, axis=1)
         self.featureset_id = np.concatenate(self.featureset_id, axis=0)
-
         # Maybe also concatenate data_shape/affine?
 
         print("Final size of array: %r" % list(self.X.shape))
@@ -73,14 +70,11 @@ class MvpBetween(Mvp):
 
     def _load_dual_reg(self, args):
 
-        paths = args['paths']
-        subjects = args['subjects']
-
         data = []
 
         # Kinda ugly, but switching loop over subjects and loop over comps
         # is not possible.
-        for path in paths:
+        for path in args['paths']:
             tmp = nib.load(path)
             tmp_shape = tmp.shape[:3]
             n_comps = tmp.shape[-1]
@@ -114,22 +108,20 @@ class MvpBetween(Mvp):
         _ = [self.affine.append(tmp.affine) for i in final_comps]
         _ = [self.nifti_header.append(tmp.header) for i in final_comps]
 
-        self.featureset_id.append([np.ones(vol.shape[1]) * (i+1)
-                                   for i in range(n_comps)])
-
-        # Concatenate list (subjects) of lists (components)
-        data_concat = np.concatenate([np.concatenate(sub, axis=1)
-                                      for sub in data], axis=0)
+        for i in range(len(final_comps)):
+            feature_ids = np.ones(vol.shape[1], dtype=np.uint32) * len(self.X)
+            print(feature_ids.size)
+            self.featureset_id.append(feature_ids)
+            data_concat = np.concatenate([sub[i] for sub in data], axis=0)
+            print(data_concat.shape)
+            self.X.append(data_concat)
 
         self.X.append(data_concat)
 
     def _load_3D(self, args):
 
-        paths = args['paths']
-        subjects = args['subjects']
-
         data = []
-        for path in paths:
+        for path in args['paths']:
             tmp = nib.load(path)
             self.affine.append(tmp.affine)
             self.data_shape.append(tmp.shape)
@@ -146,8 +138,9 @@ class MvpBetween(Mvp):
 
         data = np.concatenate(data, axis=0)
         self.X.append(data)
-        self.featureset_id.append(np.ones(data.shape[1],
-                                          dtype=np.uint32) * len(self.X))
+        feature_ids = np.ones(data.shape[1], dtype=np.uint32) * len(self.X)
+        print(feature_ids.size)
+        self.featureset_id.append(feature_ids)
 
     def _check_complete_data(self):
 
@@ -193,7 +186,7 @@ if __name__ == '__main__':
     source = {}
     source['dual_reg'] = {'path': op.join(base_dir, 'pi*', '*_dualreg.nii.gz'),
                           'components': [1, 5]}
-    #source['VBM'] = {'path': op.join(base_dir, 'pi*', '*_vbm.nii.gz')}
+    source['VBM'] = {'path': op.join(base_dir, 'pi*', '*_vbm.nii.gz')}
     #source['TBSS'] = {'path': op.join(base_dir, 'pi*', '*_tbss.nii.gz')}
     #source['Contrast'] = {'path': op.join(base_dir, 'pi*', '*piopwm*', 'reg_standard',
     #                                      'tstat3.nii.gz')}
