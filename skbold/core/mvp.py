@@ -45,9 +45,16 @@ class Mvp(object):
 
         fn = op.join(path, name)
 
+        print("Saving file '%s' to disk." % fn)
         if backend == 'joblib':
-            joblib.dump(self, fn + '.jl', compress=3)
-        elif backend == 'numpy':
+            try:
+                joblib.dump(self, fn + '.jl', compress=3)
+            except:
+                msg = "Array too large to save with joblib; using Numpy ... "
+                print(msg)
+                backend = 'numpy'
+
+        if backend == 'numpy':
             np.save(fn + '_data.npy', self.X)
 
             with open(fn + '_header.pickle', 'wb') as hdr:
