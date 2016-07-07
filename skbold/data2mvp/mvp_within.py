@@ -1,4 +1,3 @@
-import joblib
 import os.path as op
 import pandas as pd
 import numpy as np
@@ -207,4 +206,4 @@ if __name__ == '__main__':
                    mask_threshold=0)
 
     mw.create()
-    mw.write(path='/home/lukas', backend='numpy')
+    mw.write(path='/home/lukas', backend='joblib')

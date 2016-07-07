@@ -25,7 +25,3 @@ def test_fsl2mvp_within():
     mvp_within.write(path=fn, backend='joblib')
     assert op.isfile(op.join(fn, 'mvp.jl'))
     os.remove(op.join(fn, 'mvp.jl'))
-
-
-if __name__ == '__main__':
-    test_fsl2mvp_within()
