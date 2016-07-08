@@ -8,11 +8,14 @@ from skbold.core import Mvp, convert2epi, convert2mni
 from skbold.utils import sort_numbered_list
 from glob import glob
 
+# TO DO:
+# - field 'name' in args (especially for contrasts)
 
 class MvpBetween(Mvp):
 
-    def __init__(self, source, subject_idf='sub0???', remove_zeros=True, X=None,
-                 y=None, mask=None, mask_threshold=0, subject_list=None):
+    def __init__(self, source, subject_idf='sub0???', output_var_file=None,
+                 remove_zeros=True, X=None, y=None, mask=None, mask_threshold=0,
+                 subject_list=None):
 
         super(MvpBetween, self).__init__(X=X, y=y, mask=mask,
                                          mask_threshold=mask_threshold)
@@ -61,9 +64,21 @@ class MvpBetween(Mvp):
         self.X = np.concatenate(self.X, axis=1)
         self.featureset_id = np.concatenate(self.featureset_id, axis=0)
 
-        # Maybe also concatenate data_shape/affine?
+        if self.remove_zeros:
+            idx = np.invert((self.X == 0)).all(axis=0)
+            self.X = self.X[:, idx]
+            self.voxel_idx = self.voxel_idx[idx]
+
+        #if self.output_var_file is not None:
+        #    sub_paths = 
+        #    _ = [self._add_outcome_var(op.join(sub, self.output_var_file)) for sub in sub_paths)]
 
         print("Final size of array: %r" % list(self.X.shape))
+
+    def _add_outcome_var(self, file_path):
+        with open(file_path, 'rb') as f:
+            subject_y = float(f.readline())
+        return subject_y
 
     def _load_mask(self):
 
