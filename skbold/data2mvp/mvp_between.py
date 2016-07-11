@@ -6,8 +6,6 @@ import nibabel as nib
 from skbold.core import Mvp
 from glob import glob
 
-# TO DO:
-# - field 'name' in args (especially for contrasts)
 
 class MvpBetween(Mvp):
 
@@ -42,9 +40,12 @@ class MvpBetween(Mvp):
         self._load_mask()
         self._check_complete_data()
 
+        # Loop over data-types as defined in source
         for data_type, args in self.source.iteritems():
 
-            if data_type in ['VBM', 'TBSS', 'Contrast']:
+            print('Processing: %s ...' % data_type)
+
+            if any(fnmatch(data_type, typ) for typ in ['VBM', 'TBSS', 'Contrast*']):
                 self._load_3D(args)
             elif data_type == 'dual_reg':
                 self._load_dual_reg(args)
@@ -57,15 +58,23 @@ class MvpBetween(Mvp):
                       "following: %r" % (data_type, allowed)
                 raise KeyError(msg)
 
-        # Here, everything is concatenated (but by axis=1, instead of axis=0 in
-        # MvpWithin)
+        # If remove_zeros, all columns with all zeros are remove to reduce space
+        if self.remove_zeros:
+            indices = [np.invert(x == 0).all(axis=0) for x in self.X]
+
+            for i, index in enumerate(indices):
+                # Also other attributes are adapted to new shape
+                self.X[i] = self.X[i][:, index]
+                self.voxel_idx[i] = self.voxel_idx[i][index]
+                self.featureset_id[i] = self.featureset_id[i][index]
+
         self.X = np.concatenate(self.X, axis=1)
         self.featureset_id = np.concatenate(self.featureset_id, axis=0)
 
-        if self.remove_zeros:
-            idx = np.invert((self.X == 0)).all(axis=0)
-            self.X = self.X[:, idx]
-            self.voxel_idx = self.voxel_idx[idx]
+        # 'Safety-check' to see whether everything corresponds properly
+        assert(self.X.shape[1] == self.featureset_id.shape[0])
+        all_vox = np.sum([self.voxel_idx[i].size for i in range(len(self.voxel_idx))])
+        assert(self.X.shape[1] == all_vox)
 
         print("Final size of array: %r" % list(self.X.shape))
 
@@ -122,37 +131,35 @@ class MvpBetween(Mvp):
 
         for i in range(len(final_comps)):
             feature_ids = np.ones(vol.shape[1], dtype=np.uint32) * len(self.X)
-            print(feature_ids.size)
             self.featureset_id.append(feature_ids)
             data_concat = np.concatenate([sub[i] for sub in data], axis=0)
-            print(data_concat.shape)
             self.X.append(data_concat)
-
-        self.X.append(data_concat)
 
     def _load_3D(self, args):
 
         data = []
         for path in args['paths']:
             tmp = nib.load(path)
-            self.affine.append(tmp.affine)
-            self.data_shape.append(tmp.shape)
             tmp_data = tmp.get_data().ravel()
-
-            voxel_idx = np.arange(self.mask_index.size)
 
             if self.mask_shape == tmp.shape:
                 tmp_data = tmp_data[self.mask_index]
-                voxel_idx = voxel_idx[self.mask_index]
 
-            self.voxel_idx.append(voxel_idx)
             data.append(tmp_data[np.newaxis, :])
 
+        voxel_idx = np.arange(np.prod(tmp.shape))
+
+        if self.mask_shape == tmp.shape:
+            voxel_idx = voxel_idx[self.mask_index]
+
+        self.voxel_idx.append(voxel_idx)
+        self.affine.append(tmp.affine)
+        self.data_shape.append(tmp.shape)
+
         data = np.concatenate(data, axis=0)
-        self.X.append(data)
         feature_ids = np.ones(data.shape[1], dtype=np.uint32) * len(self.X)
-        print(feature_ids.size)
         self.featureset_id.append(feature_ids)
+        self.X.append(data)
 
     def _check_complete_data(self):
 
@@ -199,12 +206,12 @@ if __name__ == '__main__':
     source['dual_reg'] = {'path': op.join(base_dir, 'pi*', '*_dualreg.nii.gz'),
                           'components': [1, 5]}
     source['VBM'] = {'path': op.join(base_dir, 'pi*', '*_vbm.nii.gz')}
-    #source['TBSS'] = {'path': op.join(base_dir, 'pi*', '*_tbss.nii.gz')}
-    #source['Contrast'] = {'path': op.join(base_dir, 'pi*', '*piopwm*', 'reg_standard',
-    #                                      'tstat3.nii.gz')}
+    source['TBSS'] = {'path': op.join(base_dir, 'pi*', '*_tbss.nii.gz')}
+    source['Contrast'] = {'path': op.join(base_dir, 'pi*', '*piopwm*', 'reg_standard',
+                                          'tstat3.nii.gz')}
 
     mvp_between = MvpBetween(source=source, remove_zeros=True, mask='/home/lukas/GrayMatter.nii.gz',
-                             mask_threshold=0, subject_idf='pi0???',
-                             subject_list=['pi0041', 'pi0042', 'pi0010', 'pi0230'])
+                             mask_threshold=0, subject_idf='pi0???')
+                             #subject_list=['pi0041', 'pi0042', 'pi0010', 'pi0230'])
     mvp_between.create()
     mvp_between.write(path='/home/lukas', backend='joblib')
