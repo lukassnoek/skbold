@@ -106,6 +106,9 @@ class MvpBetween(Mvp):
             self.X = self.X[idx, :]
         elif binarize['type'] == 'constant':
             y = (y > binarize['cutoff']).astype(int)
+        elif binarize['type'] == 'median': # median-split
+            median = np.median(y)
+            y = (y > median).astype(int)
 
         self.y = y
 
