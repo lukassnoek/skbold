@@ -206,4 +206,4 @@ if __name__ == '__main__':
                    mask_threshold=0)
 
     mw.create()
-    mw.write(path='/home/lukas', backend='joblib')
+    mw.write(path='/home/lukas', name='within', backend='joblib')
