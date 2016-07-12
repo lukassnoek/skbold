@@ -6,13 +6,12 @@ import numpy as np
 import nibabel as nib
 from skbold.core import Mvp
 from glob import glob
-
+import scipy.stats as stat
 
 class MvpBetween(Mvp):
 
-    def __init__(self, source, subject_idf='sub0???', output_var_file=None,
-                 remove_zeros=True, X=None, y=None, mask=None, mask_threshold=0,
-                 subject_list=None):
+    def __init__(self, source, subject_idf='sub0???', remove_zeros=True,
+                 X=None, y=None, mask=None, mask_threshold=0, subject_list=None):
 
         super(MvpBetween, self).__init__(X=X, y=y, mask=mask,
                                          mask_threshold=mask_threshold)
@@ -31,7 +30,6 @@ class MvpBetween(Mvp):
         self.data_shape = [] # This could be an array
         self.mask_shape = None
         self.data_name = []
-        self.output_var_file = output_var_file
 
         if not isinstance(source, dict):
             msg = "Source must be a dictionary with type (e.g. 'VBM') " \
@@ -82,27 +80,34 @@ class MvpBetween(Mvp):
         all_vox = np.sum([self.voxel_idx[i].size for i in range(len(self.voxel_idx))])
         assert(self.X.shape[1] == all_vox)
 
-        self._add_outcome_var(self.output_var_file)
-
         print("Final size of array: %r" % list(self.X.shape))
 
-    def _add_outcome_var(self, file_path):
-        '''
-        works but not very generic....
-        Parameters
-        ----------
-        file_path
+    def add_outcome_var(self, file_path, col_name, normalize=True,
+                        binarize=None):
+        """ Adds target-variabel from csv """
 
-        Returns
-        -------
+        # Assumes index corresponds to self.common_subjects
+        df = pd.read_csv(file_path, sep='\t', index_col=0)
+        behav = df.loc[df.index.isin(self.common_subjects), col_name]
+        y = np.array(behav.sort_index())
 
-        '''
-        subs = [int(x[-4:]) for x in self.common_subjects]
-        subs = np.array(subs)
-        data = pd.read_csv(file_path)
-        zscores = data.loc[data['Piop_id'].isin(subs), 'ZRaven_tot']
-        zscores = np.array(zscores)
-        self.y = zscores
+        if normalize:
+            y = (y - y.mean()) / y.std()
+
+        if binarize['type'] == 'percentile':
+            y = np.array([stat.percentileofscore(y, a, 'rank') for a in y])
+            idx = (y < binarize['low']) | (y > binarize['high'])
+            y = (y[idx] > 50).astype(int)
+            self.X = self.X[idx, :]
+        elif binarize['type'] == 'zscore':
+            y = (y - y.mean()) / y.std() # just to be sure
+            idx = np.abs(y) > binarize['std']
+            y = (y[idx] > 0).astype(int)
+            self.X = self.X[idx, :]
+        elif binarize['type'] == 'constant':
+            y = (y > binarize['cutoff']).astype(int)
+
+        self.y = y
 
     def _load_mask(self):
 
@@ -224,22 +229,17 @@ if __name__ == '__main__':
     import skbold
     import os.path as op
 
-    base_dir = '/users/steven/Desktop/pioptest'
-    output_file = '/users/steven/Documents/Syncthing/MscProjects/Decoding/code/multimodal/MultimodalDecoding/behavioral_data/zraven.csv'
+    base_dir = '/media/lukas/piop/PIOP/FirstLevel_piop'
     gm = op.join(op.dirname(skbold.__file__), 'data', 'ROIs', 'GrayMatter.nii.gz')
     source = {}
-    source['dual_reg'] = {'path': op.join(base_dir, 'pi*', '*_dualreg.nii.gz'),
-                          'components': [1]}
-    source['VBM'] = {'path': op.join(base_dir, 'pi*', '*_vbm.nii.gz')}
+    #source['VBM'] = {'path': op.join(base_dir, 'pi*', '*_vbm.nii.gz')}
     #source['TBSS'] = {'path': op.join(base_dir, 'pi*', '*_tbss.nii.gz')}
-    source['Contrast'] = {'path': op.join(base_dir, 'pi*', '*piopwm*', 'reg_standard',
-                                          'tstat3.nii.gz')}
+    source['ContrastWM'] = {'path': op.join(base_dir, 'pi*', '*piopwm.feat', 'reg_standard', '*tstat3.nii.gz')}
+    source['ContrastGstroop'] = {'path': op.join(base_dir, 'pi*', '*piopgstroop.feat', 'reg_standard', '*tstat3.nii.gz')}
+    source['ContrastHarriri'] = {'path': op.join(base_dir, 'pi*', '*piopharriri.feat', 'reg_standard', '*tstat3.nii.gz')}
 
     mvp_between = MvpBetween(source=source, remove_zeros=True, mask=gm,
-                             mask_threshold=0, subject_idf='pi0???', output_var_file=output_file)
+                             mask_threshold=0, subject_idf='pi0???')
                              #subject_list=['pi0041', 'pi0042', 'pi0010', 'pi0230'])
     mvp_between.create()
-    print(mvp_between.voxel_idx)
-    print(mvp_between.voxel_idx.shape)
-    print(mvp_between.featureset_id.shape)
-    mvp_between.write(path=base_dir, name='between', backend='joblib')
+    mvp_between.write(path='/home/lukas', name='between', backend='joblib')
