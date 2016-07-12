@@ -73,6 +73,7 @@ class MvpBetween(Mvp):
 
         self.X = np.concatenate(self.X, axis=1)
         self.featureset_id = np.concatenate(self.featureset_id, axis=0)
+        self.voxel_idx = np.concatenate(self.voxel_idx, axis=0)
 
         # 'Safety-check' to see whether everything corresponds properly
         assert(self.X.shape[1] == self.featureset_id.shape[0])
@@ -203,18 +204,23 @@ class MvpBetween(Mvp):
                              if p.split(os.sep)[args['position']] in self.common_subjects]
 
 if __name__ == '__main__':
+    import skbold
+    import os.path as op
 
-    base_dir = '/media/lukas/piop/PIOP/FirstLevel_piop'
+    base_dir = '/users/steven/Desktop/pioptest'
+    gm = op.join(op.dirname(skbold.__file__), 'data', 'ROIs', 'GrayMatter.nii.gz')
     source = {}
-    #source['dual_reg'] = {'path': op.join(base_dir, 'pi*', '*_dualreg.nii.gz'),
-    #                      'components': [1]}
+    source['dual_reg'] = {'path': op.join(base_dir, 'pi*', '*_dualreg.nii.gz'),
+                          'components': [1]}
     source['VBM'] = {'path': op.join(base_dir, 'pi*', '*_vbm.nii.gz')}
-    source['TBSS'] = {'path': op.join(base_dir, 'pi*', '*_tbss.nii.gz')}
-    #source['Contrast'] = {'path': op.join(base_dir, 'pi*', '*piopwm*', 'reg_standard',
-    #                                      'tstat3.nii.gz')}
+    #source['TBSS'] = {'path': op.join(base_dir, 'pi*', '*_tbss.nii.gz')}
+    source['Contrast'] = {'path': op.join(base_dir, 'pi*', '*piopwm*', 'reg_standard',
+                                          'tstat3.nii.gz')}
 
-    mvp_between = MvpBetween(source=source, remove_zeros=True, mask='/home/lukas/GrayMatter.nii.gz',
+    mvp_between = MvpBetween(source=source, remove_zeros=True, mask=gm,
                              mask_threshold=0, subject_idf='pi0???')
                              #subject_list=['pi0041', 'pi0042', 'pi0010', 'pi0230'])
     mvp_between.create()
-    mvp_between.write(path='/home/lukas', name='between', backend='joblib')
+    print(mvp_between.voxel_idx)
+    print(mvp_between.voxel_idx.shape)
+    mvp_between.write(path=base_dir, name='between', backend='joblib')
