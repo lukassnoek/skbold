@@ -60,6 +60,7 @@ class CorrelationSelector(BaseEstimator, TransformerMixin):
         #Apply new indices to voxel_idx and contrast_id
         self.mvp.voxel_idx = self.mvp.voxel_idx[idx]
         self.mvp.contrast_id = self.mvp.contrast_id[idx]
+        self.mvp.featureset_id = self.mvp.contrast_id[idx]
         return self
 
     def transform(self, X, y=None):
