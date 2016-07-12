@@ -11,7 +11,8 @@ from fnmatch import fnmatch
 
 class MvpResults(object):
 
-    def __init__(self, mvp, n_iter, feature_scoring='', verbose=False):
+    def __init__(self, mvp, n_iter, out_path=None, feature_scoring='',
+                 verbose=False):
 
         self.mvp = mvp
         self.n_iter = n_iter
@@ -26,6 +27,14 @@ class MvpResults(object):
         self.featureset_id = mvp.featureset_id
         self.iter = 0
 
+        if out_path is None:
+            out_path = os.getcwd()
+
+        if not op.exists(out_path):
+            os.makedirs(out_path)
+
+        self.out_path = out_path
+
     def _check_mvp_attributes(self):
 
         if not isinstance(self.affine, list):
@@ -34,13 +43,9 @@ class MvpResults(object):
         if not isinstance(self.data_shape, list):
             self.data_shape = [self.data_shape]
 
-    def write(self, path=None, to_tstat=True):
+    def write(self, to_tstat=True):
 
         self._check_mvp_attributes()
-
-        if not op.exists(path):
-            os.makedirs(path)
-
         values = self.voxel_values
 
         if to_tstat:
@@ -55,11 +60,14 @@ class MvpResults(object):
             img[mvp.voxel_idx[mvp.featureset_id == i]] = subset
             img = nib.Nifti1Image(img.reshape(mvp.data_shape[i]),
                                   affine=mvp.affine[i])
-            img.to_filename(op.join(path, mvp.data_name[i] + '.nii.gz'))
+            img.to_filename(op.join(self.out_path, mvp.data_name[i] + '.nii.gz'))
 
             n_nonzero = (subset > 0).sum()
             print('Number of non-zero voxels in %s: %i' % (mvp.data_name[i],
                                                              n_nonzero))
+
+        self.df.to_csv(op.join(self.out_path, 'results.tsv'), sep='\t', index=False)
+
     def _update_voxel_values(self, values, idx):
 
         values = np.squeeze(values)
@@ -85,14 +93,38 @@ class MvpResults(object):
 
             self.voxel_values[self.iter, idx] = A
 
+    def save_model(self, model):
+        """ Method to serialize model(s) to disk."""
+
+        # Can also be a pipeline!
+        if model.__class__.__name__ == 'Pipeline':
+            model = model.steps
+
+        for step in model:
+            fn = op.join(self.out_path, step[0] + '.jl')
+            joblib.dump(step[1], fn, compress=3)
+
+    def load_model(self, path, param=None):
+
+        model = joblib.load(path)
+
+        if param is None:
+            return model
+        else:
+            if not isinstance(param, list):
+                param = [param]
+            return {p: getattr(model, p) for p in param}
+
 
 class MvpResultsRegression(MvpResults):
 
-    def __init__(self, mvp, n_iter, feature_scoring='', verbose=False):
+    def __init__(self, mvp, n_iter, feature_scoring='', verbose=False,
+                 out_path=None):
 
         super(MvpResultsRegression, self).__init__(mvp=mvp, n_iter=n_iter,
-                                                       feature_scoring=feature_scoring,
-                                                       verbose=verbose)
+                                                   feature_scoring=feature_scoring,
+                                                   verbose=verbose,
+                                                   out_path=out_path)
 
         self.R2 = np.zeros(self.n_iter)
         self.mse = np.zeros(self.n_iter)
@@ -120,17 +152,19 @@ class MvpResultsRegression(MvpResults):
         df = pd.DataFrame({'R2': self.R2,
                            'MSE': self.mse,
                            'n_voxels': self.n_vox})
-
+        self.df = df
         print(df.describe().loc[['mean', 'std']])
 
 
 class MvpResultsClassification(MvpResults):
 
-    def __init__(self, mvp, n_iter, feature_scoring='', verbose=False):
+    def __init__(self, mvp, n_iter, feature_scoring='', verbose=False,
+                 out_path=None):
 
         super(MvpResultsClassification, self).__init__(mvp=mvp, n_iter=n_iter,
                                                        feature_scoring=feature_scoring,
-                                                       verbose=verbose)
+                                                       verbose=verbose,
+                                                       out_path=out_path)
 
         self.accuracy = np.zeros(self.n_iter)
         self.recall = np.zeros(self.n_iter)
@@ -165,6 +199,8 @@ class MvpResultsClassification(MvpResults):
                            'Recall': self.recall,
                            'n_voxels': self.n_vox})
 
+        self.df = df
+
         print('\n')
         print(df.describe().loc[['mean', 'std']])
         print('\nConfusion matrix:')
@@ -197,7 +233,8 @@ if __name__ == '__main__':
     folds = StratifiedKFold(mvp.y, n_folds=10)
 
     mvp_results = MvpResultsClassification(mvp, len(folds), verbose=True,
-                                           feature_scoring='coef')
+                                           feature_scoring='coef',
+                                           out_path='/home/lukas/PIOPANALYSIS')
 
     pipe = Pipeline([('scaler', scaler),
                      ('anova', anova),
@@ -213,5 +250,6 @@ if __name__ == '__main__':
         idx = np.argsort(pipe.named_steps['anova'].scores_)[::-1][:10000]
         mvp_results.update(test_idx, pred, pipe.named_steps['anova'].scores_[idx], idx)
 
+    mvp_results.save_model(pipe)
     mvp_results.compute_scores()
-    mvp_results.write(path='/home/lukas')
+    mvp_results.write()
