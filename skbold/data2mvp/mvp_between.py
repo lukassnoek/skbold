@@ -29,6 +29,7 @@ class MvpBetween(Mvp):
         self.voxel_idx = []
         self.data_shape = [] # This could be an array
         self.mask_shape = None
+        self.data_name = []
 
         if not isinstance(source, dict):
             msg = "Source must be a dictionary with type (e.g. 'VBM') " \
@@ -44,6 +45,8 @@ class MvpBetween(Mvp):
         for data_type, args in self.source.iteritems():
 
             print('Processing: %s ...' % data_type)
+
+            self.data_name.append(data_type)
 
             if any(fnmatch(data_type, typ) for typ in ['VBM', 'TBSS', 'Contrast*']):
                 self._load_3D(args)
@@ -203,15 +206,15 @@ if __name__ == '__main__':
 
     base_dir = '/media/lukas/piop/PIOP/FirstLevel_piop'
     source = {}
-    source['dual_reg'] = {'path': op.join(base_dir, 'pi*', '*_dualreg.nii.gz'),
-                          'components': [1, 5]}
+    #source['dual_reg'] = {'path': op.join(base_dir, 'pi*', '*_dualreg.nii.gz'),
+    #                      'components': [1]}
     source['VBM'] = {'path': op.join(base_dir, 'pi*', '*_vbm.nii.gz')}
     source['TBSS'] = {'path': op.join(base_dir, 'pi*', '*_tbss.nii.gz')}
-    source['Contrast'] = {'path': op.join(base_dir, 'pi*', '*piopwm*', 'reg_standard',
-                                          'tstat3.nii.gz')}
+    #source['Contrast'] = {'path': op.join(base_dir, 'pi*', '*piopwm*', 'reg_standard',
+    #                                      'tstat3.nii.gz')}
 
     mvp_between = MvpBetween(source=source, remove_zeros=True, mask='/home/lukas/GrayMatter.nii.gz',
                              mask_threshold=0, subject_idf='pi0???')
                              #subject_list=['pi0041', 'pi0042', 'pi0010', 'pi0230'])
     mvp_between.create()
-    mvp_between.write(path='/home/lukas', backend='joblib')
+    mvp_between.write(path='/home/lukas', name='between', backend='joblib')
