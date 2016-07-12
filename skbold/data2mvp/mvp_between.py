@@ -1,5 +1,6 @@
 import os
 import os.path as op
+import pandas as pd
 from fnmatch import fnmatch
 import numpy as np
 import nibabel as nib
@@ -30,6 +31,7 @@ class MvpBetween(Mvp):
         self.data_shape = [] # This could be an array
         self.mask_shape = None
         self.data_name = []
+        self.output_var_file = output_var_file
 
         if not isinstance(source, dict):
             msg = "Source must be a dictionary with type (e.g. 'VBM') " \
@@ -80,12 +82,27 @@ class MvpBetween(Mvp):
         all_vox = np.sum([self.voxel_idx[i].size for i in range(len(self.voxel_idx))])
         assert(self.X.shape[1] == all_vox)
 
+        self._add_outcome_var(self.output_var_file)
+
         print("Final size of array: %r" % list(self.X.shape))
 
     def _add_outcome_var(self, file_path):
-        with open(file_path, 'rb') as f:
-            subject_y = float(f.readline())
-        return subject_y
+        '''
+        works but not very generic....
+        Parameters
+        ----------
+        file_path
+
+        Returns
+        -------
+
+        '''
+        subs = [int(x[-4:]) for x in self.common_subjects]
+        subs = np.array(subs)
+        data = pd.read_csv(file_path)
+        zscores = data.loc[data['Piop_id'].isin(subs), 'ZRaven_tot']
+        zscores = np.array(zscores)
+        self.y = zscores
 
     def _load_mask(self):
 
@@ -208,6 +225,7 @@ if __name__ == '__main__':
     import os.path as op
 
     base_dir = '/users/steven/Desktop/pioptest'
+    output_file = '/users/steven/Documents/Syncthing/MscProjects/Decoding/code/multimodal/MultimodalDecoding/behavioral_data/zraven.csv'
     gm = op.join(op.dirname(skbold.__file__), 'data', 'ROIs', 'GrayMatter.nii.gz')
     source = {}
     source['dual_reg'] = {'path': op.join(base_dir, 'pi*', '*_dualreg.nii.gz'),
@@ -218,9 +236,10 @@ if __name__ == '__main__':
                                           'tstat3.nii.gz')}
 
     mvp_between = MvpBetween(source=source, remove_zeros=True, mask=gm,
-                             mask_threshold=0, subject_idf='pi0???')
+                             mask_threshold=0, subject_idf='pi0???', output_var_file=output_file)
                              #subject_list=['pi0041', 'pi0042', 'pi0010', 'pi0230'])
     mvp_between.create()
     print(mvp_between.voxel_idx)
     print(mvp_between.voxel_idx.shape)
+    print(mvp_between.featureset_id.shape)
     mvp_between.write(path=base_dir, name='between', backend='joblib')
