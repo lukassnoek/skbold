@@ -7,7 +7,8 @@ from sklearn.metrics import (accuracy_score, precision_score, recall_score,
                              confusion_matrix, r2_score, mean_squared_error)
 import nibabel as nib
 from fnmatch import fnmatch
-
+import pandas as pd
+import joblib
 
 class MvpResults(object):
 
@@ -54,16 +55,16 @@ class MvpResults(object):
         else:
             values = values.mean(axis=0)
 
-        for i in np.unique(mvp.featureset_id):
-            img = np.zeros(mvp.data_shape[i]).ravel()
-            subset = values[mvp.featureset_id == i]
-            img[mvp.voxel_idx[mvp.featureset_id == i]] = subset
-            img = nib.Nifti1Image(img.reshape(mvp.data_shape[i]),
-                                  affine=mvp.affine[i])
-            img.to_filename(op.join(self.out_path, mvp.data_name[i] + '.nii.gz'))
+        for i in np.unique(self.featureset_id):
+            img = np.zeros(self.data_shape[i]).ravel()
+            subset = values[self.featureset_id == i]
+            img[self.voxel_idx[self.featureset_id == i]] = subset
+            img = nib.Nifti1Image(img.reshape(self.data_shape[i]),
+                                  affine=self.affine[i])
+            img.to_filename(op.join(self.out_path, self.data_name[i] + '.nii.gz'))
 
             n_nonzero = (subset > 0).sum()
-            print('Number of non-zero voxels in %s: %i' % (mvp.data_name[i],
+            print('Number of non-zero voxels in %s: %i' % (self.data_name[i],
                                                              n_nonzero))
 
         self.df.to_csv(op.join(self.out_path, 'results.tsv'), sep='\t', index=False)
@@ -206,50 +207,3 @@ class MvpResultsClassification(MvpResults):
         print('\nConfusion matrix:')
         print(self.confmat.sum(axis=0))
         print('\n')
-
-if __name__ == '__main__':
-
-    import joblib
-    from sklearn.svm import SVC, SVR
-    from sklearn.cross_validation import StratifiedKFold, KFold
-    from sklearn.feature_selection import SelectKBest, f_classif, f_regression
-    from sklearn.pipeline import Pipeline
-    from sklearn.preprocessing import StandardScaler
-    import pandas as pd
-    from skbold.data2mvp import MvpWithin, MvpBetween
-
-    base_dir = '/media/lukas/piop/PIOP/'
-    output_file = op.join(op.dirname(base_dir), 'behav', 'ALL_BEHAV.tsv')
-
-    mvp = joblib.load('/home/lukas/between.jl')
-    mvp.add_outcome_var(output_file, 'ZRaven_tot', normalize=True,
-                        binarize={'type': 'constant',
-                                  'cutoff': 0})
-
-    scaler = StandardScaler()
-    svm = SVC(kernel='linear', class_weight='balanced')
-    anova = SelectKBest(k=10000, score_func=f_classif)
-
-    folds = StratifiedKFold(mvp.y, n_folds=10)
-
-    mvp_results = MvpResultsClassification(mvp, len(folds), verbose=True,
-                                           feature_scoring='coef',
-                                           out_path='/home/lukas/PIOPANALYSIS')
-
-    pipe = Pipeline([('scaler', scaler),
-                     ('anova', anova),
-                     ('svm', svm)])
-
-    for train_idx, test_idx in folds:
-        train, test = mvp.X[train_idx, :], mvp.X[test_idx]
-        y_train, y_test = mvp.y[train_idx], mvp.y[test_idx]
-
-        pipe.fit(train, y_train)
-        pred = pipe.predict(test)
-
-        idx = np.argsort(pipe.named_steps['anova'].scores_)[::-1][:10000]
-        mvp_results.update(test_idx, pred, pipe.named_steps['anova'].scores_[idx], idx)
-
-    mvp_results.save_model(pipe)
-    mvp_results.compute_scores()
-    mvp_results.write()
