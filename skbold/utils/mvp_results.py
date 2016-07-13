@@ -1,414 +1,255 @@
-# Class to keep track of cross-validation iterations of a classification
-# pipeline.
+from __future__ import division, print_function
 
-# Author: Lukas Snoek [lukassnoek.github.io]
-# Contact: lukassnoek@gmail.com
-# License: 3 clause BSD
-
-from __future__ import print_function, division, absolute_import
-import cPickle
-from sklearn.metrics import precision_score, recall_score, accuracy_score, \
-     confusion_matrix
-import numpy as np
-import os.path as op
 import os
-import glob
-from nipype.interfaces import fsl
-from itertools import chain, combinations
-from scipy.misc import comb
+import os.path as op
+import numpy as np
+from sklearn.metrics import (accuracy_score, precision_score, recall_score,
+                             confusion_matrix, r2_score, mean_squared_error)
 import nibabel as nib
+from fnmatch import fnmatch
 
 
 class MvpResults(object):
-    """ Class that keeps track of model performance over iterations.
 
-    MvpResults keeps track of classification performance across iterations,
-    and is able to calculate various performance metrics and additionally
-    keeps track of feature importance, which can be operationlized in
-    different ways.
+    def __init__(self, mvp, n_iter, out_path=None, feature_scoring='',
+                 verbose=False):
 
-    """
-    def __init__(self, iterations, mvp=None, resultsdir='analysis_results',
-                 method='voting', verbose=False, feature_scoring=None):
-
-        """ Initializes MvpResults object.
-
-        Parameters
-        ----------
-        mvp : Mvp object (see scikit_bold.core)
-            Needs an Mvp object to extract some meta-data
-        iterations : int
-            Number of iterations that the analysis is iterated over (i.e.
-            number of folds)
-        method : str
-            Method to calculate performance across iterations. As of now,
-            there are two options: 'averaging', which simply calculates
-            various performance metrics for each iteration and averages these
-            across iterations at the end, and 'voting', which keeps track of
-            the predicted class (hard voting) or class probabilities (soft
-            voting) across iterations and at the end of all iterations
-            determines the class for each sample/trial based on the argmax of
-            the mean class probability (soft) or class prediction (hard);
-            for more info, see e.g. http://scikit-learn.org/stable/modules/
-            generated/sklearn.ensemble.VotingClassifier.html
-        verbose : bool
-            Whether to print accuracy for each iteration.
-        feature_scoring : str (default: None)
-            Way to compute importance of features, can be 'accuracy' (default),
-            which computes a feature's score as:
-            sum(accuracy) / n_selected across iterations. Method 'coefs'
-            simply uses the feature weights (linear svm only). Default is
-            None (no feature score computation).
-        """
-
-        self.method = method
-        self.n_iter = iterations
-        self.resultsdir = resultsdir
+        self.mvp = mvp
+        self.n_iter = n_iter
+        self.fs = feature_scoring
         self.verbose = verbose
-        self.sub_name = mvp.sub_name
-        self.run_name = mvp.run_name
-        self.n_class = mvp.n_class
-        self.mask_shape = mvp.mask_shape
-        self.mask_index = mvp.mask_index
-        self.ref_space = mvp.ref_space
-        self.affine = mvp.affine
-        self.y_true = mvp.y
         self.X = mvp.X
+        self.y = mvp.y
+        self.data_shape = mvp.data_shape
+        self.data_name = mvp.data_name
+        self.affine = mvp.affine
+        self.voxel_idx = mvp.voxel_idx
+        self.featureset_id = mvp.featureset_id
         self.iter = 0
-        self.feature_scoring = feature_scoring
-        self.feature_selection = np.zeros(np.sum(mvp.mask_index))
-        self.precision = None
-        self.accuracy = None
-        self.recall = None
 
-        n_voxels = np.sum(mvp.mask_index)
+        if out_path is None:
+            out_path = os.getcwd()
 
-        if feature_scoring is not None:
-            if 'coef' in feature_scoring:
-                n_models = mvp.n_class * (mvp.n_class - 1) / 2
-                self.feature_scores = np.zeros((n_voxels, n_models))
-            elif feature_scoring == 'accuracy' or feature_scoring == 'forward':
+        if not op.exists(out_path):
+            os.makedirs(out_path)
 
-                if mvp.n_class > 2:
-                    self.feature_scores = np.zeros((n_voxels, mvp.n_class))
-                else:
-                    self.feature_scores = np.zeros(n_voxels)
+        self.out_path = out_path
 
-            elif feature_scoring == 'distance': # if 'distance'
-                self.feature_scores = np.zeros(n_voxels)
+    def _check_mvp_attributes(self):
 
-        self.n_features = np.zeros(iterations)
-        self.conf_mat = np.zeros((mvp.n_class, mvp.n_class))
+        if not isinstance(self.affine, list):
+            self.affine = [self.affine]
 
-        if method == 'averaging':
-            self.precision = np.zeros(self.n_iter)
-            self.accuracy = np.zeros(self.n_iter)
-            self.recall = np.zeros(self.n_iter)
-        elif method == 'voting':
-            self.trials_mat = np.zeros((len(mvp.y), mvp.n_class))
+        if not isinstance(self.data_shape, list):
+            self.data_shape = [self.data_shape]
 
-    def update_results(self, test_idx, y_pred, pipeline=None):
-        """ Updates results after a cross-validation iteration.
+    def write(self, to_tstat=True):
 
-        This method updates the 'counters' for several attributes (relating
-        to features and class prediction/accuracy).
+        self._check_mvp_attributes()
+        values = self.voxel_values
 
-        Parameters
-        ----------
-        test_idx : ndarray[bool] or ndarray[int] (i.e. using fancy indexing)
-            Indices for test trials, relativ to mvp.y
-        y_pred : ndarray[float]
-            Array with predicted classes (if hard-voting/simple predict()) or
-            arry with predicted class probabilities (if soft-voting/
-            predict_proba()). In the latter case, y_pred.shape =
-            [n_class, n_test].
-        transformer : transformer object
-            This transformer is assumed to have certain attributes, such as
-            feature scores (.zvalues) and corresponding indices.
-        clf : classifier object (scikit-learn estimator)
-            This classifier is assumed to have a _coef attributes, which is
-            extracted to keep track of feature weights (and feature importance,
-            calculated as weights * feature values).
-        """
-        fs_method = self.feature_scoring
+        if to_tstat:
+            n = values.shape[0]
+            values = values.mean(axis=0) / ((values.std(axis=0)) / np.sqrt(n))
+        else:
+            values = values.mean(axis=0)
 
-        # If pipeline is None, assume that we don't keep track of voxels.
-        if pipeline is not None:
+        for i in np.unique(mvp.featureset_id):
+            img = np.zeros(mvp.data_shape[i]).ravel()
+            subset = values[mvp.featureset_id == i]
+            img[mvp.voxel_idx[mvp.featureset_id == i]] = subset
+            img = nib.Nifti1Image(img.reshape(mvp.data_shape[i]),
+                                  affine=mvp.affine[i])
+            img.to_filename(op.join(self.out_path, mvp.data_name[i] + '.nii.gz'))
 
-            # If GridSearchCv, extract best estimator as pipeline.
-            if hasattr(pipeline, 'best_estimator_'):
-                pipeline = pipeline.best_estimator_
+            n_nonzero = (subset > 0).sum()
+            print('Number of non-zero voxels in %s: %i' % (mvp.data_name[i],
+                                                             n_nonzero))
 
-            clf = pipeline.named_steps['estimator']
-            transformer = pipeline.named_steps['transformer']
-            idx, scores = transformer.idx_, transformer.scores_
-            self.feature_selection[idx] += 1
-            self.n_features[self.iter] = idx.sum()
+        self.df.to_csv(op.join(self.out_path, 'results.tsv'), sep='\t', index=False)
 
-            if self.feature_scoring == 'distance':
-                self.feature_scores[idx] += scores[idx]
-            elif 'coef' in fs_method:
-                self.feature_scores[idx] += clf.coef_.T
-            elif fs_method == 'accuracy':
-                if y_pred.ndim > 1:
-                    # if output is proba estimates, then do soft vote
-                    y_tmp = np.argmax(y_pred, axis=1)
-                else:
-                    y_tmp = y_pred
+    def _update_voxel_values(self, values, idx):
 
-                cm_tmp = confusion_matrix(self.y_true[test_idx], y_tmp)
-                score_tmp = np.diag(cm_tmp / cm_tmp.sum(axis=1))
-                score_tmp = np.expand_dims(score_tmp, 0)
-                self.feature_scores[idx] += score_tmp
+        values = np.squeeze(values)
+        self.n_vox[self.iter] = values.size
 
-            elif fs_method == 'forward':
-                # Haufe, S., Meinecke, F., Gorgen, K., Dahne, S., Haynes, J. D.,
-                # Blankertz, B., & Biessmann, F. (2014). On the interpretation of
-                # weight vectors of linear models in multivariate neuroimaging. Neuroimage, 87, 96-110.
+        if any(fnmatch(self.fs, typ) for typ in ['coef*', 'ufs']):
+            self.voxel_values[self.iter, idx] = values
 
-                W = clf.coef_.T
-                X = self.X[:, transformer.idx_]
-                s = W.T.dot(X.T)
+        elif self.fs == 'forward':
 
-                if self.n_class < 3:
-                    A = np.cov(X.T).dot(W)
-                else:
-                    X_cov = np.cov(X.T)
-                    A = X_cov.dot(W).dot(np.linalg.pinv(np.cov(s)))
+            # Haufe et al. (2014). On the interpretation of weight vectors of
+            # linear models in multivariate neuroimaging. Neuroimage, 87, 96-110.
 
-                self.feature_scores[idx] += A
+            W = values
+            X = self.X[:, idx]
+            s = W.T.dot(X.T)
 
-        if self.method == 'averaging':
-            y_true = self.y_true[test_idx]
-            self.conf_mat += confusion_matrix(y_true, y_pred)
-            self.precision[self.iter] = precision_score(y_true, y_pred, average='macro')
-            self.recall[self.iter] = recall_score(y_true, y_pred, average='macro')
-            self.accuracy[self.iter] = accuracy_score(y_true, y_pred)
-
-            if self.verbose:
-                print('Accuracy: %f' % self.accuracy[self.iter])
-
-        elif self.method == 'voting':
-
-            if y_pred.ndim > 1:
-                self.trials_mat[test_idx, :] += y_pred
+            if self.n_class < 3:
+                A = np.cov(X.T).dot(W)
             else:
-                self.trials_mat[test_idx, y_pred.astype(int)] += 1
+                X_cov = np.cov(X.T)
+                A = X_cov.dot(W).dot(np.linalg.pinv(np.cov(s)))
+
+            self.voxel_values[self.iter, idx] = A
+
+    def save_model(self, model):
+        """ Method to serialize model(s) to disk."""
+
+        # Can also be a pipeline!
+        if model.__class__.__name__ == 'Pipeline':
+            model = model.steps
+
+        for step in model:
+            fn = op.join(self.out_path, step[0] + '.jl')
+            joblib.dump(step[1], fn, compress=3)
+
+    def load_model(self, path, param=None):
+
+        model = joblib.load(path)
+
+        if param is None:
+            return model
+        else:
+            if not isinstance(param, list):
+                param = [param]
+            return {p: getattr(model, p) for p in param}
+
+
+class MvpResultsRegression(MvpResults):
+
+    def __init__(self, mvp, n_iter, feature_scoring='', verbose=False,
+                 out_path=None):
+
+        super(MvpResultsRegression, self).__init__(mvp=mvp, n_iter=n_iter,
+                                                   feature_scoring=feature_scoring,
+                                                   verbose=verbose,
+                                                   out_path=out_path)
+
+        self.R2 = np.zeros(self.n_iter)
+        self.mse = np.zeros(self.n_iter)
+        self.n_vox = np.zeros(self.n_iter)
+        self.voxel_values = np.zeros((self.n_iter, mvp.X.shape[1]))
+
+    def update(self, test_idx, y_pred, values=None, idx=None):
+
+        i = self.iter
+        y_true = self.y[test_idx]
+
+        self.R2[i] = r2_score(y_true, y_pred)
+        self.mse = mean_squared_error(y_true, y_pred)
+
+        if self.verbose:
+            print('R2: %f' % self.R2[i])
+
+        if values is not None:
+            self._update_voxel_values(values, idx)
 
         self.iter += 1
 
-    def compute_score(self, verbose=True):
-        """ Computes performance over iterations.
+    def compute_scores(self):
 
-        Computes performance metrics across iterations of the classifier and,
-        optionally, computes feature characteristics.
+        df = pd.DataFrame({'R2': self.R2,
+                           'MSE': self.mse,
+                           'n_voxels': self.n_vox})
+        self.df = df
+        print(df.describe().loc[['mean', 'std']])
 
-        """
-        self.n_features = self.n_features.mean()
-        fs = self.feature_scoring
 
-        if fs is not None:
+class MvpResultsClassification(MvpResults):
 
-            if fs == 'coefovr':
-                """
-                Here, we add the coefficients from the pairwise classifications
-                together, e.g. for class 'A', we add 'A vs. B' and 'A vs. C'
-                together, and if class 'A' is the negative class, we multiply
-                the coefficient by -1. Note that sklearn's multiclass models
-                reverse the labels for some reason (e.g. in the class 0 vs 1
-                classification, 0 becomes the positive label, and 1 becomes the
-                negative label), that's why the coefs are all reversed at the
-                beginning.
-                """
-                av_feature_info = self.feature_scores * -1
-                n, k = self.n_class, 2
-                count = comb(n, k, exact=True)
-                index = np.fromiter(chain.from_iterable(combinations(range(n), k)),
-                                    int, count=count*k)
-                c = index.reshape(-1, k)
-                store = np.zeros((av_feature_info.shape[0], av_feature_info.shape[1], n, 2))
+    def __init__(self, mvp, n_iter, feature_scoring='', verbose=False,
+                 out_path=None):
 
-                for clas in range(n):
+        super(MvpResultsClassification, self).__init__(mvp=mvp, n_iter=n_iter,
+                                                       feature_scoring=feature_scoring,
+                                                       verbose=verbose,
+                                                       out_path=out_path)
 
-                    present = 0
-                    for i in range(n):
-                        if any(c[i, :] == clas):
-                            if (c[i, :] == clas)[0]:
-                                store[:, :, clas, present] = av_feature_info[:, :, i] * -1
-                            else:
-                                store[:, :, clas, present] = av_feature_info[:, :, i]
+        self.accuracy = np.zeros(self.n_iter)
+        self.recall = np.zeros(self.n_iter)
+        self.precision = np.zeros(self.n_iter)
+        self.n_class = np.unique(self.mvp.y).size
+        self.confmat = np.zeros((self.n_iter, self.n_class, self.n_class))
+        self.n_vox = np.zeros(self.n_iter)
+        self.voxel_values = np.zeros((self.n_iter, mvp.X.shape[1]))
 
-                            present += 1
+    def update(self, test_idx, y_pred, values=None, idx=None):
 
-                store[store < 0] = 0
-                self.feature_scores = store.sum(axis=3)
+        i = self.iter
+        y_true = self.y[test_idx]
 
-            elif fs == 'coefovo':
-                av_feature_info = self.feature_scores * -1
+        self.accuracy[i] = accuracy_score(y_true, y_pred)
+        self.precision[i] = precision_score(y_true, y_pred, average='macro')
+        self.recall[i] = recall_score(y_true, y_pred, average='macro')
+        self.confmat[i, :, :] = confusion_matrix(y_true, y_pred)
 
-            # n_selected = (av_feature_info != 0.0).sum(axis=0)
-            # av_feature_info = self.feature_scores.sum(axis=0) / n_selected
-            if 'coef' in fs or fs == 'accuracy' or fs == 'forward':
-                self.feature_selection = np.expand_dims(self.feature_selection, axis=1)
+        if self.verbose:
+            print('Accuracy: %f' % self.accuracy[i])
 
-            av_feature_info = self.feature_scores / self.feature_selection
-            av_feature_info[av_feature_info == np.inf] = 0
-            av_feature_info[np.isnan(av_feature_info)] = 0
+        if values is not None:
+            self._update_voxel_values(values, idx)
 
-            """
-            Here, the std should be calculated, but I have now clue
-            how to do this properly...
-            """
-            # std_av_features = (av_feature_info-self.feature_scores * -1)
-            self.av_feature_info = av_feature_info
+        self.iter += 1
 
-        if self.method == 'voting':
+    def compute_scores(self):
 
-            filter_trials = np.sum(self.trials_mat, axis=1) == 0
-            trials_max = np.argmax(self.trials_mat, axis=1) + 1
-            trials_max[filter_trials] = 0
-            y_pred = trials_max[trials_max > 0]-1
-            y_true = self.y_true[trials_max > 0]
-            self.conf_mat = confusion_matrix(y_true, y_pred)
-            self.precision = precision_score(y_true, y_pred, average='macro')
-            self.recall = recall_score(y_true, y_pred, average='macro')
-            self.accuracy = accuracy_score(y_true, y_pred)
+        df = pd.DataFrame({'Accuracy': self.accuracy,
+                           'Precision': self.precision,
+                           'Recall': self.recall,
+                           'n_voxels': self.n_vox})
 
-        elif self.method == 'averaging':
+        self.df = df
 
-            self.accuracy = self.accuracy.mean()
-            self.precision = self.precision.mean()
-            self.recall = self.recall.mean()
+        print('\n')
+        print(df.describe().loc[['mean', 'std']])
+        print('\nConfusion matrix:')
+        print(self.confmat.sum(axis=0))
+        print('\n')
 
-        print('Accuracy over iterations: %f' % self.accuracy)
+if __name__ == '__main__':
 
-        return self
+    import joblib
+    from sklearn.svm import SVC, SVR
+    from sklearn.cross_validation import StratifiedKFold, KFold
+    from sklearn.feature_selection import SelectKBest, f_classif, f_regression
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import StandardScaler
+    import pandas as pd
+    from skbold.data2mvp import MvpWithin, MvpBetween
 
-    def write_results(self, directory, convert2mni=False):
-        """ Writes analysis results and feature characteristics to file.
+    base_dir = '/media/lukas/piop/PIOP/'
+    output_file = op.join(op.dirname(base_dir), 'behav', 'ALL_BEHAV.tsv')
 
-        Parameters
-        ----------
-        directory : str
-            Absolute path to project directory
-        resultsdir : str
-            name of the results directory
-        convert2mni : bool
-            Whether to convert feature scores in epi-space to mni spaces
+    mvp = joblib.load('/home/lukas/between.jl')
+    mvp.add_outcome_var(output_file, 'ZRaven_tot', normalize=True,
+                        binarize={'type': 'constant',
+                                  'cutoff': 0})
 
-        """
+    scaler = StandardScaler()
+    svm = SVC(kernel='linear', class_weight='balanced')
+    anova = SelectKBest(k=10000, score_func=f_classif)
 
-        results_dir = op.join(directory, self.resultsdir)
-        if not op.isdir(results_dir):
-            os.makedirs(results_dir)
-        filename = op.join(results_dir, '%s_%s_classification.pickle' %
-                           (self.sub_name, self.run_name))
+    folds = StratifiedKFold(mvp.y, n_folds=10)
 
-        if self.feature_scoring is not None:
+    mvp_results = MvpResultsClassification(mvp, len(folds), verbose=True,
+                                           feature_scoring='coef',
+                                           out_path='/home/lukas/PIOPANALYSIS')
 
-            vox_dir = op.join(results_dir, 'vox_results_%s' % self.ref_space)
+    pipe = Pipeline([('scaler', scaler),
+                     ('anova', anova),
+                     ('svm', svm)])
 
-            if not op.isdir(vox_dir):
-                os.makedirs(vox_dir)
+    for train_idx, test_idx in folds:
+        train, test = mvp.X[train_idx, :], mvp.X[test_idx]
+        y_train, y_test = mvp.y[train_idx], mvp.y[test_idx]
 
-            fn = op.join(vox_dir, '%s_%s_%s' % (self.sub_name,
-                         self.run_name, self.feature_scoring))
+        pipe.fit(train, y_train)
+        pred = pipe.predict(test)
 
-            if self.feature_scoring == 'accuracy' or 'coef' in self.feature_scoring:
-                img = np.zeros((np.prod(self.mask_shape), self.n_class))
-                img[self.mask_index, :] = self.av_feature_info
-                xs, ys, zs = self.mask_shape
-                img = img.reshape((xs, ys, zs, self.n_class))
-            else:
-                img = np.zeros(np.prod(self.mask_shape))
-                img[self.mask_index] = self.av_feature_info
-                img = img.reshape(self.mask_shape)
+        idx = np.argsort(pipe.named_steps['anova'].scores_)[::-1][:10000]
+        mvp_results.update(test_idx, pred, pipe.named_steps['anova'].scores_[idx], idx)
 
-            img = nib.Nifti1Image(img, self.affine)
-            nib.save(img, fn)
-
-            if self.ref_space == 'mni' and convert2mni:
-                convert2mni = False
-
-            if self.ref_space == 'epi' and convert2mni:
-
-                # TO DO: call convert2mni
-                mni_dir = op.join(results_dir, 'vox_results_mni')
-                if not op.isdir(mni_dir):
-                    os.makedirs(mni_dir)
-
-                reg_dir = glob.glob(op.join(directory, self.sub_name, '*',
-                                    'reg'))[0]
-                ref_file = op.join(reg_dir, 'standard.nii.gz')
-                matrix_file = op.join(reg_dir, 'example_func2standard.mat')
-
-                out_file = op.join(mni_dir, op.basename(fn)+'.nii.gz')
-                apply_xfm = fsl.ApplyXfm()
-                apply_xfm.inputs.in_file = fn + '.nii'
-                apply_xfm.inputs.reference = ref_file
-                apply_xfm.inputs.in_matrix_file = matrix_file
-                apply_xfm.interp = 'trilinear'
-                apply_xfm.inputs.out_file = out_file
-                apply_xfm.inputs.apply_xfm = True
-                apply_xfm.run()
-
-        # Remove some attributes to save space
-        self.X = None
-        self.feature_selection = None
-        self.feature_scores = None
-        self.mask_index = None
-
-        with open(filename, 'wb') as handle:
-            cPickle.dump(self, handle)
-
-    def compute_and_write(self, directory, convert2mni=False):
-        """ Chains compute_score() and write_results(). """
-        self.compute_score().write_results(directory, convert2mni)
-
-    def write_results_permutation(self, directory, perm_number):
-        """ Writes permutation results.
-
-        Instead of the 'regular' write_results() method, this method stores
-        only the confusion matrix and voxel scores, to avoid saving huge
-        amounts of data on disk - due to inefficient pickle storage - as
-        every permutation result may amount to >1 GB of data.
-
-        Parameters
-        ----------
-        directory : str
-            Absolute path to project directory
-
-        perm_number : str (or int/float)
-            Number of the permutation
-        """
-
-        if type(perm_number) == int or type(perm_number) == float:
-            perm_number = str(perm_number)
-
-        perm_dir = op.join(directory, 'permutation_results')
-        if not op.isdir(perm_dir):
-            os.makedirs(perm_dir)
-
-        current_perm_dir = op.join(perm_dir, 'perm_%s' % perm_number)
-        if not op.isdir(current_perm_dir):
-            os.makedirs(current_perm_dir)
-
-        filename = op.join(current_perm_dir, '%s_%s_confmat.npy' %
-                           (self.sub_name, self.run_name))
-
-        np.save(filename, self.conf_mat)
-
-        if self.feature_scoring is not None:
-
-            vox_dir = op.join(current_perm_dir, 'vox_results_%s' % self.ref_space)
-
-            if not op.isdir(vox_dir):
-                os.makedirs(vox_dir)
-
-            fn = op.join(vox_dir, '%s_%s_%s' % (self.sub_name,
-                         self.run_name, self.feature_scoring))
-
-            img = np.zeros(np.prod(self.mask_shape))
-            img[self.mask_index] = self.av_feature_info
-            img = nib.Nifti1Image(img.reshape(self.mask_shape), self.affine)
-            nib.save(img, fn)
+    mvp_results.save_model(pipe)
+    mvp_results.compute_scores()
+    mvp_results.write()
