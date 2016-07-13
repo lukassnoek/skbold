@@ -20,10 +20,10 @@ from .multi_roi_indexer import MultiRoiIndexer
 from .multi_pattern_averager import MultiPatternAverager
 from .correlation_selector import CorrelationSelector
 from .select_featuresets import SelectFeatureset
-
+from .row_indexer import RowIndexer
 
 __all__ = ['PatternAverager', 'FeaturesToContrast', 'ClusterThreshold',
            'AnovaCutoff', 'ArrayPermuter', 'LabelFactorizer',
            'AverageRegionTransformer', 'MeanEuclidean', 'PCAfilter',
            'SpatialFilter', 'RoiIndexer', 'IncrementalFeatureCombiner', 'PCAfilter', 'MeanEuclideanBalanced',
-           'MultiRoiIndexer', 'MultiPatternAverager', 'CorrelationSelector', 'SelectFeatureset']
+           'MultiRoiIndexer', 'MultiPatternAverager', 'CorrelationSelector', 'SelectFeatureset', 'RowIndexer']
