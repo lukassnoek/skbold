@@ -6,7 +6,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 class CorrelationSelector(BaseEstimator, TransformerMixin):
 
-    def __init__(self, mvp, min_correlation=None, n_voxels=None, by_featureset=True):
+    def __init__(self, mvp, min_correlation=None, n_voxels=None, by_featureset=False):
         '''
         SEMI-TESTED!!!
 
@@ -28,8 +28,8 @@ class CorrelationSelector(BaseEstimator, TransformerMixin):
     def fit(self, X, y):
 
         if self.by_featureset:
-            idx = np.empty()
-            for f_set in self.mvp.featureset_id:
+            idx = np.empty(0)
+            for f_set in np.unique(self.mvp.featureset_id):
                 correlations = np.apply_along_axis(pearsonr, 0, X, y)
                 r_values = correlations[0,:]
                 p_values = correlations[1,:]
@@ -42,6 +42,7 @@ class CorrelationSelector(BaseEstimator, TransformerMixin):
                     idx_this_fset = np.zeros(X.shape[1], dtype=bool)
                     idx_this_fset[idvals] = True
             idx = np.concatenate([idx, idx_this_fset])
+
         else:
             correlations = np.apply_along_axis(pearsonr, 0, X, y)
             r_values = correlations[0, :]
@@ -59,8 +60,7 @@ class CorrelationSelector(BaseEstimator, TransformerMixin):
 
         #Apply new indices to voxel_idx and contrast_id
         self.mvp.voxel_idx = self.mvp.voxel_idx[idx]
-        self.mvp.contrast_id = self.mvp.contrast_id[idx]
-        self.mvp.featureset_id = self.mvp.contrast_id[idx]
+        self.mvp.featureset_id = self.mvp.featureset_id[idx]
         return self
 
     def transform(self, X, y=None):
