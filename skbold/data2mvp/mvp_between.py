@@ -86,6 +86,22 @@ class MvpBetween(Mvp):
 
         print("Final size of array: %r" % list(self.X.shape))
 
+    def regress_out_confounds(self, file_path, col_name, sep='\t', index_col=0):
+
+        df = pd.read_csv(file_path, sep=sep, index_col=index_col)
+        df.index = [str(i) for i in df.index.tolist()]
+        confound = df.loc[df.index.isin(self.common_subjects), col_name]
+        confound = np.vstack([np.ones(len(confound)), np.array(confound)]).T
+
+        for i in xrange(self.X.shape[1]):
+
+            if i % 1000 == 0:
+                print('Processed %i / %i voxels' % (i, self.X.shape[1]))
+
+            _, res, _, _ = np.linalg.lstsq(confound, self.X[:, i])
+            res = (res - res.mean()) / res.std()
+            self.X[:, i] = res
+
     def add_outcome_var(self, file_path, col_name, sep='\t', index_col=0,
                         normalize=True, binarize=None):
         """ Adds target-variabel from csv """
