@@ -62,10 +62,6 @@ class Mvp(object):
             self.X = None
             joblib.dump(self, fn + '_header.jl', compress=3)
 
-    def load(self, path):
-        # Load Mvp-object from disk
-        pass
-
     def _update_mask_info(self, mask):
 
         mask_vol = nib.load(mask)
