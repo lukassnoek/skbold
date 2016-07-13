@@ -38,8 +38,10 @@ class MvpBetween(Mvp):
 
     def create(self):
 
-        self._load_mask()
         self._check_complete_data()
+
+        if self.mask is not None:
+            self._load_mask()
 
         # Loop over data-types as defined in source
         for data_type, args in self.source.iteritems():
@@ -92,7 +94,15 @@ class MvpBetween(Mvp):
         df = pd.read_csv(file_path, sep=sep, index_col=index_col)
         df.index = [str(i) for i in df.index.tolist()]
         behav = df.loc[df.index.isin(self.common_subjects), col_name]
-        self.y = np.array(behav.sort_index())
+
+        # check if zero-padded!
+        length = len(behav.index.tolist()[0])
+        zero_pad = all(len(i) == length for i in behav.index.tolist())
+
+        if zero_pad:
+            self.y = np.array(behav.sort_index())
+        else:
+            self.y = np.array(behav)
 
         if normalize:
             self.y = (self.y - self.y.mean()) / self.y.std()
@@ -134,14 +144,14 @@ class MvpBetween(Mvp):
         voxel_idx = np.arange(np.prod(tmp.shape[:3]))
 
         if self.mask_shape == tmp.shape[:3]:
-            data = data[self.mask_index.reshape(tmp.shape[:3])]
+            data = data[self.mask_index.reshape(tmp.shape[:3])].T
             voxel_idx = voxel_idx[self.mask_index]
-
-        data = data.T
+        else:
+            data = data.reshape(-1, data.shape[-1]).T
 
         self.voxel_idx.append(voxel_idx)
         self.affine.append(tmp.affine)
-        self.data_shape.append(tmp.shape)
+        self.data_shape.append(tmp.shape[:3])
         feature_ids = np.ones(data.shape[1], dtype=np.uint32) * len(self.X)
         self.featureset_id.append(feature_ids)
         self.X.append(data)
