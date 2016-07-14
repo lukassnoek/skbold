@@ -71,6 +71,28 @@ class MvpResults(object):
 
     def _update_voxel_values(self, values, idx):
 
+        if values.__class__.__name__ == 'Pipeline':
+            match = 'coef_' if self.fs in ['coef', 'forward'] else 'scores_'
+            val = [getattr(step, match) for step in values.named_steps.values()
+                   if hasattr(step, match)]
+
+            if val.size != self.X.shape[1] and idx is None:
+
+                idx = [step.get_support() for step in values.named_steps.values()
+                       if callable(getattr(step, "get_support", None))]
+
+                if len(idx) == 1:
+                    idx = idx[0]
+                else:
+                    raise ValueError('Found more than one %s attribute in pipeline!'
+                                     % match)
+
+            if len(val) == 1:
+                values = val[0]
+            else:
+                raise ValueError('Found more than one %s attribute in pipeline!'
+                                 % match)
+
         values = np.squeeze(values)
         self.n_vox[self.iter] = values.size
 
