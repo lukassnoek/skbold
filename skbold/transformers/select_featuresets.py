@@ -28,7 +28,7 @@ class SelectFeatureset(BaseEstimator, TransformerMixin):
         mvp.featureset_id = mvp.featureset_id[np.in1d(mvp.featureset_id, self.featureset_idx)]
 
         self.mvp = mvp
-        return self
+        return mvp
 
 if __name__ == '__main__':
     import joblib
@@ -36,9 +36,9 @@ if __name__ == '__main__':
 
     mvp = joblib.load(op.join('/users/steven/Documents/Syncthing/MscProjects/Decoding/code/multimodal/MultimodalDecoding/data/between.jl'))
 
-    selector = SelectFeatureset(mvp=mvp, featureset_idx = [1, 3])
+    selector = SelectFeatureset(mvp=mvp, featureset_idx = [1, 2])
 
-    selector.fit().transform()
+    mvp = selector.fit().transform()
 
     print(mvp.featureset_id)
     print(mvp.voxel_idx)

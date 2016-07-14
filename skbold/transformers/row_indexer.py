@@ -14,8 +14,8 @@ class RowIndexer(object):
 
     def transform(self):
         mvp = self.mvp
-        selection = np.ones(mvp.X.shape[0], dtype=bool)
-        selection[self.idx] = False
+        selection = np.zeros(mvp.X.shape[0], dtype=bool)
+        selection[self.idx] = True
         X_not_selected = mvp.X[~selection,:]
         y_not_selected = mvp.y[~selection]
         mvp.X = mvp.X[selection,:]
