@@ -76,6 +76,12 @@ class MvpResults(object):
             val = [getattr(step, match) for step in values.named_steps.values()
                    if hasattr(step, match)]
 
+            if len(val) == 1:
+                val = val[0]
+            else:
+                raise ValueError('Found more than one %s attribute in pipeline!'
+                                 % match)
+
             if val.size != self.X.shape[1] and idx is None:
 
                 idx = [step.get_support() for step in values.named_steps.values()
@@ -87,11 +93,7 @@ class MvpResults(object):
                     raise ValueError('Found more than one %s attribute in pipeline!'
                                      % match)
 
-            if len(val) == 1:
-                values = val[0]
-            else:
-                raise ValueError('Found more than one %s attribute in pipeline!'
-                                 % match)
+            values = val
 
         values = np.squeeze(values)
         self.n_vox[self.iter] = values.size
