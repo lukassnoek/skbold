@@ -7,6 +7,8 @@ import nibabel as nib
 from skbold.core import Mvp
 from glob import glob
 import scipy.stats as stat
+import re
+from sklearn.linear_model import LinearRegression
 
 class MvpBetween(Mvp):
 
@@ -86,21 +88,37 @@ class MvpBetween(Mvp):
 
         print("Final size of array: %r" % list(self.X.shape))
 
-    def regress_out_confounds(self, file_path, col_name, sep='\t', index_col=0):
+    def regress_out_confounds(self, file_path, col_name, backend='numpy',
+                              sep='\t', index_col=0):
 
         df = pd.read_csv(file_path, sep=sep, index_col=index_col)
         df.index = [str(i) for i in df.index.tolist()]
         confound = df.loc[df.index.isin(self.common_subjects), col_name]
-        confound = np.vstack([np.ones(len(confound)), np.array(confound)]).T
+        confound = np.array(confound)
+
+        if backend == 'sklearn':
+            confound = confound[:, np.newaxis]
+            lr = LinearRegression(normalize=True, fit_intercept=True)
+
+        elif backend == 'numpy':
+            confound = np.vstack([np.ones(len(confound)), confound]).T
 
         for i in xrange(self.X.shape[1]):
 
-            if i % 1000 == 0:
+            if i % 10000 == 0:
                 print('Processed %i / %i voxels' % (i, self.X.shape[1]))
 
-            _, res, _, _ = np.linalg.lstsq(confound, self.X[:, i])
-            res = (res - res.mean()) / res.std()
-            self.X[:, i] = res
+            if backend == 'sklearn':
+
+                lr.fit(confound, self.X[:, i])
+                pred = lr.predict(confound)
+                self.X[:, i] = self.X[:, i] - pred
+
+            elif backend == 'numpy':
+
+                b, _, _, _ = np.linalg.lstsq(confound, self.X[:, i])
+                b = b[:, np.newaxis]
+                self.X[:, i] -= np.squeeze(confound.dot(b))
 
     def add_outcome_var(self, file_path, col_name, sep='\t', index_col=0,
                         normalize=True, binarize=None):
@@ -110,15 +128,8 @@ class MvpBetween(Mvp):
         df = pd.read_csv(file_path, sep=sep, index_col=index_col)
         df.index = [str(i) for i in df.index.tolist()]
         behav = df.loc[df.index.isin(self.common_subjects), col_name]
-
-        # check if zero-padded!
-        length = len(behav.index.tolist()[0])
-        zero_pad = all(len(i) == length for i in behav.index.tolist())
-
-        if zero_pad:
-            self.y = np.array(behav.sort_index())
-        else:
-            self.y = np.array(behav)
+        behav.index = check_zeropadding_and_sort(behav.index.tolist())
+        self.y = np.array(behav)
 
         if normalize:
             self.y = (self.y - self.y.mean()) / self.y.std()
@@ -251,7 +262,7 @@ class MvpBetween(Mvp):
             if '4D_anat' in data_type:
                 continue
 
-            args['paths'] = sorted(glob(args['path']))
+            args['paths'] = check_zeropadding_and_sort(glob(args['path']))
 
             ex_path = args['paths'][0].split(os.sep)
             idx = [True if fnmatch(p, self.subject_idf) else False for p in ex_path]
@@ -277,7 +288,9 @@ class MvpBetween(Mvp):
         if self.subject_list is not None:
             all_subjects.append(set(self.subject_list))
 
-        self.common_subjects = sorted(set.intersection(*all_subjects))
+        self.common_subjects = list(set.intersection(*all_subjects))
+        self.common_subjects = check_zeropadding_and_sort(self.common_subjects)
+
         print("Found a set of %i complete subjects for data-types: %r" % \
               (len(self.common_subjects), [key for key in self.source]))
 
@@ -288,3 +301,17 @@ class MvpBetween(Mvp):
 
             args['paths'] = [p for p in args['paths']
                              if p.split(os.sep)[args['position']] in self.common_subjects]
+
+
+def check_zeropadding_and_sort(lst):
+
+    length = len(lst[0])
+    zero_pad = all(len(i) == length for i in lst)
+
+    if zero_pad:
+        return sorted(lst)
+    else:
+        convert = lambda text: int(text) if text.isdigit() else text.lower()
+        alphanum_key = lambda key: [convert(c) for c in
+                                    re.split("([0-9]+)", key)]
+        return sorted(lst, key=alphanum_key)
