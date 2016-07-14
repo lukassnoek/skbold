@@ -96,12 +96,15 @@ class MvpBetween(Mvp):
         confound = df.loc[df.index.isin(self.common_subjects), col_name]
         confound = np.array(confound)
 
-        if backend == 'sklearn':
+        if confound.ndim == 1:
             confound = confound[:, np.newaxis]
+
+        if backend == 'sklearn':
+
             lr = LinearRegression(normalize=True, fit_intercept=True)
 
         elif backend == 'numpy':
-            confound = np.vstack([np.ones(len(confound)), confound]).T
+            confound = np.hstack((np.ones((confound.shape[0], 1)), confound))
 
         for i in xrange(self.X.shape[1]):
 
@@ -121,7 +124,7 @@ class MvpBetween(Mvp):
                 self.X[:, i] -= np.squeeze(confound.dot(b))
 
     def add_outcome_var(self, file_path, col_name, sep='\t', index_col=0,
-                        normalize=True, binarize=None):
+                        normalize=True, binarize=None, remove=None):
         """ Adds target-variabel from csv """
 
         # Assumes index corresponds to self.common_subjects
@@ -130,6 +133,10 @@ class MvpBetween(Mvp):
         behav = df.loc[df.index.isin(self.common_subjects), col_name]
         behav.index = check_zeropadding_and_sort(behav.index.tolist())
         self.y = np.array(behav)
+
+        if remove is not None:
+            self.y = self.y[self.y != remove]
+            self.X[self.y != remove, :]
 
         if normalize:
             self.y = (self.y - self.y.mean()) / self.y.std()
