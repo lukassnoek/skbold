@@ -38,25 +38,29 @@ class MvpBetween(Mvp):
 
     def create(self):
 
-        self._load_mask()
         self._check_complete_data()
+
+        if self.mask is not None:
+            self._load_mask()
 
         # Loop over data-types as defined in source
         for data_type, args in self.source.iteritems():
 
             print('Processing: %s ...' % data_type)
-
             self.data_name.append(data_type)
 
             if any(fnmatch(data_type, typ) for typ in ['VBM', 'TBSS', 'Contrast*']):
                 self._load_3D(args)
             elif data_type == 'dual_reg':
                 self._load_dual_reg(args)
-            elif data_type == '4D_func':
+            elif '4D_func' in data_type:
                 msg = "Data_type '4D_func' not yet implemented!"
                 print(msg)
+            elif '4D_anat' in data_type:
+                self._load_4D_anat(args)
             else:
-                allowed = ['VBM', 'dual_reg', 'TBSS', 'Contrast', '4D_func']
+                allowed = ['VBM', 'dual_reg', 'TBSS', 'Contrast', '4D_func',
+                           '4D_anat']
                 msg = "Data-type '%s' not recognized; please use one of the " \
                       "following: %r" % (data_type, allowed)
                 raise KeyError(msg)
@@ -82,17 +86,47 @@ class MvpBetween(Mvp):
 
         print("Final size of array: %r" % list(self.X.shape))
 
-    def add_outcome_var(self, file_path, col_name, normalize=True,
-                        binarize=None):
+    def regress_out_confounds(self, file_path, col_name, sep='\t', index_col=0):
+
+        df = pd.read_csv(file_path, sep=sep, index_col=index_col)
+        df.index = [str(i) for i in df.index.tolist()]
+        confound = df.loc[df.index.isin(self.common_subjects), col_name]
+        confound = np.vstack([np.ones(len(confound)), np.array(confound)]).T
+
+        for i in xrange(self.X.shape[1]):
+
+            if i % 1000 == 0:
+                print('Processed %i / %i voxels' % (i, self.X.shape[1]))
+
+            _, res, _, _ = np.linalg.lstsq(confound, self.X[:, i])
+            res = (res - res.mean()) / res.std()
+            self.X[:, i] = res
+
+    def add_outcome_var(self, file_path, col_name, sep='\t', index_col=0,
+                        normalize=True, binarize=None):
         """ Adds target-variabel from csv """
 
         # Assumes index corresponds to self.common_subjects
-        df = pd.read_csv(file_path, sep='\t', index_col=0)
+        df = pd.read_csv(file_path, sep=sep, index_col=index_col)
+        df.index = [str(i) for i in df.index.tolist()]
         behav = df.loc[df.index.isin(self.common_subjects), col_name]
-        y = np.array(behav.sort_index())
+
+        # check if zero-padded!
+        length = len(behav.index.tolist()[0])
+        zero_pad = all(len(i) == length for i in behav.index.tolist())
+
+        if zero_pad:
+            self.y = np.array(behav.sort_index())
+        else:
+            self.y = np.array(behav)
 
         if normalize:
-            y = (y - y.mean()) / y.std()
+            self.y = (self.y - self.y.mean()) / self.y.std()
+
+        if binarize is None:
+            return 0
+        else:
+            y = self.y
 
         if binarize['type'] == 'percentile':
             y = np.array([stat.percentileofscore(y, a, 'rank') for a in y])
@@ -117,6 +151,26 @@ class MvpBetween(Mvp):
         self.mask_index = nib.load(self.mask).get_data() > self.mask_threshold
         self.mask_shape = self.mask_index.shape
         self.mask_index = self.mask_index.ravel()
+
+    def _load_4D_anat(self, args):
+
+        tmp = nib.load(args['path'])
+        data = tmp.get_data()
+
+        voxel_idx = np.arange(np.prod(tmp.shape[:3]))
+
+        if self.mask_shape == tmp.shape[:3]:
+            data = data[self.mask_index.reshape(tmp.shape[:3])].T
+            voxel_idx = voxel_idx[self.mask_index]
+        else:
+            data = data.reshape(-1, data.shape[-1]).T
+
+        self.voxel_idx.append(voxel_idx)
+        self.affine.append(tmp.affine)
+        self.data_shape.append(tmp.shape[:3])
+        feature_ids = np.ones(data.shape[1], dtype=np.uint32) * len(self.X)
+        self.featureset_id.append(feature_ids)
+        self.X.append(data)
 
     def _load_dual_reg(self, args):
 
@@ -193,6 +247,10 @@ class MvpBetween(Mvp):
     def _check_complete_data(self):
 
         for data_type, args in self.source.iteritems():
+
+            if '4D_anat' in data_type:
+                continue
+
             args['paths'] = sorted(glob(args['path']))
 
             ex_path = args['paths'][0].split(os.sep)
@@ -216,33 +274,17 @@ class MvpBetween(Mvp):
 
         all_subjects = [set(args['subjects']) for args in self.source.itervalues()]
 
-        if self.subject_list:
+        if self.subject_list is not None:
             all_subjects.append(set(self.subject_list))
 
         self.common_subjects = sorted(set.intersection(*all_subjects))
-
         print("Found a set of %i complete subjects for data-types: %r" % \
               (len(self.common_subjects), [key for key in self.source]))
 
         for data_type, args in self.source.iteritems():
+
+            if '4D_anat' in data_type:
+                continue
+
             args['paths'] = [p for p in args['paths']
                              if p.split(os.sep)[args['position']] in self.common_subjects]
-
-if __name__ == '__main__':
-    import skbold
-    import os.path as op
-
-    base_dir = '/media/lukas/piop/PIOP/FirstLevel_piop'
-    gm = op.join(op.dirname(skbold.__file__), 'data', 'ROIs', 'GrayMatter.nii.gz')
-    source = {}
-    #source['VBM'] = {'path': op.join(base_dir, 'pi*', '*_vbm.nii.gz')}
-    #source['TBSS'] = {'path': op.join(base_dir, 'pi*', '*_tbss.nii.gz')}
-    source['ContrastWM'] = {'path': op.join(base_dir, 'pi*', '*piopwm.feat', 'reg_standard', '*tstat3.nii.gz')}
-    source['ContrastGstroop'] = {'path': op.join(base_dir, 'pi*', '*piopgstroop.feat', 'reg_standard', '*tstat3.nii.gz')}
-    source['ContrastHarriri'] = {'path': op.join(base_dir, 'pi*', '*piopharriri.feat', 'reg_standard', '*tstat3.nii.gz')}
-
-    mvp_between = MvpBetween(source=source, remove_zeros=True, mask=gm,
-                             mask_threshold=0, subject_idf='pi0???')
-                             #subject_list=['pi0041', 'pi0042', 'pi0010', 'pi0230'])
-    mvp_between.create()
-    mvp_between.write(path='/home/lukas', name='between', backend='joblib')
