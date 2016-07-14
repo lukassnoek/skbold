@@ -27,34 +27,37 @@ class CorrelationSelector(BaseEstimator, TransformerMixin):
 
     def fit(self, X, y):
 
-        if self.by_featureset:
-            idx = np.empty(0)
-            for f_set in np.unique(self.mvp.featureset_id):
-                correlations = np.apply_along_axis(pearsonr, 0, X, y)
-                r_values = correlations[0,:]
-                p_values = correlations[1,:]
+        if self.n_voxels == 0:
+            idx = np.ones(shape=self.mvp.X.shape[1], type=bool)
+        else:
+            if self.by_featureset:
+                idx = np.empty(0)
+                for f_set in np.unique(self.mvp.featureset_id):
+                    correlations = np.apply_along_axis(pearsonr, 0, X, y)
+                    r_values = correlations[0,:]
+                    p_values = correlations[1,:]
 
-                if not self.min_correlation==None:
-                    idx_this_fset = np.abs(r_values) >= self.min_correlation
-                if not self.n_voxels==None:
+                    if not self.min_correlation==None:
+                        idx_this_fset = np.abs(r_values) >= self.min_correlation
+                    if not self.n_voxels==None:
+                        r_values_abs = np.abs(r_values)
+                        idvals = np.argpartition(r_values_abs, -self.n_voxels)[-self.n_voxels:]
+                        idx_this_fset = np.zeros(X.shape[1], dtype=bool)
+                        idx_this_fset[idvals] = True
+                idx = np.concatenate([idx, idx_this_fset])
+
+            else:
+                correlations = np.apply_along_axis(pearsonr, 0, X, y)
+                r_values = correlations[0, :]
+                p_values = correlations[1, :]
+
+                if not self.min_correlation == None:
+                    idx = np.abs(r_values) >= self.min_correlation
+                if not self.n_voxels == None:
                     r_values_abs = np.abs(r_values)
                     idvals = np.argpartition(r_values_abs, -self.n_voxels)[-self.n_voxels:]
-                    idx_this_fset = np.zeros(X.shape[1], dtype=bool)
-                    idx_this_fset[idvals] = True
-            idx = np.concatenate([idx, idx_this_fset])
-
-        else:
-            correlations = np.apply_along_axis(pearsonr, 0, X, y)
-            r_values = correlations[0, :]
-            p_values = correlations[1, :]
-
-            if not self.min_correlation == None:
-                idx = np.abs(r_values) >= self.min_correlation
-            if not self.n_voxels == None:
-                r_values_abs = np.abs(r_values)
-                idvals = np.argpartition(r_values_abs, -self.n_voxels)[-self.n_voxels:]
-                idx = np.zeros(X.shape[1], dtype=bool)
-                idx[idvals] = True
+                    idx = np.zeros(X.shape[1], dtype=bool)
+                    idx[idvals] = True
 
         self.idx_ = idx
 
