@@ -11,9 +11,11 @@ import re
 from sklearn.linear_model import LinearRegression
 
 class MvpBetween(Mvp):
+    """ MvpBetween class for subject x feature arrays of (f)MRI data. """
 
     def __init__(self, source, subject_idf='sub0???', remove_zeros=True,
                  X=None, y=None, mask=None, mask_threshold=0, subject_list=None):
+        """ Initializes an MvpBetween object. """
 
         super(MvpBetween, self).__init__(X=X, y=y, mask=mask,
                                          mask_threshold=mask_threshold)
@@ -40,10 +42,12 @@ class MvpBetween(Mvp):
 
     def create(self):
 
+        # Globs all paths and checks for which subs there is complete data
         self._check_complete_data()
 
+        # If a mask is specified, load it
         if self.mask is not None:
-            self._load_mask()
+            self._load_mask(self.mask, self.mask_threshold)
 
         # Loop over data-types as defined in source
         for data_type, args in self.source.iteritems():
@@ -51,13 +55,18 @@ class MvpBetween(Mvp):
             print('Processing: %s ...' % data_type)
             self.data_name.append(data_type)
 
+            if 'mask' in args.keys():
+                th = args['mask_threshold'] if 'mask_threshold' in args.keys() else 0
+                self._load_mask(args['mask'], th)
+            else:
+                self._load_mask(self.mask, self.mask_threshold)
+
             if any(fnmatch(data_type, typ) for typ in ['VBM', 'TBSS', 'Contrast*']):
                 self._load_3D(args)
             elif data_type == 'dual_reg':
                 self._load_dual_reg(args)
             elif '4D_func' in data_type:
-                msg = "Data_type '4D_func' not yet implemented!"
-                print(msg)
+                print("Data_type '4D_func' not yet implemented! Skipping ...")
             elif '4D_anat' in data_type:
                 self._load_4D_anat(args)
             else:
@@ -67,15 +76,8 @@ class MvpBetween(Mvp):
                       "following: %r" % (data_type, allowed)
                 raise KeyError(msg)
 
-        # If remove_zeros, all columns with all zeros are remove to reduce space
         if self.remove_zeros:
-            indices = [np.invert(x == 0).all(axis=0) for x in self.X]
-
-            for i, index in enumerate(indices):
-                # Also other attributes are adapted to new shape
-                self.X[i] = self.X[i][:, index]
-                self.voxel_idx[i] = self.voxel_idx[i][index]
-                self.featureset_id[i] = self.featureset_id[i][index]
+            self._remove_zeros()
 
         self.X = np.concatenate(self.X, axis=1)
         self.featureset_id = np.concatenate(self.featureset_id, axis=0)
@@ -87,6 +89,18 @@ class MvpBetween(Mvp):
         assert(self.X.shape[1] == all_vox)
 
         print("Final size of array: %r" % list(self.X.shape))
+
+    def _remove_zeros(self):
+
+        # If remove_zeros, all columns with all zeros are remove to reduce space
+        if self.remove_zeros:
+            indices = [np.invert(x == 0).all(axis=0) for x in self.X]
+
+            for i, index in enumerate(indices):
+                # Also other attributes are adapted to new shape
+                self.X[i] = self.X[i][:, index]
+                self.voxel_idx[i] = self.voxel_idx[i][index]
+                self.featureset_id[i] = self.featureset_id[i][index]
 
     def regress_out_confounds(self, file_path, col_name, backend='numpy',
                               sep='\t', index_col=0):
@@ -131,6 +145,12 @@ class MvpBetween(Mvp):
         df = pd.read_csv(file_path, sep=sep, index_col=index_col)
         df.index = [str(i) for i in df.index.tolist()]
         behav = df.loc[df.index.isin(self.common_subjects), col_name]
+
+        if behav.empty:
+            print('Couldnt find any data common to .common_subjects in ' \
+                  ' the MvpBetween object!')
+            return 0
+
         behav.index = check_zeropadding_and_sort(behav.index.tolist())
         self.y = np.array(behav)
 
@@ -164,9 +184,18 @@ class MvpBetween(Mvp):
 
         self.y = y
 
-    def _load_mask(self):
+    def write_4D(self, path=None, name=None):
+        # To do: method to write out 4D nifti(s)
+        pass
 
-        self.mask_index = nib.load(self.mask).get_data() > self.mask_threshold
+    def _load_mask(self, mask, threshold):
+
+        if isinstance(mask, list):
+            msg = 'You can only pass one mask! To use custom masks for each ' \
+                  'source entry, specify the mask-key in source.'
+            raise ValueError(msg)
+
+        self.mask_index = nib.load(mask).get_data() > threshold
         self.mask_shape = self.mask_index.shape
         self.mask_index = self.mask_index.ravel()
 
@@ -211,6 +240,7 @@ class MvpBetween(Mvp):
 
             vols = []
             for n_comp in final_comps:
+
                 vol = tmp.dataobj[..., n_comp].ravel()
 
                 if self.mask_shape == tmp_shape:
@@ -222,6 +252,7 @@ class MvpBetween(Mvp):
 
         # Hack to infer attributes by looking at last volume
         voxel_idx = np.arange(np.prod(tmp_shape))
+
         if self.mask_shape == tmp_shape:
             voxel_idx = voxel_idx[self.mask_index]
 
@@ -229,6 +260,10 @@ class MvpBetween(Mvp):
         _ = [self.data_shape.append(tmp_shape) for i in final_comps]
         _ = [self.affine.append(tmp.affine) for i in final_comps]
         _ = [self.nifti_header.append(tmp.header) for i in final_comps]
+
+        name = self.data_name[-1]
+        self.data_name.pop()
+        _ = [self.data_name.append(name + '_comp%i' % i) for i in final_comps]
 
         for i in range(len(final_comps)):
             feature_ids = np.ones(vol.shape[1], dtype=np.uint32) * len(self.X)
