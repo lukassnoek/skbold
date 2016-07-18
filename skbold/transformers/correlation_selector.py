@@ -28,7 +28,7 @@ class CorrelationSelector(BaseEstimator, TransformerMixin):
     def fit(self, X, y):
 
         if self.n_voxels == 0:
-            idx = np.ones(shape=self.mvp.X.shape[1], type=bool)
+            idx = np.ones(shape=self.mvp.X.shape[1], dtype=bool)
         else:
             if self.by_featureset:
                 idx = np.empty(0)
