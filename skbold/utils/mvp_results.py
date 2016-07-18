@@ -71,6 +71,41 @@ class MvpResults(object):
 
     def _update_voxel_values(self, values, idx):
 
+        # If a Pipeline is given, try to extract the desired feature scores
+        if values.__class__.__name__ == 'Pipeline':
+
+            match = 'coef_' if self.fs in ['coef', 'forward'] else 'scores_'
+            val = [getattr(step, match) for step in values.named_steps.values()
+                   if hasattr(step, match)]
+
+            # Check if there's an ensemble classifier!
+            ensemble = [step for step in values.named_steps.values()
+                        if hasattr(step, 'estimators_')]
+
+            if len(val) == 1:
+                val = val[0]
+            elif len(val) == 0 and len(ensemble) == 1:
+                val = np.concatenate([ens.coef_ for ens in ensemble[0]]).mean(axis=0)
+            elif len(val) == 0:
+                raise ValueError('Found no %s attribute anywhere in the ' \
+                                 'pipeline!' % match)
+            else:
+                raise ValueError('Found more than one %s attribute in the ' \
+                                 'pipeline!' % match)
+
+            if val.size != self.X.shape[1] and idx is None:
+
+                idx = [step.get_support() for step in values.named_steps.values()
+                       if callable(getattr(step, "get_support", None))]
+
+                if len(idx) == 1:
+                    idx = idx[0]
+                else:
+                    msg = 'Found more than one %s attribute in pipeline!' % match
+                    raise ValueError(msg)
+
+            values = val
+
         values = np.squeeze(values)
         self.n_vox[self.iter] = values.size
 
