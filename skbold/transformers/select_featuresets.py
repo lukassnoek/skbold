@@ -23,9 +23,10 @@ class SelectFeatureset(BaseEstimator, TransformerMixin):
     def transform(self, X=None):
         mvp = self.mvp
 
-        mvp.X = mvp.X[:,np.in1d(mvp.featureset_id, self.featureset_idx)]
-        mvp.voxel_idx = mvp.voxel_idx[np.in1d(mvp.featureset_id, self.featureset_idx)]
-        mvp.featureset_id = mvp.featureset_id[np.in1d(mvp.featureset_id, self.featureset_idx)]
+        col_idx = np.in1d(mvp.featureset_id, self.featureset_idx)
+        mvp.X = mvp.X[:,col_idx]
+        mvp.voxel_idx = mvp.voxel_idx[col_idx]
+        mvp.featureset_id = mvp.featureset_id[col_idx]
 
         self.mvp = mvp
         return mvp
