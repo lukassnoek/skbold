@@ -1,8 +1,16 @@
 from setuptools import setup, find_packages
 import skbold
 
-with open('requirements.txt') as f:
-    requirements = f.read().splitlines()
+REQUIREMENTS = [
+    'scipy>=0.17',
+    'numpy>=1.10',
+    'scikit-learn>=0.17',
+    'pandas>=0.17',
+    'nibabel>=2.0',
+    'matplotlib',
+    'nipype>=0.12',
+    'joblib>=0.9'
+]
 
 VERSION = skbold.__version__
 
@@ -29,7 +37,7 @@ setup(
     license='MIT',
     platforms='Linux',
     packages=find_packages(),
-    install_requires=requirements,
+    install_requires=REQUIREMENTS,
     scripts=['bin/glm2mvp', 'bin/check_mc_output'],
     include_package_data=True,
     zip_safe=False)
