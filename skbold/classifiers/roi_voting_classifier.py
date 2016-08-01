@@ -14,7 +14,7 @@ import numpy as np
 import os.path as op
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.svm import SVC
-#from skbold.data.ROIs import harvard_oxford as roi
+from skbold import roidata_path as roi
 from skbold.transformers import RoiIndexer, MeanEuclidean
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import StandardScaler
@@ -33,6 +33,18 @@ class RoiVotingClassifier(BaseEstimator, ClassifierMixin):
     prediction is derived through a max-voting rule, which can be either
     'soft' (argmax of mean class probability) or 'hard' (max of class
     prediction).
+
+    Notes
+    -----
+    This classifier has not been tested!
+
+    Methods
+    -------
+    fit(X, y)
+        First fits all base-classifiers and gathers all predictions.
+    predict(X)
+        Generalizes the set of base-classifiers to a test-set and derives the
+        final prediction by a (weighted) max-vote.
     """
 
     def __init__(self, mvp, preproc_pipeline=None, clf=None,
@@ -98,15 +110,19 @@ class RoiVotingClassifier(BaseEstimator, ClassifierMixin):
         self.weights = weights
 
     def fit(self, X=None, y=None):
-        """ Fits RoiVotingTransformer.
+        """ Fits RoiVotingClassifier.
 
         Parameters
         ----------
-        X : ndarray
-            Array of shape = [n_samples, n_features]. If None (default), X
-            is drawn from the mvp object.
-        y : List[str] or numpy ndarray[str]
-            List or ndarray with floats corresponding to labels.
+        X : `ndarray`
+            Array of shape = [n_samples, n_features].
+        y : `list` or `ndarray` of `int` or `float`
+            List or ndarray with floats/ints corresponding to labels.
+
+        Returns
+        -------
+        self : object
+            RoiStackingClassifier instance with fitted parameters.
         """
         if X is None:
             X = self.mvp.X
@@ -128,16 +144,16 @@ class RoiVotingClassifier(BaseEstimator, ClassifierMixin):
         return self
 
     def predict(self, X):
-        """ Predicts class labels for X.
+        """ Predict class given fitted RoiVotingClassifier.
 
         Parameters
         ----------
-        X : ndarray
+        X : `ndarray`
             Array of shape = [n_samples, n_features].
 
         Returns
         -------
-        maxvotes : ndarray
+        maxvotes : `ndarray`
             Array with class predictions for all classes of X.
         """
 
@@ -155,18 +171,3 @@ class RoiVotingClassifier(BaseEstimator, ClassifierMixin):
             maxvotes = np.average(votes, axis=0, weights=self.weights).argmax(axis=-1)
 
         return(maxvotes)
-
-
-if __name__ == '__main__':
-    from skbold.utils import DataHandler
-    from sklearn.cross_validation import KFold, cross_val_score
-
-    sub_dir = '/media/lukas/data/DecodingEmotions/Validation_set/glm_zinnen/sub002'
-    mvp = DataHandler(identifier='merged').load_separate_sub(sub_dir)
-    mask_dir = '/home/lukas/bestrois'
-
-    votingclassifier = RoiVotingClassifier(mvp, voting='soft',
-                                           mask_type=mask_dir)
-    folds = KFold(n=len(mvp.y), n_folds=20)
-    scores = cross_val_score(votingclassifier, mvp.X, mvp.y, cv=folds, n_jobs=1, verbose=3)
-    print(scores.mean())
