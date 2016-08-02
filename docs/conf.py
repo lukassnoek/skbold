@@ -23,7 +23,7 @@ MOCK_MODULES = ['numpy', 'scipy', 'joblib', 'nilearn', 'nipype', 'h5py',
                 'sklearn.linear_model', 'sklearn.metrics', 'sklearn.pipeline',
                 'sklearn.utils',
                 'pandas', 'seaborn', 'matplotlib', 'nibabel']
-
+#test
 for mod_name in MOCK_MODULES:
    sys.modules[mod_name] = mock.Mock()
 
