@@ -17,9 +17,9 @@ install:
 
   # Replace dep1 dep2 ... with your dependencies
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION scipy numpy pandas scikit-learn joblib
-  - pip install nibabel
-  - pip install nilearn
-  - pip install nipype
+  - $HOME/miniconda/bin/pip install nibabel
+  - $HOME/miniconda/bin/pip install nilearn
+  - $HOME/miniconda/bin/pip install nipype
   - source activate test-environment
   - python setup.py install
 
