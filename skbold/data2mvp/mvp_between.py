@@ -55,6 +55,21 @@ class MvpBetween(Mvp):
         Original (whole-brain) shape of the loaded data, per data-type.
     data_name : list of str
         List of names of data-types.
+
+    Methods
+    -------
+    create()
+        Extracts and stores the data specific in source.
+    regress_out_confounds(file_path, col_name, backend='numpy', sep='\t', index_col=0)
+        Regresses out one or multiple confounding variables from the ``X``-
+        attribute along the row-dimension (i.e. variables varying across subjects).
+    add_outcome_var(file_path, col_name, sep='\t', index_col=0, normalize=True, binarize=None, remove=None)
+        Sets an outcome variable (target, label) to the ``y``-attribute by
+        reading in a spreadsheet-like document and selecting a column. Indices are
+        cross-referenced with the ``common_subjects`` attribute.
+    split(file_path, col_name, target, sep='\t', index_col=0)
+        Splits (i.e. subsets) an MvpBetween object by some variable defined
+        in a spreadsheet column.
     """
     def __init__(self, source, subject_idf='sub0???', remove_zeros=True,
                  X=None, y=None, mask=None, mask_threshold=0, subject_list=None):
@@ -69,10 +84,33 @@ class MvpBetween(Mvp):
             and 'dual_reg' (a subject-spedific 4D file with components as fourth
             dimension). The dictionary passed as values must include, for each
             data-type, a path with wildcards to the corresponding (subject-specific)
-            data-files (e.g.: {'path': '/home/data/sub-*/*.feat/stats/tstat1.nii.gz'
-            }). Other, optional, key-value pairs per data-type can be assigned,
-            including 'mask': 'path/to/mask.nii.gz', to use data-type-specific masks.
+            data-file. Other, optional, key-value pairs per data-type can be assigned,
+            including 'mask': 'path', to use data-type-specific masks.
 
+            An example:
+            >>> source = {}
+            >>> source['Contrast_emo'] = {'path': '~/data/sub0*/*.feat/stats/tstat1.nii.gz'}
+            >>> vbm_mask = '~/vbm_mask.nii.gz'
+            >>> source['VBM'] = {'path': '~/data/sub0*/*vbm.nii.gz', 'mask': vbm_mask}
+
+        subject_idf : str
+            Subject-identifier. This identifier is used to extract subject-names
+            from the globbed directories in the 'path' keys in source, so that
+            it is known which pattern belongs to which subject. This way,
+            MvpBetween can check which subjects contain complete data!
+        X : ndarray
+            Not necessary to pass MvpWithin, but needs to be defined as it is
+            needed in the super-constructor.
+        y : ndarray or list
+            Labels or targets corresponding to the samples in ``X``.
+        mask : str
+            Absolute path to nifti-file that will be used as a common mask.
+            Note: this will only be applied if its shape corresponds to the
+            to-be-indexed data. Otherwise, no mask is applied. Also, this mask
+            is 'overridden' if source[data_type] contains a 'mask' key, which
+            implies that this particular data-type has a custom mask.
+        mask_threshold : int or float
+            Minimum value to binarize the mask when it's probabilistic.
         """
 
         super(MvpBetween, self).__init__(X=X, y=y, mask=mask,
@@ -99,7 +137,13 @@ class MvpBetween(Mvp):
             raise TypeError(msg)
 
     def create(self):
+        """ Extracts and stores data as specified in source.
 
+        Raises
+        ------
+        ValueError
+            If data-type is not one of ['VBM', 'TBSS', '4D_anat*', 'dual_reg', 'Contrast*']
+        """
         # Globs all paths and checks for which subs there is complete data
         self._check_complete_data()
 
@@ -168,7 +212,22 @@ class MvpBetween(Mvp):
 
     def regress_out_confounds(self, file_path, col_name, backend='numpy',
                               sep='\t', index_col=0):
+        """ Regresses out a confounding variable from X.
 
+        Parameters
+        ----------
+        file_path : str
+            Absolute path to spreadsheet-like file including the confounding variable.
+        col_name : str
+            Column name in spreadsheet containing the confouding variable
+        backend : str
+            Which algorithm to use to regress out the confound. The option 'numpy'
+            uses np.linalg.lstsq() and 'sklearn' uses the LinearRegression estimator.
+        sep : str
+            Separator to parse the spreadsheet-like file.
+        index_col : int
+            Which column to use as index (should correspond to subject-name).
+        """
         df = self._read_behav_file(file_path=file_path, sep=sep, index_col=index_col)
         confound = df.loc[df.index.isin(self.common_subjects), col_name]
         confound = np.array(confound)
@@ -202,7 +261,31 @@ class MvpBetween(Mvp):
 
     def add_outcome_var(self, file_path, col_name, sep='\t', index_col=0,
                         normalize=True, binarize=None, remove=None):
-        """ Adds target-variabel from csv """
+        """ Sets ``y`` attribute to an outcome-variable (target).
+
+        Parameters
+        ----------
+        file_path : str
+            Absolute path to spreadsheet-like file including the outcome variable.
+        col_name : str
+            Column name in spreadsheet containing the outcome variable
+        sep : str
+            Separator to parse the spreadsheet-like file.
+        index_col : int
+            Which column to use as index (should correspond to subject-name).
+        normalize : bool
+            Whether to normalize (0 mean, unit std) the outcome variable.
+        binarize : dict
+            If not None, the outcome variable will be binarized along the
+            key-value pairs in the binarize-argument. Options:
+
+            >>> binarize = {'type': 'percentile', 'high': .75, 'low': .25} # binarizes along percentiles
+            >>> binarize = {'type': 'zscore', 'std': 1} # binarizes according to x stdevs above and below mean
+            >>> binarize = {'type': 'constant', 'cutoff': 10} # binarizes according to above and below constant
+            >>> binarize = {'type': 'median'} # binarizes according to median-split.
+        remove : int or float or str
+            Removes instances in which y == remove from MvpBetween object.
+        """
 
         # Assumes index corresponds to self.common_subjects
         df = self._read_behav_file(file_path=file_path, sep=sep,
@@ -220,6 +303,8 @@ class MvpBetween(Mvp):
         if remove is not None:
             self.y = self.y[self.y != remove]
             self.X[self.y != remove, :]
+            self.common_subjects = [sub for i, sub in self.common_subjects
+                                    if (self.y != remove)[i]]
 
         if normalize:
             self.y = (self.y - self.y.mean()) / self.y.std()
