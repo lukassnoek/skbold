@@ -88,6 +88,7 @@ class MvpBetween(Mvp):
             including 'mask': 'path', to use data-type-specific masks.
 
             An example:
+            
             >>> source = {}
             >>> source['Contrast_emo'] = {'path': '~/data/sub0*/*.feat/stats/tstat1.nii.gz'}
             >>> vbm_mask = '~/vbm_mask.nii.gz'
