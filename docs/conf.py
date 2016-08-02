@@ -17,7 +17,7 @@ import os
 import mock
 
 MOCK_MODULES = ['numpy', 'scipy', 'joblib', 'nilearn', 'nipype', 'h5py',
-                'scikit-learn', 'pandas', 'seaborn', 'matplotlib', 'nibabel']
+                'sklearn', 'pandas', 'seaborn', 'matplotlib', 'nibabel']
 
 for mod_name in MOCK_MODULES:
    sys.modules[mod_name] = mock.Mock()
