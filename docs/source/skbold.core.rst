@@ -1,6 +1,11 @@
 skbold.core package
 ===================
 
+.. automodule:: skbold.core
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Submodules
 ----------
 
@@ -29,10 +34,3 @@ skbold.core.mvp module
     :show-inheritance:
 
 
-Module contents
----------------
-
-.. automodule:: skbold.core
-    :members:
-    :undoc-members:
-    :show-inheritance:

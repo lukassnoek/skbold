@@ -1,6 +1,11 @@
 skbold.exp_model package
 ========================
 
+.. automodule:: skbold.exp_model
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Submodules
 ----------
 
@@ -29,10 +34,3 @@ skbold.exp_model.parse_psychopy_logfile module
     :show-inheritance:
 
 
-Module contents
----------------
-
-.. automodule:: skbold.exp_model
-    :members:
-    :undoc-members:
-    :show-inheritance:

@@ -1,6 +1,11 @@
 skbold.ica package
 ==================
 
+.. automodule:: skbold.ica
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Submodules
 ----------
 
@@ -13,10 +18,3 @@ skbold.ica.dual_regression module
     :show-inheritance:
 
 
-Module contents
----------------
-
-.. automodule:: skbold.ica
-    :members:
-    :undoc-members:
-    :show-inheritance:

@@ -1,6 +1,11 @@
 skbold.transformers package
 ===========================
 
+.. automodule:: skbold.transformers
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Submodules
 ----------
 
@@ -149,10 +154,3 @@ skbold.transformers.spatial_filter module
     :show-inheritance:
 
 
-Module contents
----------------
-
-.. automodule:: skbold.transformers
-    :members:
-    :undoc-members:
-    :show-inheritance:

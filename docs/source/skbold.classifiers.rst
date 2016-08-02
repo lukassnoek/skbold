@@ -1,6 +1,11 @@
 skbold.classifiers package
 ==========================
 
+.. automodule:: skbold.classifiers
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Submodules
 ----------
 
@@ -21,10 +26,3 @@ skbold.classifiers.roi_voting_classifier module
     :show-inheritance:
 
 
-Module contents
----------------
-
-.. automodule:: skbold.classifiers
-    :members:
-    :undoc-members:
-    :show-inheritance:

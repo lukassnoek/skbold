@@ -1,6 +1,11 @@
 skbold.data2mvp package
 =======================
 
+.. automodule:: skbold.data2mvp
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Submodules
 ----------
 
@@ -21,10 +26,3 @@ skbold.data2mvp.mvp_within module
     :show-inheritance:
 
 
-Module contents
----------------
-
-.. automodule:: skbold.data2mvp
-    :members:
-    :undoc-members:
-    :show-inheritance:

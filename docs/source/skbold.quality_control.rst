@@ -1,6 +1,11 @@
 skbold.quality_control package
 ==============================
 
+.. automodule:: skbold.quality_control
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Submodules
 ----------
 
@@ -13,10 +18,3 @@ skbold.quality_control.check_preprocessing_output module
     :show-inheritance:
 
 
-Module contents
----------------
-
-.. automodule:: skbold.quality_control
-    :members:
-    :undoc-members:
-    :show-inheritance:

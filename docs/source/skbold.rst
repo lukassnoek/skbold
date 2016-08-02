@@ -1,6 +1,11 @@
 skbold package
 ==============
 
+.. automodule:: skbold
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Subpackages
 -----------
 
@@ -16,10 +21,3 @@ Subpackages
     skbold.transformers
     skbold.utils
 
-Module contents
----------------
-
-.. automodule:: skbold
-    :members:
-    :undoc-members:
-    :show-inheritance:

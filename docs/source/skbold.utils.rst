@@ -1,6 +1,11 @@
 skbold.utils package
 ====================
 
+.. automodule:: skbold.utils
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Submodules
 ----------
 
@@ -45,10 +50,3 @@ skbold.utils.sort_numbered_list module
     :show-inheritance:
 
 
-Module contents
----------------
-
-.. automodule:: skbold.utils
-    :members:
-    :undoc-members:
-    :show-inheritance:

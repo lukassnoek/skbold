@@ -37,6 +37,9 @@ extensions = [
     'sphinx.ext.napoleon'
 ]
 
+# ensures that __init__ is documented!
+autoclass_content = 'both'
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
@@ -80,18 +83,18 @@ language = None
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['_build']
+exclude_patterns = ['_build', 'source/skbold.rst']
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
 #default_role = None
 
 # If true, '()' will be appended to :func: etc. cross-reference text.
-#add_function_parentheses = True
+add_function_parentheses = False
 
 # If true, the current module name will be prepended to all description
 # unit titles (such as .. function::).
-#add_module_names = True
+add_module_names = False
 
 # If true, sectionauthor and moduleauthor directives will be shown in the
 # output. They are ignored by default.
@@ -291,3 +294,6 @@ texinfo_documents = [
 
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #texinfo_no_detailmenu = False
+
+# see nilearn.docs
+numpydoc_show_class_members = False
