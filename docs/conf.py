@@ -21,8 +21,7 @@ from mock import Mock as MagicMock
 class Mock(MagicMock):
     @classmethod
     def __getattr__(cls, name):
-            return Mock()
-
+        return Mock()
 
 MOCK_MODULES = ['numpy', 'scipy', 'joblib', 'nilearn', 'nipype', 'h5py',
                 'sklearn', 'pandas', 'seaborn', 'matplotlib', 'nibabel']
