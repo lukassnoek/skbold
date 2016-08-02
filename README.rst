@@ -1,6 +1,9 @@
 skbold - utilities for machine learning analyses on BOLD-fMRI data
 ==================================================================
 
+.. image:: https://travis-ci.org/lukassnoek/skbold.svg?branch=develop
+    :target: https://travis-ci.org/lukassnoek/skbold
+
 Functional MRI (fMRI) data has traditionally been analyzed by calculating average
 signal differences between conditions. In the past decade, however,
 pattern-based type of analyses have become increasingly popular. Especially
