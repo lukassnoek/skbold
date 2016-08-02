@@ -13,12 +13,12 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   source/skbold.classifiers
+   source/skbold.transformers
+   source/skbold.core
+   source/skbold.data2mvp
+   source/skbold.exp_model
+   source/skbold.postproc
+   source/skbold.quality_control
+   source/skbold.utils
 

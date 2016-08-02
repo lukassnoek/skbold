@@ -15,7 +15,6 @@ Subpackages
     skbold.core
     skbold.data2mvp
     skbold.exp_model
-    skbold.ica
     skbold.postproc
     skbold.quality_control
     skbold.transformers

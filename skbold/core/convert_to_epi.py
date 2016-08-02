@@ -20,22 +20,20 @@ def convert2epi(file2transform, reg_dir, out_dir=None,
 
     Parameters
     ----------
-    file2transform : str or list
+    file2transform : `str` or `list`
         Absolute path(s) to nifti file(s) that needs to be transformed
-    reg_dir : str
+    reg_dir : `str`
         Absolute path to registration directory with warps
-    out_dir : str
+    out_dir : `str`
         Absolute path to desired out directory. Default is same directory as
         the to-be transformed file.
-    interpolation : str
+    interpolation : `str`
         Interpolation used by flirt. Default is 'trilinear'.
 
     Returns
     -------
-    out_all : list
+    out_all : `list`
         Absolute path(s) to newly transformed file(s).
-
-    To do: calculate warp if reg_dir doesn't exist
     """
 
     if type(file2transform) == str:

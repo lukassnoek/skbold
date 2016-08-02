@@ -16,11 +16,64 @@ from joblib import Parallel, delayed
 
 
 class MvpBetween(Mvp):
-    """ MvpBetween class for subject x feature arrays of (f)MRI data. """
+    """ Extracts and stores multivoxel pattern information across subjects.
 
+    The MvpBetween class allows for the extraction and storage of multivoxel
+    (MRI) pattern information across subjects. The MvpBetween class can handle
+    various types of information, including functional contrasts, 3D
+    (subject-specific) and 4D (subjects stacked) VBM and TBSS data,
+    dual-regression data, and functional-connectivity data from resting-state
+    scans (experimental).
+
+    Attributes
+    ----------
+    mask_shape : tuple
+        Shape of mask that patterns will be indexed with.
+    nifti_header : list of Nifti1Header objects
+        Nifti-headers from original data-types.
+    affine : list of ndarray
+        Affines corresponding to nifti-masks of each data-type.
+    X : ndarray
+        The actual patterns (2D: samples X features)
+    y : list or ndarray
+        Array/list with labels/targets corresponding to samples in X.
+    common_subjects : list
+        List of subject-names that have complete data specified in source.
+    featureset_id : ndarray
+        Array with integers of size X.shape[1] (i.e. the amount of features in
+        X). Each unique integer, starting at 0, refers to a different feature-set.
+    voxel_idx : ndarray
+        Array with integers of size X.shape[1]. Per feature-set, these voxel-
+        indices allow the features to be mapped back to whole-brain space.
+        For example, to map back the features in X from feature set 1 to MNI152
+        (2mm) space, do:
+
+        >>> mni_vol = np.zeros((91, 109, 91))
+        >>> tmp_idx = mvp.featureset_id == 0
+        >>> mni_vol[mvp.featureset_id[tmp_idx] = mvp.X[0, tmp_idx]
+    data_shape : list of tuples
+        Original (whole-brain) shape of the loaded data, per data-type.
+    data_name : list of str
+        List of names of data-types.
+    """
     def __init__(self, source, subject_idf='sub0???', remove_zeros=True,
                  X=None, y=None, mask=None, mask_threshold=0, subject_list=None):
-        """ Initializes an MvpBetween object. """
+        """ Initializes an MvpBetween object.
+
+        Parameters
+        ----------
+        source : dict
+            Dictionary with types of data as keys and data-specific dictionaries
+            as values. Keys can be 'Contrast_*' (indicating a 3D functional contrast),
+            '4D_anat' (for 4D anatomical - VBM/TBSS - files), 'VBM', 'TBSS',
+            and 'dual_reg' (a subject-spedific 4D file with components as fourth
+            dimension). The dictionary passed as values must include, for each
+            data-type, a path with wildcards to the corresponding (subject-specific)
+            data-files (e.g.: {'path': '/home/data/sub-*/*.feat/stats/tstat1.nii.gz'
+            }). Other, optional, key-value pairs per data-type can be assigned,
+            including 'mask': 'path/to/mask.nii.gz', to use data-type-specific masks.
+
+        """
 
         super(MvpBetween, self).__init__(X=X, y=y, mask=mask,
                                          mask_threshold=mask_threshold)
@@ -415,7 +468,7 @@ def check_zeropadding_and_sort(lst):
         return sorted(lst, key=alphanum_key)
 
 def _parallelize_4D_func_loading(f, atlas, method):
-    print(f)
+
     func = nib.load(f)
     roi_masker = NiftiLabelsMasker(labels_img=atlas,
                                    standardize=True,
@@ -434,15 +487,3 @@ def _parallelize_4D_func_loading(f, atlas, method):
 
     conn = conn[np.tril_indices(conn.shape[0], k=-1)].ravel()
     return(conn[np.newaxis, :])
-
-if __name__ == '__main__':
-
-    source = {}
-    source['4D_func'] = {'path': '/media/lukas/piop/PIOP/PIOP_PREPROC_MRI/pi0*/*rs*/*mni.nii.gz',
-                         'atlas': 'ho',
-                         'method': 'corr',
-                         'n_cores': 1}
-    mvp = MvpBetween(source=source, subject_idf='pi????', remove_zeros=True)
-    mvp.create()
-    mvp.write('/home/lukas', name='harvard-oxford-conn')
-

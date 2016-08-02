@@ -9,12 +9,81 @@ from glob import glob
 
 
 class MvpWithin(Mvp):
+    """ Extracts and stores subject-specific single-trial multivoxel-patterns
+
+    The MvpWithin class allows for the extraction of subject-specific
+    single-trial, multivoxel fMRI patterns from a FSL feat-directory.
+
+    Attributes
+    ----------
+    mask_shape : tuple
+        Shape of mask that patterns will be indexed with.
+    nifti_header : Nifti1Header object
+        Nifti-header from corresponding mask.
+    affine : ndarray
+        Affine corresponding to nifti-mask.
+    voxel_idx : ndarray
+        Array with integer-indices indicating which voxels are used in the
+        patterns relative to whole-brain space. In other words, it allows to map
+        back the patterns to a whole-brain orientation.
+    X : ndarray
+        The actual patterns (2D: samples X features)
+    y : list or ndarray
+        Array/list with labels/targets corresponding to samples in X.
+    contrast_labels : list
+        List of names corresponding to the y-values.
+    """
 
     def __init__(self, source, read_labels=True, remove_contrast=[],
                  invert_selection=None, ref_space='epi', beta2tstat=True,
                  remove_zeros=True, X=None, y=None, mask=None,
                  mask_threshold=0):
+        """ Initializes an MvpWithin object.
 
+        Parameters
+        ----------
+        source : str
+            An absolute path to a subject-specific first-level FEAT directory.
+        read_labels : bool
+            Whether to read the labels/targets (i.e. ``y``) from the contrast
+            names defined in the design.con file.
+        remove_contrast : list
+            Given that all contrasts (COPEs) are loaded from the FEAT-directory,
+            this argument can be used to remove irrelevant contrasts (e.g.
+            contrasts of nuisance predictors). Entries in remove_contrast do
+            not have to literal; they may be a substring of the full name of the
+            contrast.
+        invert_selection : bool
+            Sometimes, instead of loading in all contrasts and excluding some,
+            you might want to load only a single or a couple contrasts, and
+            exclude all other. By setting invert_selection to True, it treats
+            the remove_contrast variable as a list of contrasts to include.
+        ref_space : str
+            Indicates in which 'space' the patterns will be stored. The default
+            is 'epi', indicating that the patterns will be loaded and stored
+            in subject-specific (native) functional space. The other option is
+            'mni', which indicates that MvpWithin will first transform contrasts
+            to MNI152 (2mm) space before it loads them. This option assumes
+            that a 'reg' directory is present in the .feat-directory, including
+            warp-files from functional to mni space
+            (i.e. example_func2standara.nii.gz).
+        beta2tstat : bool
+            Whether to convert beta-values from COPEs to t-statistics by
+            dividing them by the square-root of the res4d.
+        remove_zeros : bool
+            Whether to remove features (i.e. voxels) which are 0 across all
+            trials (due to, e.g., being located outside the brain).
+        X : ndarray
+            Not necessary to pass MvpWithin, but needs to be defined as it is
+            needed in the super-constructor.
+        y : ndarray or list
+            Labels or targets corresponding to the samples in ``X``. This can
+            be used when read_labels is set to False.
+        mask : str
+            Absolute path to nifti-file that will be used as mask.
+        mask_threshold : int or float
+            Minimum value to binarize the mask when it's probabilistic.
+        """
         super(MvpWithin, self).__init__(X=X, y=y, mask=mask,
                                         mask_threshold=mask_threshold)
 
@@ -31,6 +100,17 @@ class MvpWithin(Mvp):
         self.X = []
 
     def create(self):
+        """ Extracts (meta-)data from FEAT-directory given appropriate settings
+        during initialization.
+
+        Raises
+        ------
+        ValueError
+            If the 'source'-directory doesn't exist.
+        ValueError
+            If the number of loaded contrasts does not equal the number of
+            extracted labels.
+        """
 
         if isinstance(self.source, str):
             self.source = [self.source]
@@ -105,7 +185,7 @@ class MvpWithin(Mvp):
 
         n_stat = len(copes)
 
-        if not n_stat == len(contrast_labels_current):
+        if not n_stat == len(contrast_labels_current) and self.read_labels:
             msg = 'The number of trials (%i) do not match the number of ' \
                   'class labels (%i)' % (n_stat, len(self.contrast_labels))
             raise ValueError(msg)
@@ -191,19 +271,3 @@ class MvpWithin(Mvp):
         _ = [cope_labels.pop(idx) for idx in np.sort(self.remove_idx)[::-1]]
 
         return cope_labels
-
-
-if __name__ == '__main__':
-
-    testdir = ['/home/lukas/pi0042/pi0042-20150706-0005-WIPpiopharriri.feat',
-               '/home/lukas/pi0042/pi0042-20150706-0008-WIPpiopwm.feat']
-
-    mask = '/home/lukas/pi0042/GrayMatter.nii.gz'
-
-    mw = MvpWithin(source=testdir, read_labels=True, remove_contrast='emotion',
-                   remove_zeros=True,
-                   invert_selection=None, ref_space='epi', mask=mask,
-                   mask_threshold=0)
-
-    mw.create()
-    mw.write(path='/home/lukas', name='within', backend='joblib')

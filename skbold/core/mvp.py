@@ -24,9 +24,50 @@ class Mvp(object):
     X's classes/conditions) and the corresponding meta-data (e.g. nifti header,
     mask info, etc.).
 
+    Attributes
+    ----------
+    mask_shape : tuple
+        Shape of mask that patterns will be indexed with.
+    nifti_header : Nifti1Header object
+        Nifti-header from corresponding mask.
+    affine : ndarray
+        Affine corresponding to nifti-mask.
+    voxel_idx : ndarray
+        Array with integer-indices indicating which voxels are used in the
+        patterns relative to whole-brain space. In other words, it allows to map
+        back the patterns to a whole-brain orientation.
+    X : ndarray
+        The actual patterns (2D: samples X features)
+    y : list or ndarray
+        Array/list with labels/targets corresponding to samples in X.
+
+    Methods
+    -------
+    write(path=None, name='mvp', backend='joblib')
+        Writes the Mvp-object to disk.
+
+    Notes
+    -----
+    This class is mainly meant to serve as a parent-class for ``MvpWithin``
+    and ``MvpBetween``, but it can alternatively be used as an object to store
+    a 'custom' multivariate-pattern set with meta-data.
     """
 
     def __init__(self, X=None, y=None, mask=None, mask_threshold=0):
+        """ Initializes an Mvp-object.
+
+        Parameters
+        ----------
+        X : ndarray
+            A 2D matrix or numpy-array with rows indicating samples and
+            columns indicating features.
+        y : list or ndarray
+            Array/list with labels/targets corresponding to samples in X.
+        mask : str
+            Absolute path to nifti-file that will mask (index) the patterns.
+        mask_threshold : int or float
+            Minimum value for mask (in cases of probabilistic masks).
+        """
 
         self.mask = mask
         self.mask_threshold = mask_threshold
@@ -39,7 +80,25 @@ class Mvp(object):
         self.y = y
 
     def write(self, path=None, name='mvp', backend='joblib'):
+        """ Writes the Mvp-object to disk.
 
+        Parameters
+        ----------
+        path : str
+            Absolute path where the file will be written to.
+        name : str
+            Name of to-be-written file.
+        backend : str
+            Which format will be used to save the files. Default is 'joblib',
+            which conveniently saves the Mvp-object as one file. Alternatively,
+            and if the Mvp-object is too large to be save with joblib, a
+            data-header format will be used, in which the data (``X``) will be
+            saved using Numpy and the meta-data (everythin except ``X``) will
+            be saved using joblib.
+        Returns
+        -------
+
+        """
         if path is None:
             path = os.getcwd()
 

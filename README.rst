@@ -185,8 +185,3 @@ License and contact
 ~~~~~~~~~~~~~~~~~~~
 The code is BSD (3-clause) licensed. You can find my contact details at my
 `Github profile page <https://github.com/lukassnoek>`_.
-
-Documentation
--------------
-`Here <http://lukassnoek.github.io/skbold/>`_, you can check out the
-documentation of this package, which has been created with Sphinx.
