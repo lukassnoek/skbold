@@ -9,6 +9,11 @@ from glob import glob
 import scipy.stats as stat
 import re
 from sklearn.linear_model import LinearRegression
+from nilearn.input_data import NiftiLabelsMasker
+from nilearn.datasets import fetch_atlas_aal, fetch_atlas_harvard_oxford
+from sklearn.covariance import GraphLassoCV
+from joblib import Parallel, delayed
+
 
 class MvpBetween(Mvp):
     """ MvpBetween class for subject x feature arrays of (f)MRI data. """
@@ -58,7 +63,7 @@ class MvpBetween(Mvp):
             if 'mask' in args.keys():
                 th = args['mask_threshold'] if 'mask_threshold' in args.keys() else 0
                 self._load_mask(args['mask'], th)
-            else:
+            elif self.mask is not None:
                 self._load_mask(self.mask, self.mask_threshold)
 
             if any(fnmatch(data_type, typ) for typ in ['VBM', 'TBSS', 'Contrast*']):
@@ -66,7 +71,7 @@ class MvpBetween(Mvp):
             elif data_type == 'dual_reg':
                 self._load_dual_reg(args)
             elif '4D_func' in data_type:
-                print("Data_type '4D_func' not yet implemented! Skipping ...")
+                self._load_4D_func(args)
             elif '4D_anat' in data_type:
                 self._load_4D_anat(args)
             else:
@@ -102,11 +107,16 @@ class MvpBetween(Mvp):
                 self.voxel_idx[i] = self.voxel_idx[i][index]
                 self.featureset_id[i] = self.featureset_id[i][index]
 
-    def regress_out_confounds(self, file_path, col_name, backend='numpy',
-                              sep='\t', index_col=0):
+    def _read_behav_file(self, file_path, sep, index_col):
 
         df = pd.read_csv(file_path, sep=sep, index_col=index_col)
         df.index = [str(i) for i in df.index.tolist()]
+        return df
+
+    def regress_out_confounds(self, file_path, col_name, backend='numpy',
+                              sep='\t', index_col=0):
+
+        df = self._read_behav_file(file_path=file_path, sep=sep, index_col=index_col)
         confound = df.loc[df.index.isin(self.common_subjects), col_name]
         confound = np.array(confound)
 
@@ -120,7 +130,7 @@ class MvpBetween(Mvp):
         elif backend == 'numpy':
             confound = np.hstack((np.ones((confound.shape[0], 1)), confound))
 
-        for i in xrange(self.X.shape[1]):
+        for i in range(self.X.shape[1]):
 
             if i % 10000 == 0:
                 print('Processed %i / %i voxels' % (i, self.X.shape[1]))
@@ -142,8 +152,8 @@ class MvpBetween(Mvp):
         """ Adds target-variabel from csv """
 
         # Assumes index corresponds to self.common_subjects
-        df = pd.read_csv(file_path, sep=sep, index_col=index_col)
-        df.index = [str(i) for i in df.index.tolist()]
+        df = self._read_behav_file(file_path=file_path, sep=sep,
+                                   index_col=index_col)
         behav = df.loc[df.index.isin(self.common_subjects), col_name]
 
         if behav.empty:
@@ -184,6 +194,24 @@ class MvpBetween(Mvp):
 
         self.y = y
 
+    def split(self, file_path, col_name, target, sep='\t', index_col=0):
+
+        # Assumes index corresponds to self.common_subjects
+        df = self._read_behav_file(file_path=file_path, sep=sep,
+                                   index_col=index_col)
+        behav = df.loc[df.index.isin(self.common_subjects), col_name]
+
+        if behav.empty:
+            print('Couldnt find any data common to .common_subjects in ' \
+                  ' the MvpBetween object!')
+            return 0
+
+        behav.index = check_zeropadding_and_sort(behav.index.tolist())
+        idx = np.array(behav) == target
+        self.X = self.X[idx, :]
+        self.common_subjects = [sub for i, sub in
+                                enumerate(self.common_subjects) if idx[i]]
+
     def write_4D(self, path=None, name=None):
         # To do: method to write out 4D nifti(s)
         pass
@@ -198,6 +226,34 @@ class MvpBetween(Mvp):
         self.mask_index = nib.load(mask).get_data() > threshold
         self.mask_shape = self.mask_index.shape
         self.mask_index = self.mask_index.ravel()
+
+    def _load_4D_func(self, args):
+
+        if args['atlas'] == 'aal':
+
+            aal = fetch_atlas_aal()
+            aal = {'file': aal.maps}
+            atlas_filename = aal['file']
+        else:
+            harvard_oxford = fetch_atlas_harvard_oxford(
+                'cort-maxprob-thr25-2mm')
+            harvard_oxford = {'file': harvard_oxford.maps}
+            atlas_filename = harvard_oxford['file']
+
+        data = Parallel(n_jobs=args['n_cores'])(delayed(
+             _parallelize_4D_func_loading)(f, atlas_filename, args['method'])
+             for f in args['paths'])
+
+        # Load last func for some meta-data
+        data = np.concatenate(data, axis=0)
+
+        func = nib.load(args['paths'][0])
+        self.voxel_idx.append(np.arange(data.shape[1]))
+        self.affine.append(func.affine)
+        self.data_shape.append(func.shape)
+        feature_ids = np.ones(data.shape[1], dtype=np.uint32) * len(self.X)
+        self.featureset_id.append(feature_ids)
+        self.X.append(data)
 
     def _load_4D_anat(self, args):
 
@@ -357,3 +413,36 @@ def check_zeropadding_and_sort(lst):
         alphanum_key = lambda key: [convert(c) for c in
                                     re.split("([0-9]+)", key)]
         return sorted(lst, key=alphanum_key)
+
+def _parallelize_4D_func_loading(f, atlas, method):
+    print(f)
+    func = nib.load(f)
+    roi_masker = NiftiLabelsMasker(labels_img=atlas,
+                                   standardize=True,
+                                   resampling_target=None)
+
+    time_series = roi_masker.fit_transform(func)
+
+    if method == 'corr':
+        conn = np.corrcoef(time_series.T)
+    elif method == 'invcorr':
+        graphlasso = GraphLassoCV()
+        graphlasso.fit(time_series)
+        conn = graphlasso.precision_
+    else:
+        raise ValueError('Specify either corr or invcorr')
+
+    conn = conn[np.tril_indices(conn.shape[0], k=-1)].ravel()
+    return(conn[np.newaxis, :])
+
+if __name__ == '__main__':
+
+    source = {}
+    source['4D_func'] = {'path': '/media/lukas/piop/PIOP/PIOP_PREPROC_MRI/pi0*/*rs*/*mni.nii.gz',
+                         'atlas': 'ho',
+                         'method': 'corr',
+                         'n_cores': 1}
+    mvp = MvpBetween(source=source, subject_idf='pi????', remove_zeros=True)
+    mvp.create()
+    mvp.write('/home/lukas', name='harvard-oxford-conn')
+

@@ -16,7 +16,7 @@ before_install:
   - conda info -a
   - conda config --add channels conda-forge
   - conda install --yes python=$TRAVIS_PYTHON_VERSION pip scipy numpy pandas scikit-learn joblib nipype h5py seaborn
-  - pip install nibabel nilearn coveralls
+  - pip install nibabel nilearn
 
 install:
   # Replace dep1 dep2 ... with your dependencies
@@ -24,6 +24,3 @@ install:
 
 script:
   - py.test
-
-after_success:
-  - coveralls

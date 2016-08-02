@@ -52,18 +52,17 @@ class FsfCrawler(object):
                     fout.write('wait\n')
 
     def _read_fsf(self):
-
+        """ Reads in template-fsf and does some cleaning. """
         with open(self.template, 'rb') as f:
             template = f.readlines()
 
-        template = [txt for txt in template if txt != '\n']
-        template = [txt.replace('\n', '') for txt in template]
-        template = [txt for txt in template if txt[0] != '#']
+        template = [txt.replace('\n', '') for txt in template if txt != '\n']
+        template = [txt for txt in template if txt[0] != '#'] # remove comments
 
         self.clean_fsf = template
 
     def _write_fsf(self, sub_dir):
-
+        """ Creates and writes out subject-specific fsf. """
         func_file = glob(op.join(sub_dir, '*%s*.nii.gz' % self.func_idf))
 
         if len(func_file) == 0:
@@ -76,22 +75,21 @@ class FsfCrawler(object):
         else:
             func_file = func_file[0]
 
-        hdr = nib.load(func_file).header
-
-        arg_dict = {}
-        arg_dict['tr'] = hdr['pixdim'][4]
-        arg_dict['npts'] = hdr['dim'][4]
-        arg_dict['custom'] = glob(op.join(sub_dir, '*.bfsl'))
-        arg_dict['feat_files'] = "\"%s\"" % func_file
-
         out_dir = op.join(self.output_dir, op.basename(op.dirname(sub_dir)))
         if not op.isdir(out_dir):
             os.makedirs(out_dir)
 
         feat_dir = op.join(out_dir, '%s.feat' % self.run_idf)
-        arg_dict['outputdir'] = "\"%s\"" % feat_dir
-        fsf_out = []
+        hdr = nib.load(func_file).header
 
+        arg_dict = {'tr': hdr['pixdim'][4],
+                    'npts': hdr['dim'][4],
+                    'custom': glob(op.join(sub_dir, '*.bfsl')),
+                    'feat_files': "\"%s\"" % func_file,
+                    'outputdir': "\"%s\"" % feat_dir}
+
+        fsf_out = []
+        # Loop over lines in cleaned template-fsf
         for line in self.clean_fsf:
 
             if any(key in line for key in arg_dict.keys()):
