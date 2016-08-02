@@ -9,7 +9,8 @@ REQUIREMENTS = [
     'nibabel>=2.0',
     'matplotlib',
     'nipype>=0.12',
-    'joblib>=0.9'
+    'joblib>=0.9',
+    'seaborn'
 ]
 
 VERSION = skbold.__version__
