@@ -10,7 +10,8 @@ REQUIREMENTS = [
     'matplotlib',
     'nipype>=0.12',
     'joblib>=0.9',
-    'seaborn'
+    'seaborn',
+    'nilearn'
 ]
 
 VERSION = skbold.__version__
