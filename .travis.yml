@@ -14,8 +14,9 @@ before_install:
   - conda update -q conda
   # Useful for debugging any issues with conda
   - conda info -a
-  - conda install --yes python=$TRAVIS_PYTHON_VERSION pip scipy numpy pandas scikit-learn joblib
-  - pip install nibabel nilearn nipype
+  - conda config --add channels conda-forge
+  - conda install --yes python=$TRAVIS_PYTHON_VERSION pip scipy numpy pandas scikit-learn joblib nipype h5py
+  - pip install nibabel nilearn
 
 install:
   # Replace dep1 dep2 ... with your dependencies
