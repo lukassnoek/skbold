@@ -16,12 +16,16 @@ import sys
 import os
 import mock
 
-#MOCK_MODULES = ['numpy', 'scipy', 'joblib', 'nilearn', 'nipype', 'h5py',
-#                'sklearn', 'sklearn.base', 'pandas', 'seaborn', 'matplotlib', 'nibabel']
+MOCK_MODULES = ['numpy', 'scipy', 'joblib', 'nilearn', 'nipype', 'h5py',
+                'sklearn', 'sklearn.base', 'sklearn.preprocessing',
+                'sklearn.svm', 'sklearn.cross_validation',
+                'sklearn.feature_selection', 'sklearn.grid_search',
+                'sklearn.linear_model', 'sklearn.metrics', 'sklearn.pipeline',
+                'sklearn.utils',
+                'pandas', 'seaborn', 'matplotlib', 'nibabel']
 
-#for mod_name in MOCK_MODULES:
-#   sys.modules[mod_name] = mock.Mock()
-# test
+for mod_name in MOCK_MODULES:
+   sys.modules[mod_name] = mock.Mock()
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
