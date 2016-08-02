@@ -88,7 +88,7 @@ class MvpBetween(Mvp):
             including 'mask': 'path', to use data-type-specific masks.
 
             An example:
-            
+
             >>> source = {}
             >>> source['Contrast_emo'] = {'path': '~/data/sub0*/*.feat/stats/tstat1.nii.gz'}
             >>> vbm_mask = '~/vbm_mask.nii.gz'
@@ -334,6 +334,22 @@ class MvpBetween(Mvp):
         self.y = y
 
     def split(self, file_path, col_name, target, sep='\t', index_col=0):
+        """ Splits an MvpBetween object based on some external index.
+
+        Parameters
+        ----------
+        file_path : str
+            Absolute path to spreadsheet-like file including the outcome variable.
+        col_name : str
+            Column name in spreadsheet containing the outcome variable
+        target : str or int or float
+            Target to which the data in col_name needs to be compared to, in
+            order to create an index.
+        sep : str
+            Separator to parse the spreadsheet-like file.
+        index_col : int
+            Which column to use as index (should correspond to subject-name).
+        """
 
         # Assumes index corresponds to self.common_subjects
         df = self._read_behav_file(file_path=file_path, sep=sep,
