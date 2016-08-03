@@ -18,6 +18,7 @@ skbold - utilities and tools for machine learning on BOLD-fMRI data
 .. _Joost: https://github.com/y0ast
 .. _readthedocs.org: http://skbold.readthedocs.io/
 .. _NEO-FFI: https://en.wikipedia.org/wiki/Revised_NEO_Personality_Inventory
+.. _Github: https://github.com/lukassnoek
 
 The Python package ``skbold`` offers a set of tools and utilities for
 machine learning and RSA-type analyses of functional MRI (BOLD-fMRI) data.
@@ -258,21 +259,20 @@ Or, alternatively, download the package as a zip-file from Github, unzip, and ru
 
 	$ python setup.py install
 
-
 Documentation
 -------------
 For those reading this on Github, documentation can be found on readthedocs.org_!
 
 Credits
 -------
-At the advent of this package, I knew next to nothing about Python programming
-in general and packaging in specific. The mlxtend_ package has been a great
-'template' and helped a great deal in structuring the current package. Also,
-Steven_ has contributed some very nice features as part of his internship.
+When I started writingthis package, I knew next to nothing about Python
+programming in general and packaging in specific. The mlxtend_ package has been
+a great 'template' and helped a great deal in structuring the current package.
+Also, Steven_ has contributed some very nice features as part of his internship.
 Lastly, Joost_ has beena major help in virtually every single phase of this
 package!
 
 License and contact
 -------------------
 The code is BSD (3-clause) licensed. You can find my contact details at my
-`Github profile page <https://github.com/lukassnoek>`_.
+Github_ profile page.

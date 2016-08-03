@@ -24,8 +24,7 @@ roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs', 'harvard_oxford')
 
 
 class RoiVotingClassifier(BaseEstimator, ClassifierMixin):
-    """ Voting classifier for an ensemble of patterns from different ROIs.
-
+    """
     This classifier fits a base-estimator (by default a linear SVM) on different
     feature sets (i.e. voxels) from different regions of interest (which are
     drawn from the Harvard-Oxford Cortical atlas), and subsequently the final
@@ -37,41 +36,31 @@ class RoiVotingClassifier(BaseEstimator, ClassifierMixin):
     -----
     This classifier has not been tested!
 
-    Methods
-    -------
-    fit(X, y)
-        First fits all base-classifiers and gathers all predictions.
-    predict(X)
-        Generalizes the set of base-classifiers to a test-set and derives the
-        final prediction by a (weighted) max-vote.
+    Parameters
+    ----------
+    mvp : mvp-object
+        An custom object from the skbold package containing data (X, y)
+        and corresponding meta-data (e.g. mask info)
+    preproc_pipeline : object
+        A scikit-learn Pipeline object with desired preprocessing steps
+        (e.g. scaling, additional feature selection)
+    clf : object
+        A scikit-learn style classifier (implementing fit(), predict(),
+        and predict_proba()), that is able to be used in Pipelines.
+    mask_type : str
+        Can be 'unilateral' or 'bilateral', which will use all masks from
+        the corresponding Harvard-Oxford Cortical (lateralized) atlas.
+        Alternatively, it may be an absolute path to a directory containing
+        a custom set of masks as nifti-files (default: 'unilateral').
+    voting : str
+        Either 'hard' or 'soft' (default: 'soft').
+    weights : list (or ndarray)
+        List/array of shape [n_rois] with a relative weighting factor to be
+        used in the voting procedure.
     """
 
     def __init__(self, mvp, preproc_pipeline=None, clf=None,
                  mask_type='unilateral', voting='soft', weights=None):
-        """ Initializes RoiVotingClassifier object.
-
-        Parameters
-        ----------
-        mvp : mvp-object
-            An custom object from the skbold package containing data (X, y)
-            and corresponding meta-data (e.g. mask info)
-        preproc_pipeline : object
-            A scikit-learn Pipeline object with desired preprocessing steps
-            (e.g. scaling, additional feature selection)
-        clf : object
-            A scikit-learn style classifier (implementing fit(), predict(),
-            and predict_proba()), that is able to be used in Pipelines.
-        mask_type : str
-            Can be 'unilateral' or 'bilateral', which will use all masks from
-            the corresponding Harvard-Oxford Cortical (lateralized) atlas.
-            Alternatively, it may be an absolute path to a directory containing
-            a custom set of masks as nifti-files (default: 'unilateral').
-        voting : str
-            Either 'hard' or 'soft' (default: 'soft').
-        weights : list (or ndarray)
-            List/array of shape [n_rois] with a relative weighting factor to be
-            used in the voting procedure.
-        """
 
         self.mvp = mvp
         self.voting = voting
@@ -96,7 +85,7 @@ class RoiVotingClassifier(BaseEstimator, ClassifierMixin):
         if mask_type not in ['unilateral', 'bilateral']:
             self.masks = glob.glob(op.join(mask_type, '*nii.gz'))
         else:
-            mask_dir = op.join(op.dirname(roi.__file__), mask_type)
+            mask_dir = op.join(op.dirname(roi_dir), mask_type)
             self.masks = glob.glob(op.join(mask_dir, '*nii.gz'))
 
         self.pipes = [] # This will gather all roi-specific pipelines
@@ -113,9 +102,9 @@ class RoiVotingClassifier(BaseEstimator, ClassifierMixin):
 
         Parameters
         ----------
-        X : `ndarray`
+        X : ndarray
             Array of shape = [n_samples, n_features].
-        y : `list` or `ndarray` of `int` or `float`
+        y : list or ndarray of int or float
             List or ndarray with floats/ints corresponding to labels.
 
         Returns
@@ -147,12 +136,12 @@ class RoiVotingClassifier(BaseEstimator, ClassifierMixin):
 
         Parameters
         ----------
-        X : `ndarray`
+        X : ndarray
             Array of shape = [n_samples, n_features].
 
         Returns
         -------
-        maxvotes : `ndarray`
+        maxvotes : ndarray
             Array with class predictions for all classes of X.
         """
 

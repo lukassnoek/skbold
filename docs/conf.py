@@ -37,6 +37,9 @@ extensions = [
     'sphinx.ext.napoleon'
 ]
 
+# Note to self: this renders attributes better (but calls it 'variables'...)
+napoleon_use_ivar = True
+
 # ensures that __init__ is documented!
 autoclass_content = 'both'
 

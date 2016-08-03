@@ -3,6 +3,8 @@
 # License: 3 clause BSD
 
 """
+.. _ReadTheDocs: http://skbold.readthedocs.io
+
 The data2mvp subpackage contains two major classes of relevance to the
 rest of the skbold-package: ``MvpWithin`` and ``MvpBetween``, which are
 subclasses of the ``Mvp`` class (defined in the ``core`` subpackage).
@@ -31,7 +33,9 @@ use features from both sets to predict a certain psychometric or behavioral
 variable of the corresponding subjects (such as, e.g., intelligence).
 Also, the MvpBetween format allows to load (and stack!) VBM, TBSS,
 resting-state (to extract connectivity measures), and dual-regression data.
-More information can be found below in the API!
+More information can be found below in the API. A use case can be found on
+the main page of ReadTheDocs_.
+
 """
 
 from mvp_within import MvpWithin

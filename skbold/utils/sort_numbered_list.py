@@ -18,12 +18,12 @@ def sort_numbered_list(stat_list):
 
     Parameters
     ----------
-    stat_list : list[str]
+    stat_list : list or str
         list with absolute paths to files
 
     Returns
     -------
-    sorted_list : list[str]
+    sorted_list : list of str
         sorted stat_list
     """
 

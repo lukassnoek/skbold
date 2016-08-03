@@ -10,7 +10,30 @@ from fnmatch import fnmatch
 import pandas as pd
 import joblib
 
+
 class MvpResults(object):
+    """
+    .. _ReadTheDocs: http://skbold.readthedocs.io
+    Class to keep track of model evaluation metrics and feature scores.
+    See the ReadTheDocs_ homepage for more information on its API and use.
+
+    Parameters
+    ----------
+    mvp : mvp-object
+        Necessary to extract some metadata from.
+    n_iter : int
+        Number of folds that will be kept track of.
+    out_path : str
+        Path to save results to.
+    feature_scoring : str
+        Which method to use to calculate feature-scores with. Can be:
+        1) 'coef': keep track of raw voxel-weights (coefficients)
+        2) 'forward': transform raw voxel-weights to corresponding forward-
+        model (see Haufe et al. (2014). On the interpretation of weight vectors
+        of linear models in multivariate neuroimaging. Neuroimage, 87, 96-110.)
+    verbose : bool
+        Whether to print extra output.
+    """
 
     def __init__(self, mvp, n_iter, out_path=None, feature_scoring='',
                  verbose=False):
@@ -45,7 +68,14 @@ class MvpResults(object):
             self.data_shape = [self.data_shape]
 
     def write(self, to_tstat=True):
+        """ Writes results to disk.
 
+        Parameters
+        ----------
+        to_tstat : bool
+            Whether to convert averaged coefficients to t-tstats (by dividing
+            them by sqrt(coefs.std(axis=0)).
+        """
         self._check_mvp_attributes()
         values = self.voxel_values
 
@@ -130,7 +160,13 @@ class MvpResults(object):
             self.voxel_values[self.iter, idx] = A
 
     def save_model(self, model):
-        """ Method to serialize model(s) to disk."""
+        """ Method to serialize model(s) to disk.
+
+        Parameters
+        ----------
+        model : pipeline or scikit-learn object.
+            Model to be saved.
+        """
 
         # Can also be a pipeline!
         if model.__class__.__name__ == 'Pipeline':
@@ -141,7 +177,15 @@ class MvpResults(object):
             joblib.dump(step[1], fn, compress=3)
 
     def load_model(self, path, param=None):
+        """ Load model or pipeline from disk.
 
+        Parameters
+        ----------
+        path : str
+            Absolute path to model.
+        param : str
+            Which, if any, specific param needs to be loaded.
+        """
         model = joblib.load(path)
 
         if param is None:
@@ -153,7 +197,29 @@ class MvpResults(object):
 
 
 class MvpResultsRegression(MvpResults):
+    """
+    MvpResults class specifically for Regression analyses.
 
+    Parameters
+    ----------
+    mvp : mvp-object
+        Necessary to extract some metadata from.
+    n_iter : int
+        Number of folds that will be kept track of.
+    out_path : str
+        Path to save results to.
+    feature_scoring : str
+        Which method to use to calculate feature-scores with. Can be:
+        1) 'coef': keep track of raw voxel-weights (coefficients)
+        2) 'forward': transform raw voxel-weights to corresponding forward-
+        model (see Haufe et al. (2014). On the interpretation of weight vectors
+        of linear models in multivariate neuroimaging. Neuroimage, 87, 96-110.)
+    verbose : bool
+        Whether to print extra output.
+
+    .. warning:: Has not been tested with MvpWithin!
+
+    """
     def __init__(self, mvp, n_iter, feature_scoring='', verbose=False,
                  out_path=None):
 
@@ -168,7 +234,21 @@ class MvpResultsRegression(MvpResults):
         self.voxel_values = np.zeros((self.n_iter, mvp.X.shape[1]))
 
     def update(self, test_idx, y_pred, values=None, idx=None):
+        """ Updates with information from current fold.
 
+        Parameters
+        ----------
+        test_idx : ndarray
+            Indices of current test-trials.
+        y_pred : ndarray
+            Predictions of current test-trials.
+        values : ndarray
+            Values of features for model in the current fold. This can be the
+            entire pipeline (in this case, it is extracted automaticlly). When
+            a pipeline is passed, the idx-parameter does not have to be passed.
+        idx : ndarray
+            Index mapping the 'values' back to whole-brain space.
+        """
         i = self.iter
         y_true = self.y[test_idx]
 
@@ -184,7 +264,7 @@ class MvpResultsRegression(MvpResults):
         self.iter += 1
 
     def compute_scores(self):
-
+        """ Computes scores across folds. """
         df = pd.DataFrame({'R2': self.R2,
                            'MSE': self.mse,
                            'n_voxels': self.n_vox})
@@ -193,6 +273,26 @@ class MvpResultsRegression(MvpResults):
 
 
 class MvpResultsClassification(MvpResults):
+    """
+    MvpResults class specifically for classification analyses.
+
+    Parameters
+    ----------
+    mvp : mvp-object
+        Necessary to extract some metadata from.
+    n_iter : int
+        Number of folds that will be kept track of.
+    out_path : str
+        Path to save results to.
+    feature_scoring : str
+        Which method to use to calculate feature-scores with. Can be:
+        1) 'coef': keep track of raw voxel-weights (coefficients)
+        2) 'forward': transform raw voxel-weights to corresponding forward-
+        model (see Haufe et al. (2014). On the interpretation of weight vectors
+        of linear models in multivariate neuroimaging. Neuroimage, 87, 96-110.)
+    verbose : bool
+        Whether to print extra output.
+    """
 
     def __init__(self, mvp, n_iter, feature_scoring='', verbose=False,
                  out_path=None):
@@ -211,6 +311,21 @@ class MvpResultsClassification(MvpResults):
         self.voxel_values = np.zeros((self.n_iter, mvp.X.shape[1]))
 
     def update(self, test_idx, y_pred, values=None, idx=None):
+        """ Updates with information from current fold.
+
+        Parameters
+        ----------
+        test_idx : ndarray
+            Indices of current test-trials.
+        y_pred : ndarray
+            Predictions of current test-trials.
+        values : ndarray
+            Values of features for model in the current fold. This can be the
+            entire pipeline (in this case, it is extracted automaticlly). When
+            a pipeline is passed, the idx-parameter does not have to be passed.
+        idx : ndarray
+            Index mapping the 'values' back to whole-brain space.
+        """
 
         i = self.iter
         y_true = self.y[test_idx]
@@ -229,7 +344,7 @@ class MvpResultsClassification(MvpResults):
         self.iter += 1
 
     def compute_scores(self):
-
+        """ Computes scores across folds. """
         df = pd.DataFrame({'Accuracy': self.accuracy,
                            'Precision': self.precision,
                            'Recall': self.recall,

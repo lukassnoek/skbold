@@ -10,16 +10,17 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class PatternAverager(BaseEstimator, TransformerMixin):
-    """ Reduces the set of features to its average. """
+    """
+    Reduces the set of features to its average.
+
+    Parameters
+    ----------
+    method : str
+        method of averaging (either 'mean' or 'median')
+    """
 
     def __init__(self, method='mean'):
-        """ Initializes AveragePatterns transformer.
 
-        Parameters
-        ----------
-        method : str
-            method of averaging (either 'mean' or 'median')
-        """
         self.method = method
 
     def fit(self):

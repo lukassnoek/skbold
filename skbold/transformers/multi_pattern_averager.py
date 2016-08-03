@@ -10,17 +10,18 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class MultiPatternAverager(BaseEstimator, TransformerMixin):
-    """ Reduces the set of features to its average. """
+    """ Reduces the set of features to its average.
+
+    Parameters
+    ----------
+    method : str
+        method of averaging (either 'mean' or 'median')
+    mvp : mvp-object
+        Needed for metadata
+    """
 
     def __init__(self, mvp, method='mean'):
-        """ Initializes AveragePatterns transformer.
 
-        Parameters
-        ----------
-        method : str
-            method of averaging (either 'mean' or 'median')
-        mvp : mvp-object, needed for metadata
-        """
         self.method = method
         self.mvp = mvp
 

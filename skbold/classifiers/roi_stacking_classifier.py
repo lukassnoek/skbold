@@ -16,7 +16,8 @@ import joblib
 from joblib import Parallel, delayed
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.svm import SVC
-from skbold.transformers import RoiIndexer, MeanEuclidean, IncrementalFeatureCombiner
+from skbold.transformers import RoiIndexer, MeanEuclidean, \
+    IncrementalFeatureCombiner
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.cross_validation import StratifiedKFold
@@ -26,6 +27,7 @@ from sklearn.metrics import precision_score
 from sklearn.grid_search import GridSearchCV
 import warnings
 from skbold.core import convert2epi
+
 warnings.filterwarnings('ignore')  # hack to turn off UndefinedMetricWarning
 import skbold
 
@@ -33,73 +35,60 @@ roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs', 'harvard_oxford')
 
 
 class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
-    """ Stacking classifier for an ensemble of patterns from different ROIs.
-
+    """
     This scikit-learn-style classifier implements a stacking classifier
     that fits a base-classifier on multiple brain-regions separately and
     subsequently trains a meta-classifier on the outputs of the base-
     classifiers on the separate brain-regions.
 
-    Below, the most important attributes are mentioned.
+
+    Parameters
+    ----------
+    mvp : mvp-object
+        An custom object from the skbold package containing data (X, y)
+        and corresponding meta-data (e.g. mask info)
+    preproc_pipe : object
+        A scikit-learn Pipeline object with desired preprocessing steps
+        (e.g. scaling, additional feature selection). Defaults to only
+        scaling and univariate-feature-selection by means of highest
+        mean-euclidean differences (see
+        ``skbold.transformers.mean_euclidean``).
+    base_clf : object
+        A scikit-learn style classifier (implementing fit(), predict(),
+        and predict_proba()), that is able to be used in Pipelines.
+    meta_clf : object
+        A scikit-learn style classifier.
+    mask_type : str
+        Can be 'unilateral' or 'bilateral', which will use all masks from
+        the corresponding Harvard-Oxford Cortical (lateralized) atlas.
+        Alternatively, it may be an absolute path to a directory containing
+        a custom set of masks as nifti-files (default: 'unilateral').
+    meta_gs : list or ndarray
+        Optional parameter-grid over which to perform gridsearch.
+    n_cores : int
+        Number of CPU-cores on which to perform the fitting procedure
+        (here, outer-folds are parallelized).
 
     Attributes
     ----------
-    train_scores : `ndarray`
+    train_scores : ndarray
         Accuracy-scores per brain region (averaged over outer-folds) on the
         training (fit) phase.
-    test_scores : `ndarray`
+    test_scores : ndarray
         Accuracy-scores per brain region (averaged over outer- and inner-folds)
         on the test phase.
-    masks : `list` of `str`
+    masks : list of str
         List of absolute paths to found masks.
-    stck_train : `ndarray`
+    stck_train : ndarray
         Array with outputs from base-classifiers fit on train-set.
-    stck_test : `ndarray`
+    stck_test : ndarray
         Array with outputs from base-classifiers generalized to test-set.
-
-    Methods
-    -------
-    fit(X, y)
-        First fits all base-classifiers and subsequently fits a meta-classifier
-        on the outputs of the base-classifiers.
-    predict(X)
-        Generalizes the fitted base- and meta-classifier(s) on a test-set.
-    score(X, y)
-        Calculates the accuracy of the predictions.
     """
 
-    def __init__(self, mvp, preproc_pipe='default', base_clf=None, meta_clf=None,
+    def __init__(self, mvp, preproc_pipe='default', base_clf=None,
+                 meta_clf=None,
                  mask_type='unilateral', proba=True, folds=10, meta_fs='univar',
                  meta_gs=None, n_cores=1):
-        """ Initializes RoiStackingClassifier object.
-
-        Parameters
-        ----------
-        mvp : mvp-object
-            An custom object from the skbold package containing data (X, y)
-            and corresponding meta-data (e.g. mask info)
-        preproc_pipe : object
-            A scikit-learn Pipeline object with desired preprocessing steps
-            (e.g. scaling, additional feature selection). Defaults to only
-            scaling and univariate-feature-selection by means of highest
-            mean-euclidean differences (see
-            `skbold.transformers.mean_euclidean`).
-        base_clf : object
-            A scikit-learn style classifier (implementing fit(), predict(),
-            and predict_proba()), that is able to be used in Pipelines.
-        meta_clf : object
-            A scikit-learn style classifier.
-        mask_type : `str`
-            Can be 'unilateral' or 'bilateral', which will use all masks from
-            the corresponding Harvard-Oxford Cortical (lateralized) atlas.
-            Alternatively, it may be an absolute path to a directory containing
-            a custom set of masks as nifti-files (default: 'unilateral').
-        meta_gs : `list` or `ndarray`
-            Optional parameter-grid over which to perform gridsearch.
-        n_cores : `int`
-            Number of CPU-cores on which to perform the fitting procedure
-            (here, outer-folds are parallelized).
-        """
 
         self.mvp = copy(mvp)
         self.mvp.X = None
@@ -165,7 +154,8 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
                     os.makedirs(epi_dir)
 
                 epi_name = op.basename(mask)[:-7]
-                epi_exists = glob.glob(op.join(epi_dir, '*%s*.nii.gz' % epi_name))
+                epi_exists = glob.glob(
+                    op.join(epi_dir, '*%s*.nii.gz' % epi_name))
 
                 if epi_exists:
                     self.masks[i] = epi_exists[0]
@@ -183,7 +173,8 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
         if not op.isdir(self.stack_dir):
             os.makedirs(self.stack_dir)
         else:
-            _ = [os.remove(f) for f in glob.glob(op.join(self.stack_dir, '*.npy'))]
+            _ = [os.remove(f) for f in
+                 glob.glob(op.join(self.stack_dir, '*.npy'))]
 
     def _fit_base(self, X, y, n_cores=1):
 
@@ -196,7 +187,8 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
         stck_train = np.stack([np.load(s) for s in stacks]).mean(axis=0)
         self.stck_train = stck_train.reshape(stck_train.shape[0], -1)
         scores = sorted(glob.glob(op.join(self.stack_dir, 'scores*.npy')))
-        self.train_roi_scores = np.stack([np.load(s) for s in scores]).mean(axis=0).mean(axis=0)
+        self.train_roi_scores = np.stack([np.load(s) for s in scores]).mean(
+            axis=0).mean(axis=0)
         self.base_pipes = sorted(glob.glob(op.join(self.stack_dir, 'pipes*')))
 
     def _fit_meta(self, y):
@@ -206,7 +198,8 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
                 self.meta_pipe.estimator.set_params(
                     selector__scores=self.train_roi_scores)
             else:
-                self.meta_pipe.set_params(selector__scores=self.train_roi_scores)
+                self.meta_pipe.set_params(
+                    selector__scores=self.train_roi_scores)
 
         self.meta_pipe.fit(self.stck_train, y)
 
@@ -244,7 +237,8 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
                 for iii, mask_pipe in enumerate(inner_pipe):
 
                     pred = mask_pipe.predict(X)
-                    scores[i, ii, iii, :] = precision_score(y, pred, average=None)
+                    scores[i, ii, iii, :] = precision_score(y, pred,
+                                                            average=None)
 
                     if self.proba:
                         stck_fts[:, :, iii, i, ii] = mask_pipe.predict_proba(X)
@@ -258,7 +252,8 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
 
         if self.proba:
             shape = self.stck_test.shape
-            self.stck_test = self.stck_test.reshape((shape[0], np.prod(shape[1:])))
+            self.stck_test = self.stck_test.reshape(
+                (shape[0], np.prod(shape[1:])))
             meta_pred = self.meta_pipe.predict_proba(self.stck_test)
         else:
             meta_pred = self.meta_pipe.predict(self.stck_test)
@@ -270,9 +265,9 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
 
         Parameters
         ----------
-        X : `ndarray`
+        X : ndarray
             Array of shape = [n_samples, n_features].
-        y : `list` or `ndarray` of `int` or `float`
+        y : list or ndarray of int or float
             List or ndarray with floats/ints corresponding to labels.
 
         Returns
@@ -281,7 +276,7 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
             RoiStackingClassifier instance with fitted parameters.
         """
 
-        self.n_inner_cv = (y == 0).sum() # assumes balanced classes
+        self.n_inner_cv = (y == 0).sum()  # assumes balanced classes
         self._fit_base(X, y, n_cores=self.n_cores)
         self._fit_meta(y)
 
@@ -292,12 +287,12 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
 
         Parameters
         ----------
-        X : `ndarray`
+        X : ndarray
             Array of shape = [n_samples, n_features].
 
         Returns
         -------
-        meta_pred : `ndarray`
+        meta_pred : ndarray
             Array with class predictions.
         """
 
@@ -309,14 +304,14 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
     def score(self, X, y):
         """ Scoring function calculating accuracy given predictions.
 
-        X : `ndarray`
+        X : ndarray
             Array of shape = [n_samples, n_features]
-        y : `list` or `ndarray` of `int` or `float`
+        y : list or ndarray of int or float
             List or ndarray with floats/ints corresponding to labels.
 
         Returns
         -------
-        score : `float`
+        score : float
             Accuracy of predictions on the test-set.
         """
         pred = self.predict(X, y)
@@ -347,7 +342,7 @@ def _fit_base_parallel(rsc, X, y, i):
     n_inner_cv = (y == 0).sum()
 
     folds = StratifiedKFold(y, n_folds=n_inner_cv, shuffle=True,
-                            random_state=(i+1))
+                            random_state=(i + 1))
 
     if rsc.proba:  # trials X masks X nr. classes (proba output)
         stck_fts = np.zeros((n_trials, n_class, n_masks))

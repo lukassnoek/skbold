@@ -12,27 +12,27 @@ from nipype.interfaces import fsl
 
 def convert2mni(file2transform, reg_dir, out_dir=None, interpolation='trilinear',
                 suffix=None):
-    """ Transforms a nifti to mni152 (2mm) format.
-
+    """
+    Transforms a nifti to mni152 (2mm) format.
     Assuming that reg_dir is a directory with transformation-files (warps)
     including example_func2standard warps, this function uses nipype's
     fsl interface to flirt a nifti to mni format.
 
     Parameters
     ----------
-    file2transform : `str` or `list`
+    file2transform : str or list
         Absolute path to nifti file(s) that needs to be transformed
-    reg_dir : `str`
+    reg_dir : str
         Absolute path to registration directory with warps
-    out_dir : `str`
+    out_dir : str
         Absolute path to desired out directory. Default is same directory as
         the to-be transformed file.
-    interpolation : `str`
+    interpolation : str
         Interpolation used by flirt. Default is 'trilinear'.
 
     Returns
     -------
-    out_all : `list`
+    out_all : list
         Absolute path(s) to newly transformed file(s).
     """
 

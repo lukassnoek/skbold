@@ -16,20 +16,24 @@ from scipy.ndimage.measurements import label
 
 class MultiRoiIndexer(BaseEstimator, TransformerMixin):
     """ Wrapper that calls RoiIndexer multiple times for Fsl2mvpBetween mvps.
+
+    Applies masks of multiple regions of interest.
+    ROIs can be either anatomical (from a probabilistic map), or functional
+    (z-stats obtained from a group-level analysis). This method also
+    creates cluster ids: it finds clusters of contiguous voxels. Probably
+    not so useful for anatomical ROIs but very useful for functional ROIs.
+
+    Parameters
+    ----------
+    mvp : mvp-object (see scikit_bold.core)
+        Mvp-object, necessary to extract some pattern metadata
+    maskdict : dict of dicts
+        dictionary with KEYS = COPE-names as they occur in self.X_dict;
+        VALUE = dict with KEYS 'path' (absolute path to mask *.nii.gz file)
+        and 'threshold' (threshold to be applied to that path)
     """
 
     def __init__(self, mvp, maskdict, verbose=False):
-        """ Initializes RoiIndexer object.
-
-        Parameters
-        ----------
-        mvp : mvp-object (see scikit_bold.core)
-            Mvp-object, necessary to extract some pattern metadata
-        maskdict : dict of dicts
-            dictionary with KEYS = COPE-names as they occur in self.X_dict;
-            VALUE = dict with KEYS 'path' (absolute path to mask *.nii.gz file)
-            and 'threshold' (threshold to be applied to that path)
-        """
 
         self.mvp = mvp
         self.maskdict = maskdict
@@ -40,9 +44,15 @@ class MultiRoiIndexer(BaseEstimator, TransformerMixin):
         self.verbose = verbose
 
     def fit(self, X=None, y=None):
-        """ Applies masks of multiple regions of interest. ROIs can be either anatomical (from a probabilistic map),
-        or functional (z-stats obtained from a group-level analysis). This method also creates cluster ids: it finds
-        clusters of contiguous voxels. Probably not so useful for anatomical ROIs but very useful for functional ROIs. """
+        """ Fits MultiRoiIndexer.
+
+        Parameters
+        ----------
+        X : ndarray
+            Numeric (float) array of shape = [n_samples, n_features]
+        y : List of str
+            List or ndarray with floats corresponding to labels
+        """
 
         contrast_labels = self.mvp.contrast_labels
         maskdict = self.maskdict

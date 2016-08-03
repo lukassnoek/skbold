@@ -1,4 +1,4 @@
-# Class to selected features based on a univariate feature selection which
+# Class to select features based on a univariate feature selection which
 # is subsequently cluster-thresholded
 # (see https://github.com/lukassnoek/MSc_thesis).
 
@@ -16,29 +16,26 @@ from scipy.ndimage.measurements import label
 
 
 class ClusterThreshold(BaseEstimator, TransformerMixin):
-    """ Implements a cluster-based feature selection method.
-
+    """
+    Implements a cluster-based feature selection method.
     This feature selection method performs a univariate feature selection
     method to yield a set of voxels which are then cluster-thresholded using
     a minimum (contiguous) cluster size. These clusters are then averaged to
     yield a set of cluster-average features. This method is described in detail
     in my master's thesis: github.com/lukassnoek/MSc_thesis.
 
+    Parameters
+    ----------
+    transformer : scikit-learn style transformer class
+        transformer class used to perform some kind of univariate feature
+        selection.
+    mvp : Mvp-object (see core.mvp)
+        Necessary to provide mask metadata (index, shape).
+    min_cluster_size : int
+        minimum cluster size to be set for cluster-thresholding
     """
 
     def __init__(self, mvp, transformer=None, min_cluster_size=20):
-        """ Initializes ClusterThreshold transformer.
-
-        Parameters
-        ----------
-        transformer : scikit-learn style transformer class
-            transformer class used to perform some kind of univariate feature
-            selection.
-        mvp : Mvp-object (see core.mvp)
-            Necessary to provide mask metadata (index, shape).
-        min_cluster_size : int
-            minimum cluster size to be set for cluster-thresholding
-        """
 
         if transformer is None:
             transformer = MeanEuclidean(cutoff=2.3, normalize=False,

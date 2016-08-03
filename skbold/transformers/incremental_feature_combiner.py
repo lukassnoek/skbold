@@ -9,26 +9,25 @@ import os
 import os.path as op
 from sklearn.base import BaseEstimator, TransformerMixin
 import numpy as np
-import time
+
 
 class IncrementalFeatureCombiner(BaseEstimator, TransformerMixin):
-    """ Indexes a set of features with a number of (sorted) features.
+    """
+    Indexes a set of features with a number of (sorted) features.
+
+    Parameters
+    ----------
+    scores : ndarray
+        Array of shape = n_features, or [n_features, n_class] in case of
+        soft/hard voting in, e.g., a roi_stacking_classifier
+        (see classifiers.roi_stacking_classifier).
+    cutoff : int or float
+        If int, it refers the absolute number of features included, sorted
+        from high to low (w.r.t. scores). If float, it selects a proportion
+        of features.
     """
 
     def __init__(self, scores, cutoff):
-        """ Initializes IncrementalFeatureCombiner.
-
-        Parameters
-        ----------
-        scores : ndarray
-            Array of shape = n_features, or [n_features, n_class] in case of
-            soft/hard voting in, e.g., a roi_stacking_classifier
-            (see classifiers.roi_stacking_classifier).
-        cutoff : int or float
-            If int, it refers the absolute number of features included, sorted
-            from high to low (w.r.t. scores). If float, it selects a proportion
-            of features.
-        """
 
         self.scores = scores
         self.cutoff = cutoff

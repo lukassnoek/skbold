@@ -16,13 +16,25 @@ from glob import glob
 
 
 class Mvp(object):
-    """ Mvp (multiVoxel Pattern) class.
-
+    """
+    Mvp (multiVoxel Pattern) class.
     Creates an object, specialized for storing fMRI data that will be analyzed
     using machine learning or RSA-like analyses, that stores both the data
     (X: an array of samples by features, y: numeric labels corresponding to
     X's classes/conditions) and the corresponding meta-data (e.g. nifti header,
     mask info, etc.).
+
+    Parameters
+    ----------
+    X : ndarray
+        A 2D matrix or numpy-array with rows indicating samples and
+        columns indicating features.
+    y : list or ndarray
+        Array/list with labels/targets corresponding to samples in X.
+    mask : str
+        Absolute path to nifti-file that will mask (index) the patterns.
+    mask_threshold : int or float
+        Minimum value for mask (in cases of probabilistic masks).
 
     Attributes
     ----------
@@ -41,11 +53,6 @@ class Mvp(object):
     y : list or ndarray
         Array/list with labels/targets corresponding to samples in X.
 
-    Methods
-    -------
-    write(path=None, name='mvp', backend='joblib')
-        Writes the Mvp-object to disk.
-
     Notes
     -----
     This class is mainly meant to serve as a parent-class for ``MvpWithin``
@@ -54,20 +61,6 @@ class Mvp(object):
     """
 
     def __init__(self, X=None, y=None, mask=None, mask_threshold=0):
-        """ Initializes an Mvp-object.
-
-        Parameters
-        ----------
-        X : ndarray
-            A 2D matrix or numpy-array with rows indicating samples and
-            columns indicating features.
-        y : list or ndarray
-            Array/list with labels/targets corresponding to samples in X.
-        mask : str
-            Absolute path to nifti-file that will mask (index) the patterns.
-        mask_threshold : int or float
-            Minimum value for mask (in cases of probabilistic masks).
-        """
 
         self.mask = mask
         self.mask_threshold = mask_threshold
@@ -95,9 +88,6 @@ class Mvp(object):
             data-header format will be used, in which the data (``X``) will be
             saved using Numpy and the meta-data (everythin except ``X``) will
             be saved using joblib.
-        Returns
-        -------
-
         """
         if path is None:
             path = os.getcwd()
@@ -122,7 +112,7 @@ class Mvp(object):
             joblib.dump(self, fn + '_header.jl', compress=3)
 
     def _update_mask_info(self, mask):
-
+        # Not useful anymore?
         mask_vol = nib.load(mask)
         mask_idx = mask_vol.get_data() > self.mask_threshold
         self.affine = mask_vol.affine

@@ -14,27 +14,31 @@ warnings.filterwarnings('ignore', category=DeprecationWarning)
 
 
 class FeaturesToContrast(MeanEuclidean):
-    """ Implements transformation of features to average contrasts.
+    """
+    Implements transformation of features to average contrasts.
 
     This feature selection method calculates the average condition differences
     for all voxels, thresholds this, and averages the thresholded set to yield
     N(N-1)/2 features, in which N denotes the number of conditions.
 
-    """
-    def __init__(self, cutoff=2.3, normalize=False, fisher=False):
-        """ Initializes FeaturesToContrast transformer.
+    Parameters
+    ----------
+    cutoff : float or int
+        Minimum average euclidean distance to be included in transformation
+    normalize : bool
+        Whether to normalize mean class activity by standard deviation
+        across trials
+    fisher : bool
+        Whether to apply a fisher transform to the averaged euclidean
+        distance.
 
-        Parameters
-        ----------
-        cutoff : float or int
-            Minimum average euclidean distance to be included in transformation
-        normalize : bool
-            Whether to normalize mean class activity by standard deviation
-            across trials
-        fisher : bool
-            Whether to apply a fisher transform to the averaged euclidean
-            distance.
-        """
+    Notes
+    -----
+    The fit() method is documented in the MeanEuclidean documentation.
+    """
+
+    def __init__(self, cutoff=2.3, normalize=False, fisher=False):
+
         super(FeaturesToContrast, self).__init__(cutoff, normalize, fisher)
 
     def transform(self, X):

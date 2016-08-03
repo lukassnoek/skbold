@@ -15,16 +15,20 @@ class LabelFactorizer(BaseEstimator, TransformerMixin):
     Factorizes/encodes labels based on part of the string label. For example,
     the label-vector ['A_1', 'A_2', 'B_1', 'B_2'] can be grouped
     based on letter (A/B) or number (1/2).
+
+    Parameters
+    ----------
+    grouping : List of str
+        List with identifiers for condition names as strings
+
+    Attributes
+    ----------
+    new_labels_ : list
+        List with new labels.
     """
 
     def __init__(self, grouping):
-        """ Initializes LabelFactorizes with a given grouping.
 
-        Parameters
-        ----------
-        grouping : List[str]
-            List with identifiers for condition names as strings
-        """
         self.grouping = grouping
         self.new_labels_ = None
 
@@ -37,16 +41,16 @@ class LabelFactorizer(BaseEstimator, TransformerMixin):
 
         Parameters
         ----------
-        y : List[str] or numpy ndarray[str]
+        y : List/ndarray of str
             List of ndarray with strings indicating label-names
-        X : Optional[ndarray]
+        X : ndarray
             Numeric (float) array of shape = [n_samples, n_features]
 
         Returns
         -------
         y_new : ndarray
             array with transformed y-labels
-        X_new : Optional[ndarray]
+        X_new : ndarray
             array with transformed data of shape = [n_samples, n_features]
             given new factorial grouping/design.
 

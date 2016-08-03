@@ -15,9 +15,40 @@ from nipype.interfaces.base import Bunch
 
 
 class PresentationLogfileCrawler(object):
-    """ Parses a Presentation logfile.
+    """
+    Logfile crawler for Presentation (Neurobs) files; cleans logfile,
+    calculates event onsets and durations, and (optionally) writes out
+    .bfsl files per condition.
 
-    Logfile crawler for Presentation (Neurobs) files.
+    Parameters
+    ----------
+    in_file : str or list
+        Absolute path to logfile (can be a list of paths).
+    con_names : list
+        List with names for each condition
+    con_codes : list
+        List with codes for conditions. Can be a single integer or string (in
+        the latter case, it may be a substring) or a list with possible values.
+    con_design : list or str
+        Which 'design' to assume for events (if 'multivar', all events -
+        regardless of condition - are treated as a separate
+        condition/regressor; if 'univar', all events from a single condition
+        are treated as a single condition). Default: 'univar' for all
+        conditions.
+    con_duration : list
+        If the duration cannot be parsed from the logfile, you can specify them
+        here manually (per condition).
+    pulsecode : int
+        Code with which the first (or any) pulse is logged.
+    write_bfsl : bool
+        Whether to write out a .bfsl file per condition.
+    verbose : bool
+        Print out intermediary output.
+
+    Attributes
+    ----------
+    df : Dataframe
+        Dataframe with cleaned and parsed logfile.
     """
 
     def __init__(self, in_file, con_names, con_codes, con_design=None,
@@ -66,11 +97,6 @@ class PresentationLogfileCrawler(object):
         self.to_write = None
         self.base_dir = None
 
-    def clean(self):
-        print('This should be implemented for a specific, subclassed crawler!')
-        # set self.df to cleaned dataframe
-        pass
-
     def _parse(self, f):
 
         if self.verbose:
@@ -80,8 +106,6 @@ class PresentationLogfileCrawler(object):
         self.base_dir = op.dirname(f)
         _ = [os.remove(x) for x in glob(op.join(self.base_dir, '*.bfsl'))]
 
-        # If .clean() has not been called (and thus logfile hasn't been loaded,
-        # load in the logfile now.
         if self.df is not None:
             df = self.df
         else:
@@ -198,7 +222,14 @@ class PresentationLogfileCrawler(object):
                 df_tmp.to_csv(name, index=False, sep='\t', header=False)
 
     def parse(self):
+        """
+        Parses logfile, writes bfsl (optional), and return subject-info.
 
+        Returns
+        -------
+        subject_info_list : Nilearn bunch object
+            Bunch object to be used in Nipype pipelines.
+        """
         subject_info_list = [self._parse(f) for f in self.in_file]
 
         if len(subject_info_list) == 1:
@@ -208,27 +239,46 @@ class PresentationLogfileCrawler(object):
 
 
 def parse_presentation_logfile(in_file, con_names, con_codes, con_design=None,
-                               con_duration=None, pulsecode=30, write_bfsl=False, verbose=True):
+                               con_duration=None, pulsecode=30,
+                               write_bfsl=False, verbose=True):
     """
-    Parses a Presentation-logfile and extracts stimulus/event times and
-    durations given their corresponding codes in the logfile.
+    Function-interface for PresentationLogfileCrawler. Can be used to create
+    a Nipype node.
 
-    To do: build feature to input list of strings for codes
-    (e.g. ['anger', 'sadness', 'disgust'] --> name: 'negative';
-    see custom piopfaces logfile crawler for example
+    Parameters
+    ----------
+    in_file : str or list
+        Absolute path to logfile (can be a list of paths).
+    con_names : list
+        List with names for each condition
+    con_codes : list
+        List with codes for conditions. Can be a single integer or string (in
+        the latter case, it may be a substring) or a list with possible values.
+    con_design : list or str
+        Which 'design' to assume for events (if 'multivar', all events -
+        regardless of condition - are treated as a separate
+        condition/regressor; if 'univar', all events from a single condition
+        are treated as a single condition). Default: 'univar' for all
+        conditions.
+    con_duration : list
+        If the duration cannot be parsed from the logfile, you can specify them
+        here manually (per condition).
+    pulsecode : int
+        Code with which the first (or any) pulse is logged.
+    write_bfsl : bool
+        Whether to write out a .bfsl file per condition.
+    verbose : bool
+        Print out intermediary output.
     """
 
     from skbold.exp_model import PresentationLogfileCrawler
 
     plc = PresentationLogfileCrawler(in_file=in_file, con_names=con_names,
                                      con_codes=con_codes, con_design=con_design,
-                                     con_duration=con_duration, pulsecode=pulsecode,
-                                     write_bfsl=True, verbose=False)
+                                     con_duration=con_duration,
+                                     pulsecode=pulsecode, write_bfsl=True,
+                                     verbose=False)
 
     subject_info_files = plc.parse()
 
     return subject_info_files
-
-
-if __name__ == '__main__':
-    pass

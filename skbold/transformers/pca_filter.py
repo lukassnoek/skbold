@@ -13,8 +13,20 @@ import numpy as np
 
 class PCAfilter(BaseEstimator, TransformerMixin):
     """
-    Will implement a way to regress out a specified number of PCA components,
-    which are assumed to be noise components.
+    Filters out a (set of) PCA component(s) and transforms it back to original
+    representation.
+
+    Parameters
+    ----------
+    n_components : int
+        number of components to retain.
+    reject : list
+        Indices of components which should be additionally removed.
+
+    Attributes
+    ----------
+    pca : scikit-learn PCA object
+        Fitted PCA object.
     """
 
     def __init__(self, n_components=None, reject=None):
@@ -24,6 +36,15 @@ class PCAfilter(BaseEstimator, TransformerMixin):
         self.pca = None
 
     def fit(self, X, y=None):
+        """ Fits PcaFilter.
+
+        Parameters
+        ----------
+        X : ndarray
+            Numeric (float) array of shape = [n_samples, n_features]
+        y : List of str
+            List or ndarray with floats corresponding to labels
+        """
 
         pca = PCA(n_components=self.n_components)
         pca.fit(X)
@@ -32,6 +53,20 @@ class PCAfilter(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
+        """ Transforms a pattern (X) by the inverse PCA transform with removed
+        components.
+
+        Parameters
+        ----------
+        X : ndarray
+            Numeric (float) array of shape = [n_samples, n_features]
+
+        Returns
+        -------
+        X : ndarray
+            Transformed array of shape = [n_samples, n_features] given the
+            PCA calculated during fit().
+        """
 
         pca = self.pca
         X_pca = pca.transform(X)
@@ -45,19 +80,3 @@ class PCAfilter(BaseEstimator, TransformerMixin):
             X_rec = pca.inverse_transform(X_pca)
 
         return(X_rec)
-
-
-if __name__ == '__main__':
-
-    from skbold.utils import DataHandler
-    from skbold import testdata_path, roidata_path
-    from skbold.transformers import RoiIndexer
-    from sklearn.decomposition import PCA
-    mvp = DataHandler(identifier='merged').load_separate_sub(testdata_path)
-
-    mask = op.join(roidata_path, 'harvard_oxford', 'bilateral', 'Amygdala.nii.gz')
-    ri = RoiIndexer(mvp, mask)
-    X = ri.fit_transform(mvp.X)
-
-    pcafilt = PCAfilter(n_components=None, reject=[1, 2])
-    X_filt = pcafilt.fit_transform(X)

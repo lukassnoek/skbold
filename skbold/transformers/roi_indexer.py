@@ -14,23 +14,23 @@ from ..core import convert2epi
 
 
 class RoiIndexer(BaseEstimator, TransformerMixin):
-    """ Indexes a whole-brain pattern with a certain ROI.
+    """
+    Indexes a whole-brain pattern with a certain ROI.
     Given a certain ROI-mask, this class allows transformation
     from a whole-brain pattern to the mask-subset.
+
+    Parameters
+    ----------
+    mvp : mvp-object (see scikit_bold.core)
+        Mvp-object, necessary to extract some pattern metadata
+    mask : str
+        Absolute paths to nifti-images of brain masks in MNI152 space.
+    mask_threshold : Optional[int, float]
+        Threshold to be applied on mask-indexing (given a probabilistic
+        mask).
     """
 
     def __init__(self, mvp, mask, mask_threshold=0):
-        """ Initializes RoiIndexer object.
-        Parameters
-        ----------
-        mvp : mvp-object (see scikit_bold.core)
-            Mvp-object, necessary to extract some pattern metadata
-        mask : str
-            Absolute paths to nifti-images of brain masks in MNI152 space.
-        mask_threshold : Optional[int, float]
-            Threshold to be applied on mask-indexing (given a probabilistic
-            mask)
-        """
 
         self.mvp = mvp
         self.mask = mask
@@ -41,7 +41,15 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
         self.idx_ = None
 
     def fit(self, X=None, y=None):
-        """ Fits RoiIndexer. """
+        """ Fits RoiIndexer.
+
+        Parameters
+        ----------
+        X : ndarray
+            Numeric (float) array of shape = [n_samples, n_features]
+        y : List of str
+            List or ndarray with floats corresponding to labels
+        """
 
         main_dir = op.dirname(self.directory)
 
@@ -77,12 +85,14 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
 
     def transform(self, X, y=None):
         """ Transforms features from X (voxels) to a mask-subset.
+
         Parameters
         ----------
         X : ndarray
             Numeric (float) array of shape = [n_samples, n_features]
         y : Optional[List[str] or numpy ndarray[str]]
             List of ndarray with strings indicating label-names
+
         Returns
         -------
         X_new : ndarray

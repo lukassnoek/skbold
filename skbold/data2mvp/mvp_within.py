@@ -9,10 +9,54 @@ from glob import glob
 
 
 class MvpWithin(Mvp):
-    """ Extracts and stores subject-specific single-trial multivoxel-patterns
-
+    """
+    Extracts and stores subject-specific single-trial multivoxel-patterns
     The MvpWithin class allows for the extraction of subject-specific
     single-trial, multivoxel fMRI patterns from a FSL feat-directory.
+
+    Parameters
+    ----------
+    source : str
+        An absolute path to a subject-specific first-level FEAT directory.
+    read_labels : bool
+        Whether to read the labels/targets (i.e. ``y``) from the contrast
+        names defined in the design.con file.
+    remove_contrast : list
+        Given that all contrasts (COPEs) are loaded from the FEAT-directory,
+        this argument can be used to remove irrelevant contrasts (e.g.
+        contrasts of nuisance predictors). Entries in remove_contrast do
+        not have to literal; they may be a substring of the full name of the
+        contrast.
+    invert_selection : bool
+        Sometimes, instead of loading in all contrasts and excluding some,
+        you might want to load only a single or a couple contrasts, and
+        exclude all other. By setting invert_selection to True, it treats
+        the remove_contrast variable as a list of contrasts to include.
+    ref_space : str
+        Indicates in which 'space' the patterns will be stored. The default
+        is 'epi', indicating that the patterns will be loaded and stored
+        in subject-specific (native) functional space. The other option is
+        'mni', which indicates that MvpWithin will first transform contrasts
+        to MNI152 (2mm) space before it loads them. This option assumes
+        that a 'reg' directory is present in the .feat-directory, including
+        warp-files from functional to mni space
+        (i.e. example_func2standara.nii.gz).
+    beta2tstat : bool
+        Whether to convert beta-values from COPEs to t-statistics by
+        dividing them by the square-root of the res4d.
+    remove_zeros : bool
+        Whether to remove features (i.e. voxels) which are 0 across all
+        trials (due to, e.g., being located outside the brain).
+    X : ndarray
+        Not necessary to pass MvpWithin, but needs to be defined as it is
+        needed in the super-constructor.
+    y : ndarray or list
+        Labels or targets corresponding to the samples in ``X``. This can
+        be used when read_labels is set to False.
+    mask : str
+        Absolute path to nifti-file that will be used as mask.
+    mask_threshold : int or float
+        Minimum value to binarize the mask when it's probabilistic.
 
     Attributes
     ----------
@@ -38,52 +82,7 @@ class MvpWithin(Mvp):
                  invert_selection=None, ref_space='epi', beta2tstat=True,
                  remove_zeros=True, X=None, y=None, mask=None,
                  mask_threshold=0):
-        """ Initializes an MvpWithin object.
 
-        Parameters
-        ----------
-        source : str
-            An absolute path to a subject-specific first-level FEAT directory.
-        read_labels : bool
-            Whether to read the labels/targets (i.e. ``y``) from the contrast
-            names defined in the design.con file.
-        remove_contrast : list
-            Given that all contrasts (COPEs) are loaded from the FEAT-directory,
-            this argument can be used to remove irrelevant contrasts (e.g.
-            contrasts of nuisance predictors). Entries in remove_contrast do
-            not have to literal; they may be a substring of the full name of the
-            contrast.
-        invert_selection : bool
-            Sometimes, instead of loading in all contrasts and excluding some,
-            you might want to load only a single or a couple contrasts, and
-            exclude all other. By setting invert_selection to True, it treats
-            the remove_contrast variable as a list of contrasts to include.
-        ref_space : str
-            Indicates in which 'space' the patterns will be stored. The default
-            is 'epi', indicating that the patterns will be loaded and stored
-            in subject-specific (native) functional space. The other option is
-            'mni', which indicates that MvpWithin will first transform contrasts
-            to MNI152 (2mm) space before it loads them. This option assumes
-            that a 'reg' directory is present in the .feat-directory, including
-            warp-files from functional to mni space
-            (i.e. example_func2standara.nii.gz).
-        beta2tstat : bool
-            Whether to convert beta-values from COPEs to t-statistics by
-            dividing them by the square-root of the res4d.
-        remove_zeros : bool
-            Whether to remove features (i.e. voxels) which are 0 across all
-            trials (due to, e.g., being located outside the brain).
-        X : ndarray
-            Not necessary to pass MvpWithin, but needs to be defined as it is
-            needed in the super-constructor.
-        y : ndarray or list
-            Labels or targets corresponding to the samples in ``X``. This can
-            be used when read_labels is set to False.
-        mask : str
-            Absolute path to nifti-file that will be used as mask.
-        mask_threshold : int or float
-            Minimum value to binarize the mask when it's probabilistic.
-        """
         super(MvpWithin, self).__init__(X=X, y=y, mask=mask,
                                         mask_threshold=mask_threshold)
 

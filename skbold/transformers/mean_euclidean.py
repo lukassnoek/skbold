@@ -16,26 +16,24 @@ warnings.filterwarnings('ignore', category=DeprecationWarning)
 
 
 class MeanEuclidean(BaseEstimator, TransformerMixin):
-    """ Implements feature selection based on mean euclidian distance.
-
+    """
+    Implements feature selection based on mean euclidian distance.
     This class implements a univariate feature selection method based on
     the largest condition-averaged euclidean distance.
+
+    Parameters
+    ----------
+    cutoff : float or int
+        Minimum average euclidean distance to be included in transformation
+    normalize : bool
+        Whether to normalize mean class activity by standard deviation
+        across trials
+    fisher : bool
+        Whether to apply a fisher transform to the averaged euclidean
+        distance.
     """
 
     def __init__(self, cutoff=2.3, normalize=False, fisher=False):
-        """ Initializes MeanEuclidean transformer.
-
-        Parameters
-        ----------
-        cutoff : float or int
-            Minimum average euclidean distance to be included in transformation
-        normalize : bool
-            Whether to normalize mean class activity by standard deviation
-            across trials
-        fisher : bool
-            Whether to apply a fisher transform to the averaged euclidean
-            distance.
-        """
         self.cutoff = cutoff
         self.normalize = normalize
         self.fisher = fisher
@@ -51,7 +49,7 @@ class MeanEuclidean(BaseEstimator, TransformerMixin):
         ----------
         X : ndarray
             Numeric (float) array of shape = [n_samples, n_features]
-        y : List[str] or numpy ndarray[str]
+        y : List of str
             List or ndarray with floats corresponding to labels
 
         """

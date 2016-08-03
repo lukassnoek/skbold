@@ -9,11 +9,9 @@ import os
 import glob
 import nibabel as nib
 import os.path as op
-#from ..data.ROIs import harvard_oxford as roi
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
-from nipype.interfaces import fsl
-from ..core import convert2mni, convert2epi
+from skbold.core import convert2mni, convert2epi
 
 import skbold
 roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs', 'harvard_oxford')
@@ -22,25 +20,23 @@ roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs', 'harvard_oxford')
 
 
 class AverageRegionTransformer(BaseEstimator, TransformerMixin):
-    """ Transforms a whole-brain voxel pattern into a region-average pattern
-
+    """
+    Transforms a whole-brain voxel pattern into a region-average pattern
     Computes the average from different regions from a given parcellation
     and returns those as features for X.
+
+    Parameters
+    ----------
+    mask_type : List[str]
+        List with absolute paths to nifti-images of brain masks in
+        MNI152 (2mm) space.
+    mvp : Mvp-object (see core.mvp)
+        Mvp object that provides some metadata about previous masks
+    mask_threshold : int (default: 0)
+        Minimum threshold for probabilistic masks (such as Harvard-Oxford)
     """
 
     def __init__(self, mvp, mask_type='unilateral', mask_threshold=0):
-        """ Initializes AverageRegionTransformer object.
-
-        Parameters
-        ----------
-        mask_type : List[str]
-            List with absolute paths to nifti-images of brain masks in
-            MNI152 (2mm) space.
-        mvp : Mvp-object (see core.mvp)
-            Mvp object that provides some metadata about previous masks
-        mask_threshold : int (default: 0)
-            Minimum threshold for probabilistic masks (such as Harvard-Oxford)
-        """
 
         if mask_type is 'unilateral':
             mask_dir = op.join(roi_dir, 'unilateral')
@@ -83,7 +79,6 @@ class AverageRegionTransformer(BaseEstimator, TransformerMixin):
         X_new : ndarray
             array with transformed data of shape = [n_samples, n_features]
             in which features are region-average values.
-
         """
 
         X_new = np.zeros((X.shape[0], len(self.mask_list)))

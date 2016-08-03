@@ -10,7 +10,26 @@ import os
 def make_counterbalanced_split(file_name, variable_name=None, split=0.5,
                                method='Kolmogorov-Smirnov', iterations=10000,
                                plot=True):
-    """ Splits a dataset into counterbalanced train/test sets w.r.t. a variable. """
+    """ Splits a dataset into counterbalanced train/test sets w.r.t. a
+    variable.
+
+    Parameters
+    ----------
+    file_name : str
+        Absolute path to file (csv/tsv) with outcome variable that needs to be
+        counterbalanced.
+    variable_name : str
+        Variable (column) name of outcome variable.
+    split : float
+        Train proportion to select.
+    method : str
+        Test according to which the dataset wil be split. Either
+        'Kolmogorov-Smirnov' or 'Mann-Whitney-U'.
+    iterations : int
+        Number of permutations to run.
+    plot : bool
+        Whether to plot the histograms of the split.
+    """
 
     if isinstance(file_name, pd.DataFrame):
         df = file_name

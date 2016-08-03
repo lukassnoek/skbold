@@ -2,14 +2,14 @@ from __future__ import division
 import numpy as np
 import nibabel as nib
 import pandas as pd
-import os
 import os.path as op
 import glob
 
 
 def check_mc_output(directory, sub_id='sub', cutoff_spike=1,
                     output_dir=None, split=None):
-    """ Check motion-correction output and generate summary statistics.
+    """
+    Check motion-correction output and generate summary statistics.
 
     Parameters
     ----------
@@ -24,11 +24,10 @@ def check_mc_output(directory, sub_id='sub', cutoff_spike=1,
 
     Returns
     -------
-    df : pandas dataframe
+    df : Dataframe
         Dataframe with mc summary statistics
     """
 
-    print(op.join(directory, '%s*' % sub_id))
     sub_dirs = glob.glob(op.join(directory, '%s*' % sub_id))
     df_list = []
 
@@ -76,7 +75,8 @@ def check_mc_output(directory, sub_id='sub', cutoff_spike=1,
 def check_nifti_header(directory, sub_id='sub', task_id='func',
                        func_id='mcst_sg', calc_zeros=False,
                        output_dir=None):
-    """ Creates dataframe with scan params to spot abnormalities.
+    """
+    Creates dataframe with scan params to spot abnormalities.
 
     Parameters
     ----------
@@ -105,8 +105,8 @@ def check_nifti_header(directory, sub_id='sub', task_id='func',
     for sub_dir in sub_dirs:
 
         task_dirs = []
-        _ = [task_dirs.extend(glob.glob(op.join(sub_dir, '*%s*' % tid))
-                              ) for tid in task_id]
+        _ = [task_dirs.extend(glob.glob(op.join(sub_dir, '*%s*' % tid)))
+             for tid in task_id]
 
         for task_dir in task_dirs:
 

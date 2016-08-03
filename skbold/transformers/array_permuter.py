@@ -10,7 +10,8 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class ArrayPermuter(BaseEstimator, TransformerMixin):
-    """ Permutes (shuffles) rows of matrix """
+    """ Permutes (shuffles) rows of matrix.
+    """
 
     def __init__(self):
         """ Initializes ArrayPermuter object. """

@@ -16,14 +16,52 @@ from joblib import Parallel, delayed
 
 
 class MvpBetween(Mvp):
-    """ Extracts and stores multivoxel pattern information across subjects.
-
+    """
+    Extracts and stores multivoxel pattern information across subjects.
     The MvpBetween class allows for the extraction and storage of multivoxel
     (MRI) pattern information across subjects. The MvpBetween class can handle
     various types of information, including functional contrasts, 3D
     (subject-specific) and 4D (subjects stacked) VBM and TBSS data,
     dual-regression data, and functional-connectivity data from resting-state
     scans (experimental).
+
+    Parameters
+    ----------
+    source : dict
+        Dictionary with types of data as keys and data-specific dictionaries
+        as values. Keys can be 'Contrast_*' (indicating a 3D functional contrast),
+        '4D_anat' (for 4D anatomical - VBM/TBSS - files), 'VBM', 'TBSS',
+        and 'dual_reg' (a subject-spedific 4D file with components as fourth
+        dimension). The dictionary passed as values must include, for each
+        data-type, a path with wildcards to the corresponding (subject-specific)
+        data-file. Other, optional, key-value pairs per data-type can be assigned,
+        including 'mask': 'path', to use data-type-specific masks.
+
+        An example:
+
+        >>> source = {}
+        >>> source['Contrast_emo'] = {'path': '~/data/sub0*/*.feat/stats/tstat1.nii.gz'}
+        >>> vbm_mask = '~/vbm_mask.nii.gz'
+        >>> source['VBM'] = {'path': '~/data/sub0*/*vbm.nii.gz', 'mask': vbm_mask}
+
+    subject_idf : str
+        Subject-identifier. This identifier is used to extract subject-names
+        from the globbed directories in the 'path' keys in source, so that
+        it is known which pattern belongs to which subject. This way,
+        MvpBetween can check which subjects contain complete data!
+    X : ndarray
+        Not necessary to pass MvpWithin, but needs to be defined as it is
+        needed in the super-constructor.
+    y : ndarray or list
+        Labels or targets corresponding to the samples in ``X``.
+    mask : str
+        Absolute path to nifti-file that will be used as a common mask.
+        Note: this will only be applied if its shape corresponds to the
+        to-be-indexed data. Otherwise, no mask is applied. Also, this mask
+        is 'overridden' if source[data_type] contains a 'mask' key, which
+        implies that this particular data-type has a custom mask.
+    mask_threshold : int or float
+        Minimum value to binarize the mask when it's probabilistic.
 
     Attributes
     ----------
@@ -51,68 +89,14 @@ class MvpBetween(Mvp):
         >>> mni_vol = np.zeros((91, 109, 91))
         >>> tmp_idx = mvp.featureset_id == 0
         >>> mni_vol[mvp.featureset_id[tmp_idx] = mvp.X[0, tmp_idx]
+
     data_shape : list of tuples
         Original (whole-brain) shape of the loaded data, per data-type.
     data_name : list of str
         List of names of data-types.
-
-    Methods
-    -------
-    create()
-        Extracts and stores the data specific in source.
-    regress_out_confounds(file_path, col_name, backend='numpy', sep='\t', index_col=0)
-        Regresses out one or multiple confounding variables from the ``X``-
-        attribute along the row-dimension (i.e. variables varying across subjects).
-    add_outcome_var(file_path, col_name, sep='\t', index_col=0, normalize=True, binarize=None, remove=None)
-        Sets an outcome variable (target, label) to the ``y``-attribute by
-        reading in a spreadsheet-like document and selecting a column. Indices are
-        cross-referenced with the ``common_subjects`` attribute.
-    split(file_path, col_name, target, sep='\t', index_col=0)
-        Splits (i.e. subsets) an MvpBetween object by some variable defined
-        in a spreadsheet column.
     """
     def __init__(self, source, subject_idf='sub0???', remove_zeros=True,
                  X=None, y=None, mask=None, mask_threshold=0, subject_list=None):
-        """ Initializes an MvpBetween object.
-
-        Parameters
-        ----------
-        source : dict
-            Dictionary with types of data as keys and data-specific dictionaries
-            as values. Keys can be 'Contrast_*' (indicating a 3D functional contrast),
-            '4D_anat' (for 4D anatomical - VBM/TBSS - files), 'VBM', 'TBSS',
-            and 'dual_reg' (a subject-spedific 4D file with components as fourth
-            dimension). The dictionary passed as values must include, for each
-            data-type, a path with wildcards to the corresponding (subject-specific)
-            data-file. Other, optional, key-value pairs per data-type can be assigned,
-            including 'mask': 'path', to use data-type-specific masks.
-
-            An example:
-
-            >>> source = {}
-            >>> source['Contrast_emo'] = {'path': '~/data/sub0*/*.feat/stats/tstat1.nii.gz'}
-            >>> vbm_mask = '~/vbm_mask.nii.gz'
-            >>> source['VBM'] = {'path': '~/data/sub0*/*vbm.nii.gz', 'mask': vbm_mask}
-
-        subject_idf : str
-            Subject-identifier. This identifier is used to extract subject-names
-            from the globbed directories in the 'path' keys in source, so that
-            it is known which pattern belongs to which subject. This way,
-            MvpBetween can check which subjects contain complete data!
-        X : ndarray
-            Not necessary to pass MvpWithin, but needs to be defined as it is
-            needed in the super-constructor.
-        y : ndarray or list
-            Labels or targets corresponding to the samples in ``X``.
-        mask : str
-            Absolute path to nifti-file that will be used as a common mask.
-            Note: this will only be applied if its shape corresponds to the
-            to-be-indexed data. Otherwise, no mask is applied. Also, this mask
-            is 'overridden' if source[data_type] contains a 'mask' key, which
-            implies that this particular data-type has a custom mask.
-        mask_threshold : int or float
-            Minimum value to binarize the mask when it's probabilistic.
-        """
 
         super(MvpBetween, self).__init__(X=X, y=y, mask=mask,
                                          mask_threshold=mask_threshold)

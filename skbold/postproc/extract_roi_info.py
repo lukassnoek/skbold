@@ -22,8 +22,8 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
                      stat_threshold=None, mask_threshold=20,
                      save_indices=True):
 
-    """ Extracts information per ROI for a given statistics-file.
-
+    """
+    Extracts information per ROI for a given statistics-file.
     Reads in a thresholded (!) statistics-file (such as a thresholded z- or
     t-stat from a FSL first-level directory) and calculates for a set of ROIs
     the number of significant voxels included and its maximum value
@@ -57,6 +57,11 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
         masks while still covering most of the entire brain.
     save_indices : bool
         Whether to save the indices (coordinates) of peaks of clusters.
+
+    Returns
+    -------
+    df : Dataframe
+        Dataframe corresponding to the written csv-file.
     """
 
     data = nib.load(statfile).get_data()

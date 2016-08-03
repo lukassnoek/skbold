@@ -11,23 +11,20 @@ from sklearn.feature_selection import f_classif
 
 
 class AnovaCutoff(BaseEstimator, TransformerMixin):
-    """ Implements ANOVA-based feature selection.
-
+    """
+    Implements ANOVA-based feature selection.
     Selects features based on an ANOVA F-test, but unlike existing
     implementations (e.g. sklearn's f_classif) this class implements a
     ANOVA-based feature selection based on a cutoff (minimal value) for the
     returned F-values.
+
+    Parameters
+    ----------
+    cutoff : float or int
+        Minimum F-value for feature to be included in the transform.
     """
 
     def __init__(self, cutoff):
-        """ Initializes AnovaCutoff transformer.
-
-        Parameters
-        ----------
-        cutoff : float or int
-            Minimum F-value for feature to be included in the transform.
-
-        """
         self.cutoff = cutoff
         self.scores_ = None
         self.idx_ = None
@@ -41,13 +38,6 @@ class AnovaCutoff(BaseEstimator, TransformerMixin):
             Numeric (float) array of shape = [n_samples, n_features]
         y : List[str] or numpy ndarray[str]
             List of ndarray with floats corresponding to labels
-
-        Returns
-        -------
-        X_new : ndarray
-            array with transformed data of shape = [n_samples, n_features]
-            in which features are voxels
-
         """
         f, _ = f_classif(X, y)
         self.scores_ = f

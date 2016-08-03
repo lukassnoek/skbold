@@ -6,14 +6,31 @@ import multiprocessing
 
 
 class FsfCrawler(object):
-    """ Class to create subject-specific .fsf FEAT files.
-
+    """
     Given an fsf-template, this crawler creates subject-specific fsf-FEAT files,
     assuming that appropriate .bfsl files exist.
+
+    Parameters
+    ----------
+    template : str
+        Absolute path to template fsf-file.
+    preproc_dir : str
+        Absolute path to directory with preprocessed files.
+    run_idf : str
+        Identifier for run to apply template fsf to.
+    output_dir : str
+        Path to desired output dir of generated batch-file.
+    subject_idf : str
+        Identifier for subject-directories.
+    func_idf : str
+        Identifier for which functional should be use.
+    n_cores : int
+        How many CPU cores should be used for the batch-analysis.
     """
+
     def __init__(self, template, preproc_dir, run_idf, output_dir=None,
-                 subject_idf='sub', func_idf='sg_ss?', n_cores=1):
-        """ Initializes FsfCrawler object. """
+                 subject_idf='sub', func_idf='.nii.gz', n_cores=1):
+
         self.template = template
         self.preproc_dir = preproc_dir
 
@@ -36,9 +53,9 @@ class FsfCrawler(object):
         self.out_fsf = []
 
     def crawl(self):
-        """ Crawls subject-directories. """
+        """ Crawls subject-directories and spits out subject-specific fsf. """
         self._read_fsf()
-        run_paths = op.join(preproc_dir, '%s*' % self.subject_idf,
+        run_paths = op.join(self.preproc_dir, '%s*' % self.subject_idf,
                             '*%s*' % self.run_idf)
         self.sub_dirs = sorted(glob(run_paths))
         fsf_paths = [self._write_fsf(sub) for sub in self.sub_dirs]
@@ -117,13 +134,3 @@ class FsfCrawler(object):
             fsfout.write("\n".join(fsf_out))
 
         return op.join(sub_dir, 'design.fsf')
-
-if __name__ == '__main__':
-
-    base_dir = '/media/lukas/piop/'
-    preproc_dir = op.join(base_dir, 'PIOP', 'PIOP_PREPROC_MRI')
-    testfile = op.join(base_dir, 'AnticipatieStage', 'FullFactorial.fsf')
-
-    fsf = FsfCrawler(testfile, preproc_dir, run_idf='piopanticipatie',
-                     subject_idf='pi', n_cores=-1)
-    fsf.crawl()

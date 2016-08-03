@@ -19,27 +19,12 @@ import nibabel as nib
 class MvpAverageResults(object):
     """ Class that averages individual subject classification performance.
 
-    Is able to load individual result-files, process/analyze them and write
-    their average/processed results as a pandas dataframe.
-
+    DEPRECATED! Should be refactored to work with MvpWithin/Between
+    structure.
     """
 
     def __init__(self, resultsdir, params=None,
                  threshold=None, cleanup=True):
-        """ Initializes MvpAverageResults object.
-
-        Parameters
-        ----------
-        directory : str
-            Absolute path to where individual classification files are located.
-        threshold : int
-            Threshold for summation-accuracy metric of voxel scores
-            (i.e. score = sum(voxel_scores > threshold)).
-        cleanup = bool
-            Whether to clean up subject-specific nifti-files
-        params : dict
-            Dictionary with analysis parameters
-        """
 
         self.resultsdir = resultsdir
         self.threshold = threshold
@@ -52,7 +37,6 @@ class MvpAverageResults(object):
         self.feature_scoring = None
 
     def average(self):
-        """ Loads and computes average performance metrics. """
 
         files = glob.glob(op.join(self.resultsdir, '*.pickle'))
 
