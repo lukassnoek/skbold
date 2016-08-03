@@ -23,8 +23,8 @@ def readme():
 setup(
     name='skbold',
     version=VERSION,
-    description='Tools to convert and transform first-level fMRI data to ' \
-                'scikit-learn compatible data-structures',
+    description='Utilities and tools for machine learning and other ' \
+                'multivoxel pattern analyses of fMRI data.',
     long_description=readme(),
     classifiers=[
         'Development Status :: 1 - Planning',
@@ -32,7 +32,7 @@ setup(
         'Operating System :: POSIX :: Linux',
         'Programming Language :: Python :: 2.7',
         'Topic :: Scientific/Engineering :: Bio-Informatics'],
-    keywords="fMRI scikit-learn RSA representational simililarity analysis",
+    keywords="fMRI scikit-learn RSA machine learning",
     url='lukassnoek.github.io/skbold',
     author='Lukas Snoek',
     author_email='lukassnoek@gmail.com',
