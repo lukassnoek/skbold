@@ -5,7 +5,7 @@ skbold - utilities and tools for machine learning on BOLD-fMRI data
     :target: https://travis-ci.org/lukassnoek/skbold
 
 .. image:: https://readthedocs.org/projects/skbold/badge/?version=develop
-    :target: http://skbold.readthedocs.io/en/develop/?badge=develop
+    :target: http://skbold.readthedocs.io/en/develop/?badge=master
     :alt: Documentation Status
 
 .. image:: https://coveralls.io/repos/github/lukassnoek/skbold/badge.svg
