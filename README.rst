@@ -17,6 +17,7 @@ skbold - utilities and tools for machine learning on BOLD-fMRI data
 .. _Steven: https://github.com/StevenM1
 .. _Joost: https://github.com/y0ast
 .. _readthedocs.org: http://skbold.readthedocs.io/
+.. _NEO-FFI: https://en.wikipedia.org/wiki/Revised_NEO_Personality_Inventory
 
 The Python package ``skbold`` offers a set of tools and utilities for
 machine learning and RSA-type analyses of functional MRI (BOLD-fMRI) data.
@@ -181,6 +182,65 @@ Now, we have an Mvp-object on which machine learning pipeline can be applied:
 
    mvp_results.compute_scores() # compute!
    mvp_results.write() # write file with metrics and niftis with feature-scores!
+
+An example workflow: MvpBetween
+-------------------------------
+Suppose you have MRI data from a large set of subjects (let's say >50),
+including (task-based) functional MRI, structural MRI (T1-weighted images,
+DTI), and behavioral data (e.g. questionnaires, behavioral tasks). Such a
+dataset would qualify for a *between subject* decoding analysis using the
+MvpBetween object. To use the MvpBetween functionality effectively, it is
+important that the data is organized sensibly. An example is given below.
+
+.. image:: img/MvpBetween_dirstructure.png
+
+In this example, each subject has three different data-sources: two FEAT-
+directories (with functional contrasts) and one VBM-file. Let's say that we'd
+like to use all of these sources of information together to predict some
+behavioral variable, neuroticism for example (as measured with e.g. the
+NEO-FFI_). The most important argument passed to MvpBetween is ``source``.
+This variable, a dictionary, should contain the data-types you want to extract
+and their corresponding paths (with wildcards at the place of subject-specific
+parts):
+
+.. code:: python
+
+   import os
+   from skbold import roidata_path
+   gm_mask = os.path.join(roidata_path, 'GrayMatter.nii.gz')
+
+   source = {}
+   source['Contrast_t1cope1'] = {'path': '~/Project_dir/sub*/Task1.feat/cope1.nii.gz'}
+   source['Contrast_t2cope2'] = {'path': '~/Project_dir/sub*/Task2.feat/cope2.nii.gz'}
+   source['VBM'] = {'path': '~/Project_dir/sub*/vbm.nii.gz', 'mask': gm_mask}
+
+Now, to initialize the MvpBetween object, we need some more info:
+
+.. code:: python
+
+   from skbold.data2mvp import MvpBetween
+
+   subject_idf='sub-0??' # this is needed to extract the subject names to
+                         # cross-reference across data-sources
+   subject_list=None     # can be a list of subject-names to include
+
+   mvp = MvpBetween(source=source, subject_idf=subject_idf, mask=None,
+                    subject_list=None)
+
+   # like with MvpWithin, you can simply call create() to start the extraction!
+   mvp.create()
+
+   # and write to disk using write()
+   mvp.write(path='~/', name='mvp_between') # saves to disk!
+
+This is basically all you need to create a MvpBetween object! It is very
+similar to MvpWithin in terms of attributes (including ``X``, ``y``, and
+various meta-data attributes). In fact, MvpResults works exactly in the same
+way for MvpWithin and MvpBetween! The major difference is that MvpResults
+keeps track of the feature-information for each feature-set separately and
+writes out a summarizing nifti file for each feature-set. Transformers also
+work the same for MvpBetween objects/data, with the exception of the
+cluster-threshold transformer.
 
 Installing skbold
 -----------------
