@@ -10,7 +10,8 @@ import glob
 import os.path as op
 import nibabel as nib
 from sklearn.base import BaseEstimator, TransformerMixin
-from ..core import convert2epi
+from skbold.core import convert2epi
+import numpy as np
 
 
 class RoiIndexer(BaseEstimator, TransformerMixin):
@@ -36,7 +37,6 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
         self.mask = mask
         self.mask_threshold = mask_threshold
         self.orig_mask = mvp.mask_index
-        self.directory = mvp.directory
         self.ref_space = mvp.ref_space
         self.idx_ = None
 
@@ -51,8 +51,6 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
             List or ndarray with floats corresponding to labels
         """
 
-        main_dir = op.dirname(self.directory)
-
         # Check if epi-mask already exists:
         if self.ref_space == 'epi':
 
@@ -61,25 +59,25 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
             else:
                 laterality = 'bilateral'
 
-            epi_dir = op.join(main_dir, 'epi_masks', laterality)
+            epi_dir = op.join('~', 'epi_masks', laterality)
 
             if not op.isdir(epi_dir):
                 os.makedirs(epi_dir)
 
             epi_name = op.basename(self.mask)[:-7]
             epi_exists = glob.glob(op.join(epi_dir, '*%s*.nii.gz' % epi_name))
+
             if epi_exists:
                 self.mask = epi_exists[0]
             else:
                 reg_dir = op.join(self.directory, 'reg')
                 self.mask = convert2epi(self.mask, reg_dir, epi_dir)[0]
-        else:
-            # TO DO: IMPLEMENT MNI MASKING
-            print('Not yet implemented!')
 
         roi_idx = nib.load(self.mask).get_data() > self.mask_threshold
-        overlap = roi_idx.astype(int).ravel() + self.orig_mask.astype(int)
-        self.idx_ = (overlap == 2)[self.orig_mask]
+        overlap = np.zeros(self.mvp.mask_shape).ravel()
+        overlap[roi_idx.ravel()] += 1
+        overlap[self.mvp.voxel_idx] += 1
+        self.idx_ = (overlap == 2)[self.mvp.voxel_idx]
 
         return self
 
