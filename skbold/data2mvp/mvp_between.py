@@ -105,6 +105,7 @@ class MvpBetween(Mvp):
         self.remove_zeros = remove_zeros
         self.subject_idf = subject_idf
         self.subject_list = subject_list
+        self.ref_space = 'mni'
         self.common_subjects = None
         self.y = None
         self.X = []
