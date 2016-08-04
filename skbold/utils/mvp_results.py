@@ -101,6 +101,9 @@ class MvpResults(object):
 
     def _update_voxel_values(self, values, idx):
 
+        if values.__class__.__name__ == 'GridSearchCV':
+            values = values.best_estimator_
+
         # If a Pipeline is given, try to extract the desired feature scores
         if values.__class__.__name__ == 'Pipeline':
 
