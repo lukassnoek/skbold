@@ -218,6 +218,11 @@ class MvpWithin(Mvp):
         mvp_data[np.isnan(mvp_data)] = 0
         self.X.append(mvp_data)
 
+        # The following attributes are added for compatibility with MvpResults
+        self.data_shape = cope_img.shape
+        self.data_name = ['MvpWithin']
+        self.featureset_id = np.ones(mvp_data.shape[1], dtype=np.uint32)
+
     def _read_design(self, design_file):
 
         if not op.isfile(design_file):
