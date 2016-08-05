@@ -4,6 +4,7 @@ from skbold.data2mvp import MvpWithin
 from skbold import transformers
 from skbold import testdata_path
 from skbold import harvardoxford_path
+from skbold.transformers import *
 
 transf_objects = inspect.getmembers(transformers, inspect.isclass)
 
@@ -21,30 +22,64 @@ mvp_within = MvpWithin(source=testfeats, read_labels=True,
 
 mvp_within.create()
 
-def test_transformers():
+def test_anova_cutoff():
+    transf = AnovaCutoff(cutoff=2.3)
+    transf.fit(mvp_within.X, mvp_within.y)
+    transf.transform(mvp_within.X)
 
+def test_roi_indexer():
 
-    to_skip = ['LabelFactorizer', 'IncrementalFeatureCombiner',
-               'MultiRoiIndexer', 'RowIndexer', 'SelectFeatureset',
-               'MultiPatternAverager']
+    transf = RoiIndexer(mvp=mvp_within, mask=op.join(harvardoxford_path,
+                                                    'bilateral',
+                                                    'Amygdala.nii.gz'))
+    transf.fit(mvp_within.X, mvp_within.y)
+    transf.transform(mvp_within.X)
 
-    for name, cls in transf_objects:
+def test_array_permuter():
 
-        if name in to_skip:
-            continue
+    transf = ArrayPermuter()
+    transf.fit(mvp_within.X, mvp_within.y)
+    transf.transform(mvp_within.X)
 
-        print('Testing %s' % name)
-        kwargs = {}
+def test_average_region_transformer():
 
-        if name == 'RoiIndexer':
-            kwargs['mask'] = op.join(harvardoxford_path, 'bilateral', 'Amygdala.nii.gz')
+    transf = AverageRegionTransformer(mvp=mvp_within, mask_type='bilateral')
+    transf = AverageRegionTransformer(mvp=mvp_within, mask_type='unilateral')
+    transf.fit(mvp_within.X, mvp_within.y)
+    transf.transform(mvp_within.X)
 
-        try:
-            kwargs['mvp'] = mvp_within
-            transf = cls(**kwargs)
-        except:
-            kwargs = {}
-            transf = cls(**kwargs)
+def test_mean_euclidean():
 
-        transf.fit(mvp_within.X, mvp_within.y)
-        transf.transform(mvp_within.X)  
+    transf = MeanEuclidean()
+    transf.fit(mvp_within.X, mvp_within.y)
+    transf.transform(mvp_within.X)
+
+def test_features_to_contrast():
+
+    transf = FeaturesToContrast()
+    transf.fit(mvp_within.X, mvp_within.y)
+    transf.transform(mvp_within.X)
+
+def test_mean_euclidean_balanced():
+
+    transf = MeanEuclideanBalanced()
+    transf.fit(mvp_within.X, mvp_within.y)
+    transf.transform(mvp_within.X)
+
+def test_cluster_threshold():
+
+    transf = ClusterThreshold(mvp=mvp_within)
+    transf.fit(mvp_within.X, mvp_within.y)
+    transf.transform(mvp_within.X)
+
+def test_pattern_averager():
+
+    transf = PatternAverager()
+    transf.fit(mvp_within.X, mvp_within.y)
+    transf.transform(mvp_within.X)
+
+def test_pca_filter():
+
+    transf = PCAfilter()
+    transf.fit(mvp_within.X, mvp_within.y)
+    transf.transform(mvp_within.X)
