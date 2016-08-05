@@ -26,7 +26,7 @@ def test_anova_cutoff():
     transf = AnovaCutoff(cutoff=2.3)
     transf.fit(mvp_within.X, mvp_within.y)
     transf.transform(mvp_within.X)
-
+"""
 def test_roi_indexer():
 
     transf = RoiIndexer(mvp=mvp_within, mask=op.join(harvardoxford_path,
@@ -35,16 +35,17 @@ def test_roi_indexer():
     transf.fit(mvp_within.X, mvp_within.y)
     transf.transform(mvp_within.X)
 
-def test_array_permuter():
-
-    transf = ArrayPermuter()
-    transf.fit(mvp_within.X, mvp_within.y)
-    transf.transform(mvp_within.X)
-
 def test_average_region_transformer():
 
     transf = AverageRegionTransformer(mvp=mvp_within, mask_type='bilateral')
     transf = AverageRegionTransformer(mvp=mvp_within, mask_type='unilateral')
+    transf.fit(mvp_within.X, mvp_within.y)
+    transf.transform(mvp_within.X)
+"""
+
+def test_array_permuter():
+
+    transf = ArrayPermuter()
     transf.fit(mvp_within.X, mvp_within.y)
     transf.transform(mvp_within.X)
 
