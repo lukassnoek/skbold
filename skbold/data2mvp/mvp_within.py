@@ -94,6 +94,8 @@ class MvpWithin(Mvp):
         self.remove_zeros = remove_zeros
         self.remove_contrast = remove_contrast
         self.remove_idx = None
+        self.directory = None
+        self.voxel_idx = None
         self.y = []
         self.contrast_labels = []
         self.X = []
@@ -118,6 +120,7 @@ class MvpWithin(Mvp):
         for src in self.source:
 
             if '.feat' in src:
+                self.directory = src
                 self._load_fsl(src)
             else:
                 msg = "Loading 'within-data' from other sources than " \
