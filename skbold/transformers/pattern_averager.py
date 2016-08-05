@@ -23,7 +23,7 @@ class PatternAverager(BaseEstimator, TransformerMixin):
 
         self.method = method
 
-    def fit(self):
+    def fit(self, X=None, y=None):
         """ Does nothing, but included to be used in sklearn's Pipeline. """
         return self
 

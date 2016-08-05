@@ -25,7 +25,8 @@ def test_transformers():
 
 
     to_skip = ['LabelFactorizer', 'IncrementalFeatureCombiner',
-               'MultiRoiIndexer', 'RowIndexer', 'SelectFeatureset']
+               'MultiRoiIndexer', 'RowIndexer', 'SelectFeatureset',
+               'MultiPatternAverager']
 
     for name, cls in transf_objects:
 
@@ -46,3 +47,4 @@ def test_transformers():
             transf = cls(**kwargs)
 
         transf.fit(mvp_within.X, mvp_within.y)
+        transf.transform(mvp_within.X)  

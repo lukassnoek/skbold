@@ -32,10 +32,11 @@ class CorrelationSelector(BaseEstimator, TransformerMixin):
         If both min_correlation and n_voxels is selected.
     """
 
-    def __init__(self, mvp, min_correlation=None, n_voxels=None, by_featureset=False):
+    def __init__(self, mvp, min_correlation=0.1, n_voxels=None,
+                 by_featureset=False):
 
-        no_choice = (min_correlation==None and n_voxels==None)
-        both_choice = (not min_correlation==None and not n_voxels==None)
+        no_choice = (min_correlation == None and n_voxels == None)
+        both_choice = (not min_correlation == None and not n_voxels == None)
         if any([no_choice, both_choice]):
             msg = 'Either choose minimal absolute correlation value, ' \
                    'or top number of voxels; do not choose both.'
@@ -94,7 +95,10 @@ class CorrelationSelector(BaseEstimator, TransformerMixin):
 
         #Apply new indices to voxel_idx and contrast_id
         self.mvp.voxel_idx = self.mvp.voxel_idx[idx]
-        self.mvp.featureset_id = self.mvp.featureset_id[idx]
+
+        if hasattr(self.mvp, 'featureset_id'):
+            self.mvp.featureset_id = self.mvp.featureset_id[idx]
+
         return self
 
     def transform(self, X, y=None):

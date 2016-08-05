@@ -24,7 +24,7 @@ class AnovaCutoff(BaseEstimator, TransformerMixin):
         Minimum F-value for feature to be included in the transform.
     """
 
-    def __init__(self, cutoff):
+    def __init__(self, cutoff=2.3):
         self.cutoff = cutoff
         self.scores_ = None
         self.idx_ = None

@@ -36,7 +36,7 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
         self.mvp = mvp
         self.mask = mask
         self.mask_threshold = mask_threshold
-        self.orig_mask = mvp.mask_index
+        self.orig_mask = mvp.voxel_idx
         self.ref_space = mvp.ref_space
         self.idx_ = None
 
@@ -59,7 +59,7 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
             else:
                 laterality = 'bilateral'
 
-            epi_dir = op.join('~', 'epi_masks', laterality)
+            epi_dir = op.join(self.mvp.directory, 'epi_masks', laterality)
 
             if not op.isdir(epi_dir):
                 os.makedirs(epi_dir)
@@ -70,14 +70,14 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
             if epi_exists:
                 self.mask = epi_exists[0]
             else:
-                reg_dir = op.join(self.directory, 'reg')
+                reg_dir = op.join(self.mvp.directory, 'reg')
                 self.mask = convert2epi(self.mask, reg_dir, epi_dir)[0]
 
         roi_idx = nib.load(self.mask).get_data() > self.mask_threshold
         overlap = np.zeros(self.mvp.mask_shape).ravel()
         overlap[roi_idx.ravel()] += 1
-        overlap[self.mvp.voxel_idx] += 1
-        self.idx_ = (overlap == 2)[self.mvp.voxel_idx]
+        overlap[self.orig_mask] += 1
+        self.idx_ = (overlap == 2)[self.orig_mask]
 
         return self
 

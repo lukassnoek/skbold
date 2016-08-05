@@ -44,7 +44,7 @@ class ClusterThreshold(BaseEstimator, TransformerMixin):
         self.transformer = transformer
         self.min_cluster_size = min_cluster_size
         self.mask_shape = mvp.mask_shape
-        self.mask_idx = mvp.mask_index
+        self.mask_idx = mvp.voxel_idx
         self.scores_ = None
         self.idx_ = None
         self.cl_idx_ = None
@@ -70,7 +70,7 @@ class ClusterThreshold(BaseEstimator, TransformerMixin):
         X_fs[self.mask_idx] = self.scores_
         X_fs = X_fs.reshape(self.mask_shape)
 
-        clustered, num_clust = label(X_fs > self.cutoff)
+        clustered, num_clust = label(X_fs > self.transformer.cutoff)
         values, counts = np.unique(clustered.ravel(), return_counts=True)
         n_clust = np.argmax(np.sort(counts)[::-1] < self.min_cluster_size)
 

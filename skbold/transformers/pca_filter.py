@@ -29,7 +29,7 @@ class PCAfilter(BaseEstimator, TransformerMixin):
         Fitted PCA object.
     """
 
-    def __init__(self, n_components=None, reject=None):
+    def __init__(self, n_components=5, reject=None):
 
         self.n_components = n_components
         self.reject = reject

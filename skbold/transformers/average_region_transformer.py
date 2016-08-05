@@ -53,7 +53,7 @@ class AverageRegionTransformer(BaseEstimator, TransformerMixin):
             print('Transforming mni-masks to epi (if necessary).')
             self.mask_list = convert2epi(mask_list, reg_dir, epi_dir)
 
-        self.orig_mask = mvp.mask_index
+        self.orig_mask = mvp.voxel_idx
         self.orig_shape = mvp.mask_shape
         self.orig_threshold = mvp.mask_threshold
         self.mask_threshold = mask_threshold
@@ -85,7 +85,9 @@ class AverageRegionTransformer(BaseEstimator, TransformerMixin):
         for i, mask in enumerate(self.mask_list):
 
             roi_idx = nib.load(mask).get_data() > self.mask_threshold
-            overlap = roi_idx.astype(int).ravel() + self.orig_mask.astype(int)
+            overlap = np.zeros(self.orig_shape).ravel()
+            overlap[roi_idx.ravel()] += 1
+            overlap[self.orig_mask] += 1
             region_av = np.mean(X[:, (overlap == 2)[self.orig_mask]], axis=1)
             X_new[:, i] = region_av
 
