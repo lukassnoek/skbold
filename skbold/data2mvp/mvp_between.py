@@ -352,9 +352,32 @@ class MvpBetween(Mvp):
         self.common_subjects = [sub for i, sub in
                                 enumerate(self.common_subjects) if idx[i]]
 
-    def write_4D(self, path=None, name=None):
-        # To do: method to write out 4D nifti(s)
-        pass
+    def write_4D(self, path=None):
+        """ Writes a 4D nifti (subs = 4th dimension) of X.
+
+        Parameters
+        ----------
+        path : str
+            Absolute path to save nifti to.
+        name : str
+            Name to be given to nifti-file.
+        """
+
+        if path is None:
+            path = os.getcwd()
+
+        for i, fid in enumerate(np.unique(self.featureset_id)):
+            s = self.data_shape[i]
+            to_write = np.zeros((np.prod(s), self.X.shape[0]))
+            X_to_write = self.X[:, self.featureset_id == fid]
+            to_write[self.voxel_idx[self.featureset_id == fid]] = X_to_write.T
+            to_write = to_write.reshape((s[0], s[1], s[2], to_write.shape[-1]))
+            img = nib.Nifti1Image(to_write, self.affine[i])
+            img.to_filename(op.join(path, self.data_name[i]) + '.nii.gz')
+
+        if self.y is not None:
+            np.savetxt(op.join(path, 'y_4D_nifti.txt'), self.y,
+                       fmt='%1.4f', delimiter='\t')
 
     def _load_mask(self, mask, threshold):
 
