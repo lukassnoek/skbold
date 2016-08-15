@@ -4,11 +4,13 @@ import os
 import os.path as op
 import numpy as np
 from sklearn.metrics import (accuracy_score, precision_score, recall_score,
-                             confusion_matrix, r2_score, mean_squared_error)
+                             confusion_matrix, r2_score, mean_squared_error,
+                             f1_score)
 import nibabel as nib
 from fnmatch import fnmatch
 import pandas as pd
 import joblib
+from scipy import stats
 
 
 class MvpResults(object):
@@ -67,7 +69,10 @@ class MvpResults(object):
         if not isinstance(self.data_shape, list):
             self.data_shape = [self.data_shape]
 
-    def write(self, to_tstat=True):
+        if not isinstance(self.data_name, list):
+            self.data_name = [self.data_name]
+
+    def write(self, feature_viz=True, confmat=True, to_tstat=True):
         """ Writes results to disk.
 
         Parameters
@@ -79,6 +84,14 @@ class MvpResults(object):
         self._check_mvp_attributes()
         values = self.voxel_values
 
+        self.df.to_csv(op.join(self.out_path, 'results.tsv'), sep='\t', index=False)
+
+        if hasattr(self, 'confmat') and confmat:
+            np.save(op.join(self.out_path, 'confmat'), self.confmat)
+
+        if not feature_viz:
+            return 0
+
         if to_tstat:
             n = values.shape[0]
             values = values.mean(axis=0) / ((values.std(axis=0)) / np.sqrt(n))
@@ -88,79 +101,87 @@ class MvpResults(object):
         for i in np.unique(self.featureset_id):
             img = np.zeros(self.data_shape[i]).ravel()
             subset = values[self.featureset_id == i]
-            img[self.voxel_idx[self.featureset_id == i]] = subset
-            img = nib.Nifti1Image(img.reshape(self.data_shape[i]),
-                                  affine=self.affine[i])
-            img.to_filename(op.join(self.out_path, self.data_name[i] + '.nii.gz'))
 
-            n_nonzero = (subset > 0).sum()
-            print('Number of non-zero voxels in %s: %i' % (self.data_name[i],
-                                                             n_nonzero))
+            if subset.ndim > 1:
+                for ii in range(subset.ndim + 1):
+                    img[self.voxel_idx[self.featureset_id == i]] = subset[:, ii]
+                    img = nib.Nifti1Image(img.reshape(self.data_shape[i]),
+                                          affine=self.affine[i])
+                    img.to_filename(op.join(self.out_path, self.data_name[i] + '_%i.nii.gz' % ii))
+                    img = np.zeros(self.data_shape[i]).ravel()
 
-        self.df.to_csv(op.join(self.out_path, 'results.tsv'), sep='\t', index=False)
-
-    def _update_voxel_values(self, values, idx):
-
-        if values.__class__.__name__ == 'GridSearchCV':
-            values = values.best_estimator_
-
-        # If a Pipeline is given, try to extract the desired feature scores
-        if values.__class__.__name__ == 'Pipeline':
-
-            match = 'coef_' if self.fs in ['coef', 'forward'] else 'scores_'
-            val = [getattr(step, match) for step in values.named_steps.values()
-                   if hasattr(step, match)]
-
-            # Check if there's an ensemble classifier!
-            ensemble = [step for step in values.named_steps.values()
-                        if hasattr(step, 'estimators_')]
-
-            if len(val) == 1:
-                val = val[0]
-            elif len(val) == 0 and len(ensemble) == 1:
-                val = np.concatenate([ens.coef_ for ens in ensemble[0]]).mean(axis=0)
-            elif len(val) == 0:
-                raise ValueError('Found no %s attribute anywhere in the ' \
-                                 'pipeline!' % match)
             else:
-                raise ValueError('Found more than one %s attribute in the ' \
-                                 'pipeline!' % match)
+                img[self.voxel_idx[self.featureset_id == i]] = subset
+                img = nib.Nifti1Image(img.reshape(self.data_shape[i]),
+                                      affine=self.affine[i])
+                img.to_filename(op.join(self.out_path,
+                                        self.data_name[i] + '.nii.gz'))
 
-            if val.size != self.X.shape[1] and idx is None:
+    def _update_voxel_values(self, pipe):
 
-                idx = [step.get_support() for step in values.named_steps.values()
-                       if callable(getattr(step, "get_support", None))]
+        if pipe.__class__.__name__ == 'GridSearchCV':
+            pipe = pipe.best_estimator_
 
-                if len(idx) == 1:
-                    idx = idx[0]
-                else:
-                    msg = 'Found more than one %s attribute in pipeline!' % match
-                    raise ValueError(msg)
+        match = 'coef_' if self.fs in ['coef', 'forward'] else 'scores_'
+        val = [getattr(step, match) for step in pipe.named_steps.values()
+               if hasattr(step, match)]
 
-            values = val
+        ensemble = [step for step in pipe.named_steps.values()
+                    if hasattr(step, 'estimators_')]
 
-        values = np.squeeze(values)
-        self.n_vox[self.iter] = values.size
+        if len(val) == 1:
+            val = val[0]
+        elif len(val) == 0 and len(ensemble) == 1:
+            val = np.concatenate([ens.coef_ for ens in ensemble[0]]).mean(axis=0)
+        elif len(val) == 0:
+            raise ValueError('Found no %s attribute anywhere in the ' \
+                             'pipeline!' % match)
+        else:
+            raise ValueError('Found more than one %s attribute in the ' \
+                             'pipeline!' % match)
 
-        if any(fnmatch(self.fs, typ) for typ in ['coef*', 'ufs']):
-            self.voxel_values[self.iter, idx] = values
+        idx = [step.get_support() for step in pipe.named_steps.values()
+               if callable(getattr(step, "get_support", None))]
 
+        if len(idx) == 0:
+            idx = [getattr(step, 'idx_') for step in pipe.named_steps.values()
+                   if hasattr(step, 'idx_')]
+
+        if len(idx) == 1:
+            idx = idx[0]
+        elif len(idx) > 1:
+            msg = 'Found more than one index in pipeline!'
+            raise ValueError(msg)
+        else:
+            msg = 'Found no index in pipeline!'
+            raise ValueError(msg)
+
+        val = np.squeeze(val)
+        if val.shape[0] != idx.sum():
+            val = val.T
+
+        self.n_vox[self.iter] = val.shape[0]
+
+        if fnmatch(self.fs, 'coef*'):
+            self.voxel_values[self.iter, idx] = val
+        elif 'ufs' in self.fs:
+            self.voxel_values[self.iter, :] = val
         elif self.fs == 'forward':
 
             # Haufe et al. (2014). On the interpretation of weight vectors of
             # linear models in multivariate neuroimaging. Neuroimage, 87, 96-110.
 
-            W = values
+            W = val
             X = self.X[:, idx]
-            s = W.T.dot(X.T)
+            s = W.dot(X.T)
 
-            if self.n_class < 3:
+            if len(np.unique(self.y)) < 3:
                 A = np.cov(X.T).dot(W)
+                self.voxel_values[self.iter, idx] = A
             else:
                 X_cov = np.cov(X.T)
-                A = X_cov.dot(W).dot(np.linalg.pinv(np.cov(s)))
-
-            self.voxel_values[self.iter, idx] = A
+                A = X_cov.dot(W.T).dot(np.linalg.pinv(np.cov(s)))
+                self.voxel_values[self.iter, idx, :] = A
 
     def save_model(self, model):
         """ Method to serialize model(s) to disk.
@@ -236,7 +257,7 @@ class MvpResultsRegression(MvpResults):
         self.n_vox = np.zeros(self.n_iter)
         self.voxel_values = np.zeros((self.n_iter, mvp.X.shape[1]))
 
-    def update(self, test_idx, y_pred, values=None, idx=None):
+    def update(self, test_idx, y_pred, pipeline=None):
         """ Updates with information from current fold.
 
         Parameters
@@ -261,8 +282,8 @@ class MvpResultsRegression(MvpResults):
         if self.verbose:
             print('R2: %f' % self.R2[i])
 
-        if values is not None:
-            self._update_voxel_values(values, idx)
+        if pipeline is not None:
+            self._update_voxel_values(pipeline)
 
         self.iter += 1
 
@@ -308,12 +329,17 @@ class MvpResultsClassification(MvpResults):
         self.accuracy = np.zeros(self.n_iter)
         self.recall = np.zeros(self.n_iter)
         self.precision = np.zeros(self.n_iter)
+        self.f1 = np.zeros(self.n_iter)
         self.n_class = np.unique(self.mvp.y).size
         self.confmat = np.zeros((self.n_iter, self.n_class, self.n_class))
         self.n_vox = np.zeros(self.n_iter)
-        self.voxel_values = np.zeros((self.n_iter, mvp.X.shape[1]))
+        self.n_class = len(np.unique(mvp.y))
+        if self.n_class < 3 or self.fs == 'ufs':
+            self.voxel_values = np.zeros((self.n_iter, mvp.X.shape[1]))
+        else:
+            self.voxel_values = np.zeros((self.n_iter, mvp.X.shape[1], self.n_class))
 
-    def update(self, test_idx, y_pred, values=None, idx=None):
+    def update(self, test_idx, y_pred, pipeline=None):
         """ Updates with information from current fold.
 
         Parameters
@@ -336,13 +362,14 @@ class MvpResultsClassification(MvpResults):
         self.accuracy[i] = accuracy_score(y_true, y_pred)
         self.precision[i] = precision_score(y_true, y_pred, average='macro')
         self.recall[i] = recall_score(y_true, y_pred, average='macro')
+        self.f1[i] = f1_score(y_true, y_pred, average='macro')
         self.confmat[i, :, :] = confusion_matrix(y_true, y_pred)
 
         if self.verbose:
             print('Accuracy: %f' % self.accuracy[i])
 
-        if values is not None:
-            self._update_voxel_values(values, idx)
+        if pipeline is not None:
+            self._update_voxel_values(pipeline)
 
         self.iter += 1
 
@@ -351,6 +378,7 @@ class MvpResultsClassification(MvpResults):
         df = pd.DataFrame({'Accuracy': self.accuracy,
                            'Precision': self.precision,
                            'Recall': self.recall,
+                           'F1': self.f1,
                            'n_voxels': self.n_vox})
 
         self.df = df
@@ -360,3 +388,41 @@ class MvpResultsClassification(MvpResults):
         print('\nConfusion matrix:')
         print(self.confmat.sum(axis=0))
         print('\n')
+
+
+class MvpAverageResults(object):
+    """
+    Averages results from MVPA analyses on, for example, different subjects
+    or different ROIs.
+
+    Parameters
+    ----------
+    out_dir : str
+        Absolute path to directory where the results will be saved.
+    """
+
+    def __init__(self, out_dir, type='classification'):
+
+        self.out_dir = out_dir
+        self.type = type
+
+    def compute(self, mvp_list, identifiers, metric='f1', h0=0.5):
+
+        identifiers = [op.basename(p).split('.')[0] for p in identifiers]
+        scores = np.array([getattr(mvp, metric) for mvp in mvp_list])
+        n = scores.shape[1]
+        df = {}
+        df['mean'] = scores.mean(axis=1)
+        df['std'] = scores.std(axis=1)
+        df['t'] = (df['mean'] - h0) / (df['std'] / np.sqrt(n - 1))
+        df['p'] = [stats.t.sf(abs(tt), n - 1) for tt in df['t']]
+        df['n_vox'] = np.array([mvp.n_vox for mvp in mvp_list]).mean(axis=1)
+        df = pd.DataFrame(df, index=identifiers)
+        df = df.sort_values(by='t', ascending=False)
+        self.df = df
+        print(self.df)
+
+    def write(self, path, name='average_results'):
+
+        fn = op.join(path, name + '.tsv')
+        self.df.to_csv(fn, sep ='\t')
