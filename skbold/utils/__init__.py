@@ -12,11 +12,11 @@ ReadTheDocs_.
 """
 
 
-from .mvp_results import MvpResults, MvpResultsClassification, MvpResultsRegression
-from .mvp_average_results import MvpAverageResults
+from .mvp_results import MvpResults, MvpResultsClassification, MvpResultsRegression, MvpAverageResults
 from .sort_numbered_list import sort_numbered_list
 from .decoding_splits import make_counterbalanced_split
 
 __all__ = ['MvpResultsClassification', 'MvpResults',
            'MvpResultsRegression', 'MvpAverageResults',
-           'sort_numbered_list', 'make_counterbalanced_split']
+           'sort_numbered_list', 'make_counterbalanced_split',
+           'MvpAverageResults']
