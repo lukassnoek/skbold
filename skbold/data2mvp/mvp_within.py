@@ -154,8 +154,8 @@ class MvpWithin(Mvp):
                 reg_dir = op.join(src, 'reg')
                 self.mask = convert2epi(self.mask, reg_dir, reg_dir)
 
-                if self.voxel_idx is None:
-                    self._update_mask_info(self.mask)
+            if self.voxel_idx is None:
+                self._update_mask_info(self.mask)
 
         if self.ref_space == 'epi':
             stat_dir = op.join(src, 'stats')
@@ -221,7 +221,7 @@ class MvpWithin(Mvp):
         # The following attributes are added for compatibility with MvpResults
         self.data_shape = cope_img.shape
         self.data_name = ['MvpWithin']
-        self.featureset_id = np.ones(mvp_data.shape[1], dtype=np.uint32)
+        self.featureset_id = np.zeros(mvp_data.shape[1], dtype=np.uint32)
 
     def _read_design(self, design_file):
 
