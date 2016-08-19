@@ -6,4 +6,5 @@ include skbold/data/ROIs/harvard_oxford/unilateral/*.nii.gz
 include skbold/data/test_data/*/design.con
 include skbold/data/test_data/*/*/*
 include skbold/data/test_data/mvp_data/*
+include img/*
 
