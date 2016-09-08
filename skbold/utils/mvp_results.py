@@ -124,6 +124,9 @@ class MvpResults(object):
         self._check_mvp_attributes()
         values = self.voxel_values
 
+        self.df.loc[len(self.df)] = [np.nan] * self.df.shape[1]
+        self.df.loc[len(self.df)] = self.df.mean()
+
         self.df.to_csv(op.join(self.out_path, 'results.tsv'), sep='\t', index=False)
 
         if hasattr(self, 'confmat') and confmat:
