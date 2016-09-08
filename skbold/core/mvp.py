@@ -13,6 +13,7 @@ import nibabel as nib
 import os.path as op
 import numpy as np
 from glob import glob
+from copy import copy
 
 
 class Mvp(object):
@@ -115,17 +116,42 @@ class Mvp(object):
         # For external use
 
         if isinstance(mask, (str, unicode)):
-            roi_idx = nib.load(mask).get_data() > threshold
-        else:
-            roi_idx = mask
+            mask = nib.load(mask).get_data() > threshold
 
-        overlap = np.zeros(self.mask_shape).ravel()
-        overlap[roi_idx.ravel()] += 1
-        overlap[self.voxel_idx] += 1
-        idx = (overlap == 2)[self.voxel_idx]
-        self.X = self.X[:, idx]
-        self.voxel_idx = self.voxel_idx[idx]
-        self.featureset_id = self.featureset_id[idx]
+        if isinstance(mask, list):
+
+            if not isinstance(threshold, list):
+                threshold = [threshold] * len(mask)
+
+            if all(isinstance(m, (str, unicode)) for m in mask):
+                mask = [nib.load(copy(m)).get_data() > threshold[i] for i, m in enumerate(mask)]
+
+            to_iterate = zip(copy(mask), copy(threshold), np.unique(self.featureset_id))
+            unpack = True
+        else:
+            to_iterate = np.unique(self.featureset_id)
+            unpack = False
+
+        indices = []
+
+        for it in to_iterate:
+
+            if unpack:
+                mask, threshold, i = it
+                print(mask.sum())
+            else:
+                i = it
+
+            tmp = np.zeros(self.data_shape[i]).ravel()
+            fidx = self.featureset_id == i
+            tmp[self.voxel_idx[fidx]] = 1
+            tmp[mask.ravel()] += 1
+            indices.append((tmp == 2)[self.voxel_idx[fidx]])
+
+        indices = np.concatenate(indices, axis=0)
+        self.X = self.X[:, indices]
+        self.featureset_id = self.featureset_id[indices]
+        self.voxel_idx = self.voxel_idx[indices]
 
     def _update_mask_info(self, mask):
         # Only for internal use
