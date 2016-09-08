@@ -111,8 +111,24 @@ class Mvp(object):
             self.X = None
             joblib.dump(self, fn + '_header.jl', compress=3)
 
+    def update_mask(self, mask, threshold=0):
+        # For external use
+
+        if isinstance(mask, (str, unicode)):
+            roi_idx = nib.load(mask).get_data() > threshold
+        else:
+            roi_idx = mask
+
+        overlap = np.zeros(self.mask_shape).ravel()
+        overlap[roi_idx.ravel()] += 1
+        overlap[self.voxel_idx] += 1
+        idx = (overlap == 2)[self.voxel_idx]
+        self.X = self.X[:, idx]
+        self.voxel_idx = self.voxel_idx[idx]
+        self.featureset_id = self.featureset_id[idx]
+
     def _update_mask_info(self, mask):
-        # Not useful anymore?
+        # Only for internal use
         mask_vol = nib.load(mask)
         mask_idx = mask_vol.get_data() > self.mask_threshold
         self.affine = mask_vol.affine
