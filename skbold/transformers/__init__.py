@@ -29,10 +29,11 @@ from .multi_pattern_averager import MultiPatternAverager
 from .correlation_selector import CorrelationSelector
 from .select_featuresets import SelectFeatureset
 from .row_indexer import RowIndexer
+from .fisher_transformer import FisherTransformer
 
 __all__ = ['PatternAverager', 'FeaturesToContrast', 'ClusterThreshold',
            'AnovaCutoff', 'ArrayPermuter', 'LabelFactorizer',
            'AverageRegionTransformer', 'MeanEuclidean', 'RoiIndexer',
            'IncrementalFeatureCombiner', 'PCAfilter', 'MeanEuclideanBalanced',
            'MultiRoiIndexer', 'MultiPatternAverager', 'CorrelationSelector',
-           'SelectFeatureset', 'RowIndexer']
+           'SelectFeatureset', 'RowIndexer', 'FisherTransformer']
