@@ -12,6 +12,7 @@ from sklearn.linear_model import LinearRegression
 from nilearn.input_data import NiftiLabelsMasker
 from nilearn.datasets import fetch_atlas_aal, fetch_atlas_harvard_oxford
 from sklearn.covariance import GraphLassoCV
+from sklearn.preprocessing import StandardScaler
 from joblib import Parallel, delayed
 
 
@@ -218,6 +219,9 @@ class MvpBetween(Mvp):
         confound = df.loc[df.index.isin(self.common_subjects), col_name]
         confound = np.array(confound)
 
+        # normalize, just to be sure
+        confound = StandardScaler().fit_transform(confound)
+
         if confound.ndim == 1:
             confound = confound[:, np.newaxis]
 
@@ -276,6 +280,7 @@ class MvpBetween(Mvp):
         # Assumes index corresponds to self.common_subjects
         df = self._read_behav_file(file_path=file_path, sep=sep,
                                    index_col=index_col)
+
         behav = df.loc[df.index.isin(self.common_subjects), col_name]
 
         if behav.empty:
@@ -339,6 +344,7 @@ class MvpBetween(Mvp):
         # Assumes index corresponds to self.common_subjects
         df = self._read_behav_file(file_path=file_path, sep=sep,
                                    index_col=index_col)
+
         behav = df.loc[df.index.isin(self.common_subjects), col_name]
 
         if behav.empty:
@@ -420,12 +426,34 @@ class MvpBetween(Mvp):
 
     def _load_4D_anat(self, args):
 
+        # some checks
         tmp = nib.load(args['path'])
-        data = tmp.get_data()
 
-        voxel_idx = np.arange(np.prod(tmp.shape[:3]))
+        if len(args['subjects']) != tmp.shape[-1]:
+            msg = ("For 4D_anat, length of 'subjects' (%i) is different from amount of "
+                   "vols in nifti (%i)." % (len(args['subjects']), tmp.shape[-1]))
+            raise ValueError(msg)
 
-        if self.mask_shape == tmp.shape[:3]:
+        args['subjects'] = check_zeropadding_and_sort(args['subjects'])
+        idx = np.array([True if sub in self.common_subjects else False for sub in args['subjects']])
+
+        if tmp.shape[-1] > 500 and 'TBSS' in self.data_name[-1]:
+            print('Loading TBSS data in two steps ...')
+            # probably too large to load at once
+            # cannot use idx, because nifti-slicing doesn't support that
+            n_half = np.round(tmp.shape[-1] / 2.0).astype(int)
+            data1 = tmp.dataobj[..., :n_half]
+            data1 = data1[:, :, :, idx[:n_half]]
+            data2 = tmp.dataobj[..., n_half:]
+            data2 = data2[:, :, :, idx[n_half:]]
+            data = np.concatenate((data1, data2), axis=-1)
+        else:
+            data = tmp.get_data()
+            data = data[:, :, :, idx]
+
+        voxel_idx = np.arange(np.prod(data.shape[:3]))
+
+        if self.mask_shape == data.shape[:3]:
             data = data[self.mask_index.reshape(tmp.shape[:3])].T
             voxel_idx = voxel_idx[self.mask_index]
         else:
@@ -570,6 +598,7 @@ def check_zeropadding_and_sort(lst):
     zero_pad = all(len(i) == length for i in lst)
 
     if zero_pad:
+
         return sorted(lst)
     else:
         convert = lambda text: int(text) if text.isdigit() else text.lower()
