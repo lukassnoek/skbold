@@ -138,7 +138,6 @@ class Mvp(object):
 
             if unpack:
                 mask, threshold, i = it
-                print(mask.sum())
             else:
                 i = it
 
