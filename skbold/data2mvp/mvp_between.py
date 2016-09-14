@@ -355,6 +355,8 @@ class MvpBetween(Mvp):
         behav.index = check_zeropadding_and_sort(behav.index.tolist())
         idx = np.array(behav) == target
         self.X = self.X[idx, :]
+        if self.y is not None:
+            self.y = self.y[idx]
         self.common_subjects = [sub for i, sub in
                                 enumerate(self.common_subjects) if idx[i]]
 
