@@ -8,5 +8,4 @@ h5py
 nipype>=0.12
 joblib>=0.9
 funcsigs
-seaborn
 nilearn
