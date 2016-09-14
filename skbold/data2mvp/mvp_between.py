@@ -294,7 +294,7 @@ class MvpBetween(Mvp):
         if remove is not None:
             self.y = self.y[self.y != remove]
             self.X[self.y != remove, :]
-            self.common_subjects = [sub for i, sub in self.common_subjects
+            self.common_subjects = [sub for i, sub in enumerate(self.common_subjects)
                                     if (self.y != remove)[i]]
 
         if normalize:
@@ -317,9 +317,15 @@ class MvpBetween(Mvp):
             self.X = self.X[idx, :]
         elif binarize['type'] == 'constant':
             y = (y > binarize['cutoff']).astype(int)
+            idx = None
         elif binarize['type'] == 'median': # median-split
             median = np.median(y)
             y = (y > median).astype(int)
+            idx = None
+
+        if idx is not None:
+            self.common_subjects = [sub for i, sub in
+                                    enumerate(self.common_subjects) if idx[i]]
 
         self.y = y
 
