@@ -4,7 +4,7 @@ import numpy as np
 import random
 from scipy.stats import ks_2samp, mannwhitneyu
 #import seaborn as sns
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import os
 
 def make_counterbalanced_split(file_name, variable_name=None, split=0.5,
