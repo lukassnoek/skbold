@@ -3,7 +3,7 @@ import os.path as op
 import numpy as np
 import random
 from scipy.stats import ks_2samp, mannwhitneyu
-import seaborn as sns
+#import seaborn as sns
 import matplotlib.pyplot as plt
 import os
 
@@ -80,6 +80,7 @@ def make_counterbalanced_split(file_name, variable_name=None, split=0.5,
     test_df = df.iloc[[item for item in range(n_inst) if item not in set(results[p_max][0])]]
     test_df.to_csv(op.join(base_dir, 'test.csv'), sep='\t', header=True)
 
+    """
     if plot:
 
         for col in train_df.columns:
@@ -90,3 +91,4 @@ def make_counterbalanced_split(file_name, variable_name=None, split=0.5,
                     % (col, split, iterations, method))
             sns_plot.savefig(op.join(base_dir, 'distributions_%s' % col))
             plt.clf()
+    """
