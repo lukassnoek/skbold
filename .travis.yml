@@ -23,7 +23,7 @@ install:
   - python setup.py install
 
 script:
-  - py.test
+  - py.test --cov skbold
 
 after_success:
     - coveralls
