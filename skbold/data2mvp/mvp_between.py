@@ -292,10 +292,11 @@ class MvpBetween(Mvp):
         self.y = np.array(behav)
 
         if remove is not None:
-            self.y = self.y[self.y != remove]
+            idx = self.y != remove
+            self.y = self.y[idx]
             self.X[self.y != remove, :]
             self.common_subjects = [sub for i, sub in enumerate(self.common_subjects)
-                                    if (self.y != remove)[i]]
+                                    if idx[i]]
 
         if normalize:
             self.y = (self.y - self.y.mean()) / self.y.std()
