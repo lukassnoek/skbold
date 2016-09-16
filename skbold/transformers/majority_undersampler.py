@@ -21,6 +21,7 @@ class MajorityUndersampler(BaseEstimator, TransformerMixin):
     def __init__(self, verbose=False):
         """ Initializes MajorityUndersampler object. """
         self.verbose = verbose
+        self.idx_ = None
 
     def fit(self, X=None, y=None):
         """ Does nothing, but included for compatiblity with scikit-learn pipelines. """
@@ -59,5 +60,7 @@ class MajorityUndersampler(BaseEstimator, TransformerMixin):
         if self.verbose:
             print('Number of samples (after resampling): %.3f' % y_ds.size)
             print('Resampled class proportion: %.3f\n' % y_ds.mean())
+
+        self.idx_ = all_idx
 
         return X[all_idx, :], y[all_idx]
