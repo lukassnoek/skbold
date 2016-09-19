@@ -2,10 +2,14 @@ language: python
 python:
   - "2.7"
 
+branches:
+  only:
+    - master
+
 env:
   - TOXENV=py27
 
-before_install:
+#before_install:
   - sudo apt-get update
   # We do this conditionally because it saves us some downloading if the
   # version is the same.
@@ -15,20 +19,20 @@ before_install:
   - hash -r
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
+  - conda install python=2.7.9
   # Useful for debugging any issues with conda
   - conda info -a
   - conda config --add channels conda-forge
   - conda install --yes python=$TRAVIS_PYTHON_VERSION pip scipy numpy pandas scikit-learn joblib nipype h5py seaborn
   - pip install nibabel nilearn pytest-cov coveralls pytest-pep8
-  - pip install tox
 
 install:
   # Replace dep1 dep2 ... with your dependencies
+  - pip install tox
   - python setup.py install
 
 script:
   - tox
-  #- py.test --cov skbold
 
 after_success:
     - coveralls
