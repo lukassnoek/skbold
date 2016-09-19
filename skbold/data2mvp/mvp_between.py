@@ -249,6 +249,12 @@ class MvpBetween(Mvp):
                 b = b[:, np.newaxis]
                 self.X[:, i] -= np.squeeze(confound.dot(b))
 
+    def _update_common_subjects(self, idx):
+        """ Updates common_subjects after indexing. """
+
+        self.common_subjects = [sub for i, sub in enumerate(self.common_subjects)
+                                if idx[i]]
+
     def add_outcome_var(self, file_path, col_name, sep='\t', index_col=0,
                         normalize=True, binarize=None, remove=None):
         """ Sets ``y`` attribute to an outcome-variable (target).
@@ -281,22 +287,23 @@ class MvpBetween(Mvp):
         df = self._read_behav_file(file_path=file_path, sep=sep,
                                    index_col=index_col)
 
-        behav = df.loc[df.index.isin(self.common_subjects), col_name]
+        df.index = check_zeropadding_and_sort(df.index.tolist())
+        common_idx = df.index.isin(self.common_subjects)
+        behav = df.loc[common_idx, col_name]
+        self._update_common_subjects(common_idx)
 
         if behav.empty:
             print('Couldnt find any data common to .common_subjects in ' \
                   ' the MvpBetween object!')
             return 0
 
-        behav.index = check_zeropadding_and_sort(behav.index.tolist())
         self.y = np.array(behav)
 
         if remove is not None:
             idx = self.y != remove
             self.y = self.y[idx]
             self.X[self.y != remove, :]
-            self.common_subjects = [sub for i, sub in enumerate(self.common_subjects)
-                                    if idx[i]]
+            self._update_common_subjects(idx)
 
         if normalize:
             self.y = (self.y - self.y.mean()) / self.y.std()
@@ -325,8 +332,7 @@ class MvpBetween(Mvp):
             idx = None
 
         if idx is not None:
-            self.common_subjects = [sub for i, sub in
-                                    enumerate(self.common_subjects) if idx[i]]
+            self._update_common_subjects(idx)
 
         self.y = y
 
