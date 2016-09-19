@@ -11,7 +11,6 @@ env:
 
 before_install:
   - sudo apt-get update
-  - sudo apt-get install openssl
   # We do this conditionally because it saves us some downloading if the
   # version is the same.
   - wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
@@ -20,20 +19,18 @@ before_install:
   - hash -r
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
-  - conda install python=2.7.9
   # Useful for debugging any issues with conda
   - conda info -a
   - conda config --add channels conda-forge
   - conda install --yes python=$TRAVIS_PYTHON_VERSION pip scipy numpy pandas scikit-learn joblib nipype h5py seaborn
-  - pip install nibabel nilearn pytest-cov coveralls pytest-pep8
+  - pip install nibabel nilearn pytest pytest-cov coveralls pytest-pep8
 
 install:
   # Replace dep1 dep2 ... with your dependencies
-  - pip install tox
-  #- python setup.py install
+  - python setup.py install
 
 script:
-  - tox
+  - py.test -v --cov skbold --cov-report term-missing skbold
 
 after_success:
     - coveralls
