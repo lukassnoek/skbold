@@ -5,9 +5,6 @@
 # License: 3 clause BSD
 
 from __future__ import print_function, division
-import os
-import glob
-import os.path as op
 import nibabel as nib
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -57,45 +54,52 @@ class MultiRoiIndexer(BaseEstimator, TransformerMixin):
         contrast_labels = self.mvp.contrast_labels
         maskdict = self.maskdict
 
-        #initialize some vars
+        # initialize some vars
         roi_idx = np.ones(0, dtype=bool)
         cluster_id = np.ones(0, dtype=np.uint8)
         total_clusters = 0
 
         for copeindex, cope in enumerate(contrast_labels):
             if self.verbose:
-                print('Cope: %s, path: %s, threshold: %f' %(cope, maskdict[cope]['path'], maskdict[cope]['threshold']))
+                print('Cope: %s, path: %s, threshold: %f' %
+                      (cope, maskdict[cope]['path'],
+                       maskdict[cope]['threshold']))
 
-            #Load mask and threshold
-            roi_idx_cope = nib.load(maskdict[cope]['path']).get_data() > maskdict[cope]['threshold']
+            # Load mask and threshold
+            roi_data = nib.load(maskdict[cope]['path']).get_data()
+            roi_idx_cope = roi_data > maskdict[cope]['threshold']
 
-            #Identify clusters: use MNI full-brain space (including white matter)
+            # Identify clusters: use MNI full-brain space (including wm)
             cluster_id_ccope, n_clusters_ccope = label(roi_idx_cope)
             cluster_id_ccope = cluster_id_ccope.ravel()
-            cluster_id_ccope[cluster_id_ccope>0] += total_clusters
+            cluster_id_ccope[cluster_id_ccope > 0] += total_clusters
 
-            #Update total number of clusters
-            total_clusters = total_clusters + n_clusters_ccope
+            # Update total number of clusters
+            total_clusters += n_clusters_ccope
 
-            #Apply original mask (e.g., gray matter) to new mask (e.g., ROI).
-            overlap = roi_idx_cope.astype(int).ravel() + self.orig_mask.astype(int)
-            roi_idx_thiscope = (overlap==2)[self.orig_mask]
+            # Apply original mask (e.g., gray matter) to new mask (e.g., ROI).
+            roi_idx_cope = roi_idx_cope.astype(int).ravel()
+            overlap = roi_idx_cope + self.orig_mask.astype(int)
+            roi_idx_thiscope = (overlap == 2)[self.orig_mask]
 
-            #Apply original mask to cluster_id_ccope (e.g., only index gray matter)
+            # Apply original mask to cluster_id_ccope (e.g., only index gm)
             cluster_id_ccope = cluster_id_ccope[self.orig_mask]
 
-            #Use new mask to index in cluster labels (e.g., only index ROI)
+            # Use new mask to index in cluster labels (e.g., only index ROI)
             cluster_id_ccope = cluster_id_ccope[roi_idx_thiscope]
 
-            #Concatenate old and new roi_idx and cluster_labels
+            # Concatenate old and new roi_idx and cluster_labels
             roi_idx = np.hstack([roi_idx, roi_idx_thiscope])
             cluster_id = np.hstack([cluster_id, cluster_id_ccope])
             if self.verbose:
-                print('Current cope loaded, size: %f' %(roi_idx_thiscope.size))
+                print('Current cope loaded, size: %f' %
+                      roi_idx_thiscope.size)
                 print('Cluster idx in current cope: ')
                 print(cluster_id)
-                print('\nSize of total roi_idx: %f' %(roi_idx[roi_idx==True]).size)
-                print('Size of total cluster_id: %f' %cluster_id.size)
+                print('\nSize of total roi_idx: %f' %
+                      (roi_idx[roi_idx]).size)
+                print('Size of total cluster_id: %f' %
+                      cluster_id.size)
 
         self.idx_ = roi_idx
         self.mvp.cluster_id = cluster_id

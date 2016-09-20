@@ -6,7 +6,8 @@
 # License: 3 clause BSD
 
 import numpy as np
-from sklearn.feature_selection.univariate_selection import _BaseFilter, check_is_fitted
+from sklearn.feature_selection.univariate_selection import (_BaseFilter,
+                                                            check_is_fitted)
 from sklearn.feature_selection import f_classif
 
 
@@ -18,8 +19,8 @@ class SelectAboveCutoff(_BaseFilter):
     cutoff : int/float
         Cutoff for feature-scores to be selected.
     score_func : callable
-        Function that takes a 2D array X (samples x features) and returns a score
-        reflecting a univariate difference (higher is better).
+        Function that takes a 2D array X (samples x features) and returns a
+        score reflecting a univariate difference (higher is better).
     """
 
     def __init__(self, cutoff, score_func=f_classif):

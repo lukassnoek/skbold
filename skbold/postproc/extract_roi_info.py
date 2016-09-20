@@ -14,7 +14,8 @@ import pandas as pd
 from scipy.ndimage.measurements import label
 
 import skbold
-roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs', 'harvard_oxford')
+roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs',
+                  'harvard_oxford')
 
 
 def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
@@ -114,7 +115,8 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
             # This is purely for formatting issues
             if i == 0:
                 stat = op.basename(statfile).split('.')[0].split('_')[-1]
-                c = op.basename(op.dirname(statfile)).split('.')[0] + '_' + stat
+                c = op.basename(op.dirname(statfile)).split('.')[0]
+                c += '_%s' % stat
             else:
                 c = ''
 
@@ -148,7 +150,7 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
                     mx = 0
                     X, Y, Z = 0, 0, 0
 
-                to_append = {'Contrast': '', 'cluster': (i + 1+ 0.1),
+                to_append = {'Contrast': '', 'cluster': (i + 1 + 0.1),
                              'k cluster': '', 'max cluster': '', 'x': '',
                              'y': '', 'z': '', 'Region': mask_name,
                              'k region': k, 'max region': mx}
@@ -164,12 +166,13 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
                         'y', 'z', 'Region', 'k region', 'max region']
         df = df[cols_ordered]
         df = df[df['k region'] > min_clust_size]
-        df = df.sort_values(by=['cluster', 'k region'], ascending=[True, False])
+        df = df.sort_values(by=['cluster', 'k region'],
+                            ascending=[True, False])
         df['cluster'] = ['' if val % 1 != 0 else val for val in df['cluster']]
 
-    else: # If not extracting info per cluster, but wholebrain
+    else:  # If not extracting info per cluster, but wholebrain
         print('Analyzing %s' % statfile)
-        col_names = ['roi', 'k', 'max', 'mean', 'sd', 'X','Y', 'Z']
+        col_names = ['roi', 'k', 'max', 'mean', 'sd', 'X', 'Y', 'Z']
         results = pd.DataFrame(columns=col_names)
 
         # Only loop over masks

@@ -1,19 +1,22 @@
 import os
 import os.path as op
 import pandas as pd
-from fnmatch import fnmatch
 import numpy as np
 import nibabel as nib
-from skbold.core import Mvp
-from glob import glob
 import scipy.stats as stat
 import re
+import json
+import warnings
+from glob import glob
+from fnmatch import fnmatch
+from skbold.core import Mvp
 from sklearn.linear_model import LinearRegression
 from nilearn.input_data import NiftiLabelsMasker
 from nilearn.datasets import fetch_atlas_aal, fetch_atlas_harvard_oxford
 from sklearn.covariance import GraphLassoCV
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 from joblib import Parallel, delayed
+from ..transformers import MajorityUndersampler
 
 
 class MvpBetween(Mvp):
@@ -117,6 +120,7 @@ class MvpBetween(Mvp):
         self.data_shape = [] # This could be an array
         self.mask_shape = None
         self.data_name = []
+        self.binarize_params = None
 
         if not isinstance(source, dict):
             msg = "Source must be a dictionary with type (e.g. 'VBM') " \
@@ -249,6 +253,17 @@ class MvpBetween(Mvp):
                 b = b[:, np.newaxis]
                 self.X[:, i] -= np.squeeze(confound.dot(b))
 
+    def _undersample_majority(self):
+
+        if len(np.unique(self.y)) > 5:
+            msg = ("Found >5 classes and attempting to perform majority undersampling -"
+                   " are you sure the data is categorical?")
+            warnings.warn(msg)
+
+        self.y = LabelEncoder().fit(self.y).transform(self.y)
+        mus = MajorityUndersampler(verbose=True)
+        self.X, self.y = mus.fit().transform(self.X, self.y)
+
     def _update_common_subjects(self, idx):
         """ Updates common_subjects after indexing. """
 
@@ -256,7 +271,9 @@ class MvpBetween(Mvp):
                                 if idx[i]]
 
     def add_outcome_var(self, file_path, col_name, sep='\t', index_col=0,
-                        normalize=True, binarize=None, remove=None):
+                        normalize=True, binarize=None, remove=None,
+                        save_binarization_params=None,
+                        ensure_balanced=False):
         """ Sets ``y`` attribute to an outcome-variable (target).
 
         Parameters
@@ -279,8 +296,14 @@ class MvpBetween(Mvp):
             >>> binarize = {'type': 'zscore', 'std': 1} # binarizes according to x stdevs above and below mean
             >>> binarize = {'type': 'constant', 'cutoff': 10} # binarizes according to above and below constant
             >>> binarize = {'type': 'median'} # binarizes according to median-split.
+
+        save_binarization_params : str
+            If not none, it refers to the path to save the binarization params to.
         remove : int or float or str
             Removes instances in which y == remove from MvpBetween object.
+        ensure_balanced : bool
+            Whether to ensure balanced classes (if True, done by undersampling the
+            majority class).
         """
 
         # Assumes index corresponds to self.common_subjects
@@ -293,9 +316,8 @@ class MvpBetween(Mvp):
         self._update_common_subjects(common_idx)
 
         if behav.empty:
-            print('Couldnt find any data common to .common_subjects in ' \
-                  ' the MvpBetween object!')
-            return 0
+            msg = 'Couldnt find any data common to .common_subjects in the MvpBetween object!'
+            raise ValueError(msg)
 
         self.y = np.array(behav)
 
@@ -309,32 +331,55 @@ class MvpBetween(Mvp):
             self.y = (self.y - self.y.mean()) / self.y.std()
 
         if binarize is None:
+
+            if ensure_balanced:
+                self._undersample_majority()
             return 0
         else:
             y = self.y
 
         if binarize['type'] == 'percentile':
-            y = np.array([stat.percentileofscore(y, a, 'rank') for a in y])
-            idx = (y < binarize['low']) | (y > binarize['high'])
-            y = (y[idx] > 50).astype(int)
-            self.X = self.X[idx, :]
+            y_rank = np.array([stat.percentileofscore(y, a, 'rank') for a in y])
+            idx = (y_rank < binarize['low']) | (y_rank > binarize['high'])
+            self.binarize_params = {'type': 'percentile',
+                                    'low': stat.scoreatpercentile(y, binarize['low']),
+                                    'high': stat.scoreatpercentile(y, binarize['high'])}
+            y = (y_rank[idx] > 50).astype(int)
+
         elif binarize['type'] == 'zscore':
-            y = (y - y.mean()) / y.std() # just to be sure
-            idx = np.abs(y) > binarize['std']
-            y = (y[idx] > 0).astype(int)
-            self.X = self.X[idx, :]
+            y_norm = (y - y.mean()) / y.std() # just to be sure
+            idx = np.abs(y_norm) > binarize['std']
+            self.binarize_params = {'type': binarize['type'],
+                                    'mean': y.mean(),
+                                    'std': y.std(),
+                                    'n_std': binarize['std']}
+            y = (y_norm[idx] > 0).astype(int)
+
         elif binarize['type'] == 'constant':
             y = (y > binarize['cutoff']).astype(int)
             idx = None
+            self.binarize_params = {'type': binarize['type'],
+                                    'cutoff': binarize['cutoff']}
         elif binarize['type'] == 'median': # median-split
             median = np.median(y)
             y = (y > median).astype(int)
             idx = None
+            self.binarize_params = {'type': binarize['type'],
+                                    'median': median}
+
+        if save_binarization_params is not None:
+
+            with open(op.join(save_binarization_params, 'binarization_params.json'), 'w') as fout:
+                json.dump(self.binarize_params, fout)
+
+        self.y = y
 
         if idx is not None:
             self._update_common_subjects(idx)
+            self.X = self.X[idx, :]
 
-        self.y = y
+        if ensure_balanced:
+           self._undersample_majority()
 
     def split(self, file_path, col_name, target, sep='\t', index_col=0):
         """ Splits an MvpBetween object based on some external index.
@@ -358,7 +403,9 @@ class MvpBetween(Mvp):
         df = self._read_behav_file(file_path=file_path, sep=sep,
                                    index_col=index_col)
 
-        behav = df.loc[df.index.isin(self.common_subjects), col_name]
+        common_idx = df.index.isin(self.common_subjects)
+        behav = df.loc[common_idx, col_name]
+        self._update_common_subjects(common_idx)
 
         if behav.empty:
             print('Couldnt find any data common to .common_subjects in ' \
@@ -374,10 +421,12 @@ class MvpBetween(Mvp):
             print("Splitting mvp with target '%s', found %i subjects." % (str(target), idx.sum()))
 
         self.X = self.X[idx, :]
-        if self.y is not None or len(self.y) > self.X.shape[0]:
-            self.y = self.y[idx]
-        self.common_subjects = [sub for i, sub in
-                                enumerate(self.common_subjects) if idx[i]]
+        if self.y is not None:
+            if len(self.y) > self.X.shape[0]:
+                self.y = self.y[idx]
+
+                self.common_subjects = [sub for i, sub in
+                                        enumerate(self.common_subjects) if idx[i]]
 
     def write_4D(self, path=None):
         """ Writes a 4D nifti (subs = 4th dimension) of X.

@@ -11,10 +11,11 @@ import nibabel as nib
 import os.path as op
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
-from skbold.core import convert2mni, convert2epi
+from skbold.core import convert2epi
 
 import skbold
-roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs', 'harvard_oxford')
+roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs',
+                  'harvard_oxford')
 
 # To do: allow for functionality without mvp structure!
 
@@ -48,7 +49,8 @@ class AverageRegionTransformer(BaseEstimator, TransformerMixin):
         # If patterns are in epi-space, transform mni-masks to
         # subject specific epi-space if it doesn't exist already
         if mvp.ref_space == 'epi':
-            epi_dir = op.join(op.dirname(mvp.directory), 'epi_masks', mask_type)
+            epi_dir = op.join(op.dirname(mvp.directory), 'epi_masks',
+                              mask_type)
             reg_dir = op.join(mvp.directory, 'reg')
             print('Transforming mni-masks to epi (if necessary).')
             self.mask_list = convert2epi(mask_list, reg_dir, epi_dir)
@@ -58,7 +60,8 @@ class AverageRegionTransformer(BaseEstimator, TransformerMixin):
         self.orig_threshold = mvp.mask_threshold
         self.mask_threshold = mask_threshold
 
-        _ = [os.remove(f) for f in glob.glob(op.join(os.getcwd(), '*flirt.mat'))]
+        _ = [os.remove(f) for f in
+             glob.glob(op.join(os.getcwd(), '*flirt.mat'))]
 
     def fit(self, X=None, y=None):
         """ Does nothing, but included to be used in sklearn's Pipeline. """

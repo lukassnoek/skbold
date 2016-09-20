@@ -41,9 +41,9 @@ class MvpResults(object):
     References
     ----------
     .. [1] Stelzer, J., Buschmann, T., Lohmann, G., Margulies, D.S., Trampel,
-     R., and Turner, R. (2014). Prioritizing spatial accuracy in high-resolution
-     fMRI data using multivariate feature weight mapping. Front. Neurosci.,
-     http://dx.doi.org/10.3389/fnins.2014.00066.
+     R., and Turner, R. (2014). Prioritizing spatial accuracy in
+     high-resolution fMRI data using multivariate feature weight mapping.
+     Front. Neurosci., http://dx.doi.org/10.3389/fnins.2014.00066.
 
     .. [2] Haufe, S., Meineck, F., Gorger, K., Dahne, S., Haynes, J-D.,
     Blankertz, B., and Biessmann, F. et al. (2014). On the interpretation of
@@ -127,7 +127,8 @@ class MvpResults(object):
         self.df.loc[len(self.df)] = [np.nan] * self.df.shape[1]
         self.df.loc[len(self.df)] = self.df.mean()
 
-        self.df.to_csv(op.join(self.out_path, 'results.tsv'), sep='\t', index=False)
+        self.df.to_csv(op.join(self.out_path, 'results.tsv'),
+                       sep='\t', index=False)
 
         if hasattr(self, 'confmat') and confmat:
             np.save(op.join(self.out_path, 'confmat'), self.confmat)
@@ -172,10 +173,13 @@ class MvpResults(object):
 
             if subset.ndim > 1:
                 for ii in range(subset.ndim + 1):
-                    img[self.voxel_idx[self.featureset_id == i]] = subset[:, ii]
+                    tmp_idx = self.voxel_idx[self.featureset_id == i]
+                    img[tmp_idx] = subset[:, ii]
                     img = nib.Nifti1Image(img.reshape(self.data_shape[i]),
                                           affine=self.affine[i])
-                    img.to_filename(op.join(self.out_path, self.data_name[i] + '_%i.nii.gz' % ii))
+                    img.to_filename(op.join(self.out_path,
+                                            self.data_name[i] +
+                                            '_%i.nii.gz' % ii))
                     img = np.zeros(self.data_shape[i]).ravel()
 
             else:
@@ -214,10 +218,10 @@ class MvpResults(object):
             val = np.concatenate([ens.coef_ for ens in ensemble[0]]).mean(
                 axis=0)
         elif len(val) == 0:
-            raise ValueError('Found no %s attribute anywhere in the ' \
+            raise ValueError('Found no %s attribute anywhere in the '
                              'pipeline!' % match)
         else:
-            raise ValueError('Found more than one %s attribute in the ' \
+            raise ValueError('Found more than one %s attribute in the '
                              'pipeline!' % match)
 
         idx = [step.get_support() for step in pipe.named_steps.values()
@@ -303,10 +307,11 @@ class MvpResultsRegression(MvpResults):
     def __init__(self, mvp, n_iter, feature_scoring='', verbose=False,
                  out_path=None):
 
-        super(MvpResultsRegression, self).__init__(mvp=mvp, n_iter=n_iter,
-                                                   feature_scoring=feature_scoring,
-                                                   verbose=verbose,
-                                                   out_path=out_path)
+        super(MvpResultsRegression,
+              self).__init__(mvp=mvp, n_iter=n_iter,
+                             feature_scoring=feature_scoring,
+                             verbose=verbose,
+                             out_path=out_path)
 
         self.R2 = np.zeros(self.n_iter)
         self.mse = np.zeros(self.n_iter)
@@ -377,10 +382,10 @@ class MvpResultsClassification(MvpResults):
     def __init__(self, mvp, n_iter, feature_scoring='', verbose=False,
                  out_path=None):
 
-        super(MvpResultsClassification, self).__init__(mvp=mvp, n_iter=n_iter,
-                                                       feature_scoring=feature_scoring,
-                                                       verbose=verbose,
-                                                       out_path=out_path)
+        super(MvpResultsClassification,
+              self).__init__(mvp=mvp, n_iter=n_iter,
+                             feature_scoring=feature_scoring,
+                             verbose=verbose, out_path=out_path)
 
         self.accuracy = np.zeros(self.n_iter)
         self.recall = np.zeros(self.n_iter)
@@ -393,7 +398,8 @@ class MvpResultsClassification(MvpResults):
         if self.n_class < 3 or self.fs == 'ufs':
             self.voxel_values = np.zeros((self.n_iter, mvp.X.shape[1]))
         else:
-            self.voxel_values = np.zeros((self.n_iter, mvp.X.shape[1], self.n_class))
+            self.voxel_values = np.zeros((self.n_iter, mvp.X.shape[1],
+                                          self.n_class))
 
     def update(self, test_idx, y_pred, pipeline=None):
         """ Updates with information from current fold.
@@ -481,4 +487,4 @@ class MvpAverageResults(object):
     def write(self, path, name='average_results'):
 
         fn = op.join(path, name + '.tsv')
-        self.df.to_csv(fn, sep ='\t')
+        self.df.to_csv(fn, sep='\t')

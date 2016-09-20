@@ -12,7 +12,8 @@ ReadTheDocs_.
 """
 
 
-from .mvp_results import MvpResults, MvpResultsClassification, MvpResultsRegression, MvpAverageResults
+from .mvp_results import (MvpResults, MvpResultsClassification,
+                          MvpResultsRegression, MvpAverageResults)
 from .sort_numbered_list import sort_numbered_list
 from .decoding_splits import make_counterbalanced_split
 
