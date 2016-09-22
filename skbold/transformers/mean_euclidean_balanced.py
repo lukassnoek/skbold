@@ -9,11 +9,10 @@ from __future__ import print_function, division
 import warnings
 from mean_euclidean import MeanEuclidean
 import numpy as np
-from sklearn.base import BaseEstimator, TransformerMixin
-from itertools import combinations
 
 warnings.filterwarnings('ignore', category=UserWarning)
 warnings.filterwarnings('ignore', category=DeprecationWarning)
+
 
 class MeanEuclideanBalanced(MeanEuclidean):
     """
@@ -37,8 +36,8 @@ class MeanEuclideanBalanced(MeanEuclidean):
     -----
     The fit() method is documented in the MeanEuclidean documentation.
     """
-
-    def __init__(self, cutoff=2.3, b_cutoff=100, normalize=False, fisher=False):
+    def __init__(self, cutoff=2.3, percentage=False, normalize=False,
+                 fisher=False, b_cutoff=10):
 
         super(MeanEuclideanBalanced, self).__init__(cutoff, normalize, fisher)
         self.b_cutoff = b_cutoff

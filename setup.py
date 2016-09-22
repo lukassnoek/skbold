@@ -1,5 +1,5 @@
-from setuptools import setup, find_packages
 import skbold
+from setuptools import setup, find_packages
 
 REQUIREMENTS = [
     'scipy>=0.17',

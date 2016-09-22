@@ -47,9 +47,11 @@ class MultiPatternAverager(BaseEstimator, TransformerMixin):
 
         for copeindex, cope in enumerate(self.mvp.contrast_labels):
             if self.method == 'mean':
-                current_cope_stat = X[:,self.mvp.contrast_id==copeindex].mean(1)
+                X_tmp = X[:, self.mvp.contrast_id == copeindex].mean(1)
+                current_cope_stat = X_tmp
             elif self.method == 'median':
-                current_cope_stat = X[:,self.mvp.contrast_id==copeindex].median(1)
+                X_tmp = X[:, self.mvp.contrast_id == copeindex].median(1)
+                current_cope_stat = X_tmp
             else:
                 raise ValueError('Invalid method: choose mean or median.')
             X_new[:, copeindex] = current_cope_stat

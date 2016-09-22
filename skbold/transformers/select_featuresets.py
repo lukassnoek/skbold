@@ -11,7 +11,9 @@ class SelectFeatureset(BaseEstimator, TransformerMixin):
     Parameters
     ----------
     mvp : mvp-object
-    featureset_idx : ???
+        Used to extract meta-data.
+    featureset_idx : ndarray
+        Array with indices which map to unique feature-set voxels.
     """
 
     def __init__(self, mvp, featureset_idx):
@@ -28,7 +30,7 @@ class SelectFeatureset(BaseEstimator, TransformerMixin):
         mvp = self.mvp
 
         col_idx = np.in1d(mvp.featureset_id, self.featureset_idx)
-        mvp.X = mvp.X[:,col_idx]
+        mvp.X = mvp.X[:, col_idx]
         mvp.voxel_idx = mvp.voxel_idx[col_idx]
         mvp.featureset_id = mvp.featureset_id[col_idx]
 

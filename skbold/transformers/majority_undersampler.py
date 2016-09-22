@@ -24,7 +24,7 @@ class MajorityUndersampler(BaseEstimator, TransformerMixin):
         self.idx_ = None
 
     def fit(self, X=None, y=None):
-        """ Does nothing, but included for compatiblity with scikit-learn pipelines. """
+        """ Does nothing, but included for scikit-learn pipelines. """
         return self
 
     def transform(self, X, y):
@@ -50,7 +50,9 @@ class MajorityUndersampler(BaseEstimator, TransformerMixin):
             if bins[i] != np.min(bins):
                 y_idx = y == i
                 tmp_idx = np.zeros(y_idx.sum(), dtype=bool)
-                tmp_idx[np.random.choice(np.arange(y_idx.sum()), np.min(bins), replace=False)] = True
+                idx_idx = np.random.choice(np.arange(y_idx.sum()),
+                                           np.min(bins), replace=False)
+                tmp_idx[idx_idx] = True
                 all_idx[y_idx] = tmp_idx
             else:
                 all_idx[y == i] = True

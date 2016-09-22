@@ -33,7 +33,8 @@ class MeanEuclidean(BaseEstimator, TransformerMixin):
         distance.
     """
 
-    def __init__(self, cutoff=2.3, percentage=False, normalize=False, fisher=False):
+    def __init__(self, cutoff=2.3, percentage=False, normalize=False,
+                 fisher=False):
         self.cutoff = cutoff
         self.percentage = percentage
         self.normalize = normalize

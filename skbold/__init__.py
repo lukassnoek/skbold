@@ -11,6 +11,7 @@ import exp_model
 import postproc
 import transformers
 import utils
+import feature_selection
 
 from os.path import dirname, join
 
@@ -20,4 +21,5 @@ roidata_path = join(data_path, 'ROIs')
 harvardoxford_path = join(roidata_path, 'harvard_oxford')
 
 __all__ = ['classifiers', 'core', 'data', 'data2mvp', 'exp_model',
-           'postproc', 'transformers', 'utils', 'harvardoxford_path']
+           'postproc', 'transformers', 'utils', 'harvardoxford_path',
+           'feature_selection']

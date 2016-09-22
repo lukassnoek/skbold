@@ -79,4 +79,4 @@ class PCAfilter(BaseEstimator, TransformerMixin):
         else:
             X_rec = pca.inverse_transform(X_pca)
 
-        return(X_rec)
+        return X_rec

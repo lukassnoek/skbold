@@ -35,11 +35,11 @@ class CorrelationSelector(BaseEstimator, TransformerMixin):
     def __init__(self, mvp, min_correlation=0.1, n_voxels=None,
                  by_featureset=False):
 
-        no_choice = (min_correlation == None and n_voxels == None)
-        both_choice = (not min_correlation == None and not n_voxels == None)
+        no_choice = (min_correlation is None and n_voxels is None)
+        both_choice = (min_correlation is not None and n_voxels is not None)
         if any([no_choice, both_choice]):
-            msg = 'Either choose minimal absolute correlation value, ' \
-                   'or top number of voxels; do not choose both.'
+            msg = ('Either choose minimal absolute correlation value, '
+                   'or top number of voxels; do not choose both.')
             ValueError(msg)
 
         self.min_correlation = min_correlation
@@ -66,14 +66,16 @@ class CorrelationSelector(BaseEstimator, TransformerMixin):
 
                 for f_set in np.unique(self.mvp.featureset_id):
                     correlations = np.apply_along_axis(pearsonr, 0, X, y)
-                    r_values = correlations[0,:]
-                    p_values = correlations[1,:]
+                    r_values = correlations[0, :]
+                    p_values = correlations[1, :]
 
-                    if not self.min_correlation==None:
-                        idx_this_fset = np.abs(r_values) >= self.min_correlation
-                    if not self.n_voxels==None:
+                    if self.min_correlation is not None:
+                        r_tmp = np.abs(r_values)
+                        idx_this_fset = r_tmp >= self.min_correlation
+                    if self.n_voxels is not None:
                         r_values_abs = np.abs(r_values)
-                        idvals = np.argpartition(r_values_abs, -self.n_voxels)[-self.n_voxels:]
+                        idvals = np.argpartition(r_values_abs, -self.n_voxels)
+                        idvals = idvals[-self.n_voxels:]
                         idx_this_fset = np.zeros(X.shape[1], dtype=bool)
                         idx_this_fset[idvals] = True
                 idx = np.concatenate([idx, idx_this_fset])
@@ -83,17 +85,18 @@ class CorrelationSelector(BaseEstimator, TransformerMixin):
                 r_values = correlations[0, :]
                 p_values = correlations[1, :]
 
-                if not self.min_correlation == None:
+                if self.min_correlation is not None:
                     idx = np.abs(r_values) >= self.min_correlation
-                if not self.n_voxels == None:
+                if self.n_voxels is not None:
                     r_values_abs = np.abs(r_values)
-                    idvals = np.argpartition(r_values_abs, -self.n_voxels)[-self.n_voxels:]
+                    idvals = np.argpartition(r_values_abs, -self.n_voxels)
+                    idvals = idvals[-self.n_voxels:]
                     idx = np.zeros(X.shape[1], dtype=bool)
                     idx[idvals] = True
 
         self.idx_ = idx
 
-        #Apply new indices to voxel_idx and contrast_id
+        # Apply new indices to voxel_idx and contrast_id
         self.mvp.voxel_idx = self.mvp.voxel_idx[idx]
 
         if hasattr(self.mvp, 'featureset_id'):
