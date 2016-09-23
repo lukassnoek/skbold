@@ -159,8 +159,12 @@ if __name__ == '__main__':
     train_size =  len(subs)/2
     test_size = len(subs)-train_size
 
-    crosval = CrossvalSplitter(file_path = tsv_path, iterations=1000, train_size=train_size, test_size=test_size, include=subs, categorical={'Sekse': [1, 2]}, continuous=['Lftd', 'pashlerH'], ignore=9999)
-    (train_idx, test_idx) = crosval.split(verbose=False)
+    crosval = CrossvalSplitter(file_path = tsv_path, iterations=1000, train_size=train_size, test_size=test_size, include=subs,
+                               categorical={'Sekse': [1, 2],
+                                            'Opl_tot': [1, 2],
+                                            'Opl_rcht_tot': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]},
+                                continuous=['Lftd', 'pashlerH', 'ZRaven_tot'], ignore=9999)
+    (train_idx, test_idx) = crosval.split(verbose=True)
 
     crosval.save(output_path)
     crosval.plot_results()
