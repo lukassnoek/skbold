@@ -15,11 +15,11 @@ class CrossvalSplitter(object):
 
         if len(categorical)>0:
             for cat in categorical.keys():
-                data.loc[data[cat] == ignore] = np.nan  # ignore values, such as 9999
+                data.loc[data[cat] == ignore, cat] = np.nan  # ignore values, such as 9999
 
         if len(continuous)>0:
             for cont in continuous:
-                data.loc[data[cont] == ignore] = np.nan  # ignore values, such as 9999
+                data.loc[data[cont] == ignore, cont] = np.nan  # ignore values, such as 9999
 
         self.data = data
         self.train_size = train_size
