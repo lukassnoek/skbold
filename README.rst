@@ -11,6 +11,9 @@ skbold - utilities and tools for machine learning on BOLD-fMRI data
 .. image:: https://coveralls.io/repos/github/lukassnoek/skbold/badge.svg?branch=master
     :target: https://coveralls.io/github/lukassnoek/skbold?branch=master
 
+.. image:: https://img.shields.io/badge/code%20style-pep8-orange.svg
+    :target: https://www.python.org/dev/peps/pep-0008
+
 .. _scikit-learn: http://scikit-learn.org/
 .. _FSL: http://fsl.fmrib.ox.ac.uk/fsl
 .. _mlxtend: https://github.com/rasbt/mlxtend
