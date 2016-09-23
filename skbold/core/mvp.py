@@ -47,8 +47,8 @@ class Mvp(object):
         Affine corresponding to nifti-mask.
     voxel_idx : ndarray
         Array with integer-indices indicating which voxels are used in the
-        patterns relative to whole-brain space. In other words, it allows to map
-        back the patterns to a whole-brain orientation.
+        patterns relative to whole-brain space. In other words, it allows to
+        map back the patterns to a whole-brain orientation.
     X : ndarray
         The actual patterns (2D: samples X features)
     y : list or ndarray
@@ -124,9 +124,11 @@ class Mvp(object):
                 threshold = [threshold] * len(mask)
 
             if all(isinstance(m, (str, unicode)) for m in mask):
-                mask = [nib.load(copy(m)).get_data() > threshold[i] for i, m in enumerate(mask)]
+                mask = [nib.load(copy(m)).get_data() > threshold[i]
+                        for i, m in enumerate(mask)]
 
-            to_iterate = zip(copy(mask), copy(threshold), np.unique(self.featureset_id))
+            to_iterate = zip(copy(mask), copy(threshold),
+                             np.unique(self.featureset_id))
             unpack = True
         else:
             to_iterate = np.unique(self.featureset_id)

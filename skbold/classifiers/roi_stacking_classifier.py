@@ -13,6 +13,7 @@ import numpy as np
 import os
 import os.path as op
 import joblib
+import skbold
 from joblib import Parallel, delayed
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.svm import SVC
@@ -29,9 +30,9 @@ import warnings
 from skbold.core import convert2epi
 
 warnings.filterwarnings('ignore')  # hack to turn off UndefinedMetricWarning
-import skbold
 
-roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs', 'harvard_oxford')
+roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs',
+                  'harvard_oxford')
 
 
 class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
@@ -87,8 +88,8 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
 
     def __init__(self, mvp, preproc_pipe='default', base_clf=None,
                  meta_clf=None,
-                 mask_type='unilateral', proba=True, folds=10, meta_fs='univar',
-                 meta_gs=None, n_cores=1):
+                 mask_type='unilateral', proba=True, folds=10,
+                 meta_fs='univar', meta_gs=None, n_cores=1):
 
         self.mvp = copy(mvp)
         self.mvp.X = None

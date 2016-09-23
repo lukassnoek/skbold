@@ -12,12 +12,12 @@ subclasses of the ``Mvp`` class (defined in the ``core`` subpackage).
 The ``MvpWithin`` object is meant as a data-structure that contains a set of
 multivoxel fMRI patterns of *single trials, for a single subject*, hence
 the 'within' part (i.e. within-subjects). Currently, it has a single
-public method, ``create()``, that loads a set of contrasts from a FSL-firstlevel
-directory (i.e. a .feat-directory). Thus, importantly, it assumes that the
-single-trial patterns are already modelled, on a single-trial basis, using
-some kind of GLM. These trialwise patterns are then horizontally stacked
-to create a 2D samples by features matrix, which is set to the ``X`` attribute
-of MvpWithin.
+public method, ``create()``, that loads a set of contrasts from a
+FSL-firstlevel directory (i.e. a .feat-directory). Thus, importantly, it
+assumes that the single-trial patterns are already modelled, on a single-trial
+basis, using some kind of GLM. These trialwise patterns are then horizontally
+stacked to create a 2D samples by features matrix, which is set to the ``X``
+attribute of MvpWithin.
 
 The ``MvpBetween`` object is meant as a data-structure that contains a set of
 multivoxel fMRI patterns of *single conditions, for a set of subjects*. It is,

@@ -33,20 +33,25 @@ class MvpBetween(Mvp):
     ----------
     source : dict
         Dictionary with types of data as keys and data-specific dictionaries
-        as values. Keys can be 'Contrast_*' (indicating a 3D functional contrast),
-        '4D_anat' (for 4D anatomical - VBM/TBSS - files), 'VBM', 'TBSS',
-        and 'dual_reg' (a subject-spedific 4D file with components as fourth
-        dimension). The dictionary passed as values must include, for each
-        data-type, a path with wildcards to the corresponding (subject-specific)
-        data-file. Other, optional, key-value pairs per data-type can be assigned,
-        including 'mask': 'path', to use data-type-specific masks.
+        as values. Keys can be 'Contrast_*' (indicating a 3D functional
+        contrast), '4D_anat' (for 4D anatomical - VBM/TBSS - files), 'VBM',
+        'TBSS', and 'dual_reg' (a subject-spedific 4D file with components as
+        fourth dimension).
+
+        The dictionary passed as values must include, for each
+        data-type, a path with wildcards to the corresponding
+        (subject-specific) data-file. Other, optional, key-value pairs per
+        data-type can be assigned, including 'mask': 'path', to use
+        data-type-specific masks.
 
         An example:
 
         >>> source = {}
-        >>> source['Contrast_emo'] = {'path': '~/data/sub0*/*.feat/stats/tstat1.nii.gz'}
+        >>> path_emo = '~/data/sub0*/*.feat/stats/tstat1.nii.gz'
+        >>> source['Contrast_emo'] = {'path': path_emo}
         >>> vbm_mask = '~/vbm_mask.nii.gz'
-        >>> source['VBM'] = {'path': '~/data/sub0*/*vbm.nii.gz', 'mask': vbm_mask}
+        >>> path_vbm = '~/data/sub0*/*vbm.nii.gz'
+        >>> source['VBM'] = {'path': path_vbm, 'mask': vbm_mask}
 
     subject_idf : str
         Subject-identifier. This identifier is used to extract subject-names
@@ -83,7 +88,8 @@ class MvpBetween(Mvp):
         List of subject-names that have complete data specified in source.
     featureset_id : ndarray
         Array with integers of size X.shape[1] (i.e. the amount of features in
-        X). Each unique integer, starting at 0, refers to a different feature-set.
+        X). Each unique integer, starting at 0, refers to a different
+        feature-set.
     voxel_idx : ndarray
         Array with integers of size X.shape[1]. Per feature-set, these voxel-
         indices allow the features to be mapped back to whole-brain space.
@@ -100,7 +106,8 @@ class MvpBetween(Mvp):
         List of names of data-types.
     """
     def __init__(self, source, subject_idf='sub0???', remove_zeros=True,
-                 X=None, y=None, mask=None, mask_threshold=0, subject_list=None):
+                 X=None, y=None, mask=None, mask_threshold=0,
+                 subject_list=None):
 
         super(MvpBetween, self).__init__(X=X, y=y, mask=mask,
                                          mask_threshold=mask_threshold)
@@ -114,10 +121,10 @@ class MvpBetween(Mvp):
         self.y = None
         self.X = []
         self.featureset_id = []
-        self.affine = [] # This could be an array
+        self.affine = []  # This could be an array
         self.nifti_header = []
         self.voxel_idx = []
-        self.data_shape = [] # This could be an array
+        self.data_shape = []  # This could be an array
         self.mask_shape = None
         self.data_name = []
         self.binarize_params = None
@@ -133,7 +140,8 @@ class MvpBetween(Mvp):
         Raises
         ------
         ValueError
-            If data-type is not one of ['VBM', 'TBSS', '4D_anat*', 'dual_reg', 'Contrast*']
+            If data-type is not one of ['VBM', 'TBSS', '4D_anat*', 'dual_reg',
+            'Contrast*']
         """
         # Globs all paths and checks for which subs there is complete data
         self._check_complete_data()
@@ -149,12 +157,19 @@ class MvpBetween(Mvp):
             self.data_name.append(data_type)
 
             if 'mask' in args.keys():
-                th = args['mask_threshold'] if 'mask_threshold' in args.keys() else 0
+
+                if 'mask_threshold' in args.keys():
+                    th = args['mask_threshold']
+                else:
+                    th = 0
+
                 self._load_mask(args['mask'], th)
+
             elif self.mask is not None:
                 self._load_mask(self.mask, self.mask_threshold)
 
-            if any(fnmatch(data_type, typ) for typ in ['VBM', 'TBSS', 'Contrast*']):
+            TYPES_3D = ['VBM', 'TBSS', 'Contrast*']
+            if any(fnmatch(data_type, typ) for typ in TYPES_3D):
                 self._load_3D(args)
             elif data_type == 'dual_reg':
                 self._load_dual_reg(args)
@@ -178,14 +193,15 @@ class MvpBetween(Mvp):
 
         # 'Safety-check' to see whether everything corresponds properly
         assert(self.X.shape[1] == self.featureset_id.shape[0])
-        all_vox = np.sum([self.voxel_idx[i].size for i in range(len(self.voxel_idx))])
+        all_vox = np.sum([self.voxel_idx[i].size
+                          for i in range(len(self.voxel_idx))])
         assert(self.X.shape[1] == all_vox)
 
         print("Final size of array: %r" % list(self.X.shape))
 
     def _remove_zeros(self):
 
-        # If remove_zeros, all columns with all zeros are remove to reduce space
+        # If remove_zeros, all columns with all zeros are removed to space
         if self.remove_zeros:
             indices = [np.invert(x == 0).all(axis=0) for x in self.X]
 
@@ -208,18 +224,21 @@ class MvpBetween(Mvp):
         Parameters
         ----------
         file_path : str
-            Absolute path to spreadsheet-like file including the confounding variable.
+            Absolute path to spreadsheet-like file including the confounding
+            variable.
         col_name : str
             Column name in spreadsheet containing the confouding variable
         backend : str
-            Which algorithm to use to regress out the confound. The option 'numpy'
-            uses np.linalg.lstsq() and 'sklearn' uses the LinearRegression estimator.
+            Which algorithm to use to regress out the confound. The option
+            'numpy' uses np.linalg.lstsq() and 'sklearn' uses the
+            LinearRegression estimator.
         sep : str
             Separator to parse the spreadsheet-like file.
         index_col : int
             Which column to use as index (should correspond to subject-name).
         """
-        df = self._read_behav_file(file_path=file_path, sep=sep, index_col=index_col)
+        df = self._read_behav_file(file_path=file_path, sep=sep,
+                                   index_col=index_col)
         confound = df.loc[df.index.isin(self.common_subjects), col_name]
         confound = np.array(confound)
 
@@ -256,8 +275,8 @@ class MvpBetween(Mvp):
     def _undersample_majority(self):
 
         if len(np.unique(self.y)) > 5:
-            msg = ("Found >5 classes and attempting to perform majority undersampling -"
-                   " are you sure the data is categorical?")
+            msg = ("Found >5 classes and attempting to perform majority "
+                   "undersampling - are you sure the data is categorical?")
             warnings.warn(msg)
 
         self.y = LabelEncoder().fit(self.y).transform(self.y)
@@ -267,8 +286,8 @@ class MvpBetween(Mvp):
     def _update_common_subjects(self, idx):
         """ Updates common_subjects after indexing. """
 
-        self.common_subjects = [sub for i, sub in enumerate(self.common_subjects)
-                                if idx[i]]
+        self.common_subjects = [sub for i, sub in
+                                enumerate(self.common_subjects) if idx[i]]
 
     def add_outcome_var(self, file_path, col_name, sep='\t', index_col=0,
                         normalize=True, binarize=None, remove=None,
@@ -280,7 +299,7 @@ class MvpBetween(Mvp):
         Parameters
         ----------
         file_path : str
-            Absolute path to spreadsheet-like file including the outcome variable.
+            Absolute path to spreadsheet-like file including the outcome var.
         col_name : str
             Column name in spreadsheet containing the outcome variable
         sep : str
@@ -293,10 +312,10 @@ class MvpBetween(Mvp):
             If not None, the outcome variable will be binarized along the
             key-value pairs in the binarize-argument. Options:
 
-            >>> binarize = {'type': 'percentile', 'high': .75, 'low': .25} # binarizes along percentiles
-            >>> binarize = {'type': 'zscore', 'std': 1} # binarizes according to x stdevs above and below mean
-            >>> binarize = {'type': 'constant', 'cutoff': 10} # binarizes according to above and below constant
-            >>> binarize = {'type': 'median'} # binarizes according to median-split.
+            >>> binarize = {'type': 'percentile', 'high': .75, 'low': .25}
+            >>> binarize = {'type': 'zscore', 'std': 1}
+            >>> binarize = {'type': 'constant', 'cutoff': 10}
+            >>> binarize = {'type': 'median'}
 
         save_binarization_params : str
             If not none, it refers to the path to save the binarization params
@@ -307,8 +326,8 @@ class MvpBetween(Mvp):
         remove : int or float or str
             Removes instances in which y == remove from MvpBetween object.
         ensure_balanced : bool
-            Whether to ensure balanced classes (if True, done by undersampling the
-            majority class).
+            Whether to ensure balanced classes (if True, done by undersampling
+            the majority class).
         """
 
         # Assumes index corresponds to self.common_subjects
@@ -321,7 +340,8 @@ class MvpBetween(Mvp):
         self._update_common_subjects(common_idx)
 
         if behav.empty:
-            msg = 'Couldnt find any data common to .common_subjects in the MvpBetween object!'
+            msg = ("Couldnt find any data common to .common_subjects in the "
+                   "MvpBetween object!")
             raise ValueError(msg)
 
         self.y = np.array(behav)
@@ -329,7 +349,7 @@ class MvpBetween(Mvp):
         if remove is not None:
             idx = self.y != remove
             self.y = self.y[idx]
-            self.X[self.y != remove, :]
+            self.X = self.X[self.y != remove, :]
             self._update_common_subjects(idx)
 
         if normalize:
@@ -369,15 +389,18 @@ class MvpBetween(Mvp):
             y = self.y
 
         if binarize['type'] == 'percentile':
-            y_rank = np.array([stat.percentileofscore(y, a, 'rank') for a in y])
+            y_rank = [stat.percentileofscore(y, a, 'rank') for a in y]
+            y_rank = np.array(y_rank)
             idx = (y_rank < binarize['low']) | (y_rank > binarize['high'])
+            low = stat.scoreatpercentile(y, binarize['low'])
+            high = stat.scoreatpercentile(y, binarize['high'])
             self.binarize_params = {'type': 'percentile',
-                                    'low': stat.scoreatpercentile(y, binarize['low']),
-                                    'high': stat.scoreatpercentile(y, binarize['high'])}
+                                    'low': low,
+                                    'high': high}
             y = (y_rank[idx] > 50).astype(int)
 
         elif binarize['type'] == 'zscore':
-            y_norm = (y - y.mean()) / y.std() # just to be sure
+            y_norm = (y - y.mean()) / y.std()  # just to be sure
             idx = np.abs(y_norm) > binarize['std']
             self.binarize_params = {'type': binarize['type'],
                                     'mean': y.mean(),
@@ -390,7 +413,7 @@ class MvpBetween(Mvp):
             idx = None
             self.binarize_params = {'type': binarize['type'],
                                     'cutoff': binarize['cutoff']}
-        elif binarize['type'] == 'median': # median-split
+        elif binarize['type'] == 'median':  # median-split
             median = np.median(y)
             y = (y > median).astype(int)
             idx = None
@@ -399,7 +422,8 @@ class MvpBetween(Mvp):
 
         if save_binarization_params is not None:
 
-            with open(op.join(save_binarization_params, 'binarization_params.json'), 'w') as fout:
+            with open(op.join(save_binarization_params,
+                              'binarization_params.json'), 'w') as fout:
                 json.dump(self.binarize_params, fout)
 
         self.y = y
@@ -409,7 +433,7 @@ class MvpBetween(Mvp):
             self.X = self.X[idx, :]
 
         if ensure_balanced:
-           self._undersample_majority()
+            self._undersample_majority()
 
     def split(self, file_path, col_name, target, sep='\t', index_col=0):
         """ Splits an MvpBetween object based on some external index.
@@ -417,7 +441,7 @@ class MvpBetween(Mvp):
         Parameters
         ----------
         file_path : str
-            Absolute path to spreadsheet-like file including the outcome variable.
+            Absolute path to spreadsheet-like file including the outcome var.
         col_name : str
             Column name in spreadsheet containing the outcome variable
         target : str or int or float
@@ -438,7 +462,7 @@ class MvpBetween(Mvp):
         self._update_common_subjects(common_idx)
 
         if behav.empty:
-            print('Couldnt find any data common to .common_subjects in ' \
+            print('Couldnt find any data common to .common_subjects in '
                   ' the MvpBetween object!')
             return 0
 
@@ -446,9 +470,11 @@ class MvpBetween(Mvp):
         idx = np.array(behav) == target
 
         if idx.sum() == 0:
-            raise ValueError('Found 0 subjects for split with target: %s' % str(target))
+            raise ValueError('Found 0 subjects for split with target: %s' %
+                             str(target))
         else:
-            print("Splitting mvp with target '%s', found %i subjects." % (str(target), idx.sum()))
+            print("Splitting mvp with target '%s', found %i subjects." %
+                  (str(target), idx.sum()))
 
         self.X = self.X[idx, :]
         if self.y is not None:
@@ -456,7 +482,8 @@ class MvpBetween(Mvp):
                 self.y = self.y[idx]
 
                 self.common_subjects = [sub for i, sub in
-                                        enumerate(self.common_subjects) if idx[i]]
+                                        enumerate(self.common_subjects)
+                                        if idx[i]]
 
     def write_4D(self, path=None):
         """ Writes a 4D nifti (subs = 4th dimension) of X.
@@ -465,8 +492,6 @@ class MvpBetween(Mvp):
         ----------
         path : str
             Absolute path to save nifti to.
-        name : str
-            Name to be given to nifti-file.
         """
 
         if path is None:
@@ -530,12 +555,14 @@ class MvpBetween(Mvp):
         tmp = nib.load(args['path'])
 
         if len(args['subjects']) != tmp.shape[-1]:
-            msg = ("For 4D_anat, length of 'subjects' (%i) is different from amount of "
-                   "vols in nifti (%i)." % (len(args['subjects']), tmp.shape[-1]))
+            msg = ("For 4D_anat, length of 'subjects' (%i) is different from "
+                   "amount of vols in nifti (%i)." %
+                   (len(args['subjects']), tmp.shape[-1]))
             raise ValueError(msg)
 
         args['subjects'] = check_zeropadding_and_sort(args['subjects'])
-        idx = np.array([True if sub in self.common_subjects else False for sub in args['subjects']])
+        idx = np.array([True if sub in self.common_subjects else
+                        False for sub in args['subjects']])
 
         if tmp.shape[-1] > 500 and 'TBSS' in self.data_name[-1]:
             print('Loading TBSS data in two steps ...')
@@ -654,25 +681,28 @@ class MvpBetween(Mvp):
             args['paths'] = check_zeropadding_and_sort(glob(args['path']))
 
             ex_path = args['paths'][0].split(os.sep)
-            idx = [True if fnmatch(p, self.subject_idf) else False for p in ex_path]
+            idx = [True if fnmatch(p, self.subject_idf) else False
+                   for p in ex_path]
             position = list(np.arange(len(ex_path))[np.array(idx)])
 
             if len(position) > 1:
-                msg = "Couldn't resolve to which subject the file '%s' belongs" \
-                      "because subject-identifier (%s) is ambiguous!" % (ex_path,
-                                                                         self.subject_idf)
+                msg = ("Couldn't resolve to which subject the file '%s' "
+                       "belongs because subject-idf (%s) is ambiguous!" %
+                       (ex_path, self.subject_idf))
                 raise ValueError(msg)
             elif len(position) == 1:
                 position = position[0]
             else:
-                msg = "Couldn't determine which subject belongs to which path" \
-                      "for data-type = '%s'" % data_type
+                msg = ("Couldn't determine which subject belongs to which path"
+                       "for data-type = '%s'" % data_type)
                 raise ValueError(msg)
 
             args['position'] = position
-            args['subjects'] = [p.split(os.sep)[position] for p in args['paths']]
+            args['subjects'] = [p.split(os.sep)[position]
+                                for p in args['paths']]
 
-        all_subjects = [set(args['subjects']) for args in self.source.itervalues()]
+        all_subjects = [set(args['subjects'])
+                        for args in self.source.itervalues()]
 
         if self.subject_list is not None:
             all_subjects.append(set(self.subject_list))
@@ -680,7 +710,7 @@ class MvpBetween(Mvp):
         self.common_subjects = list(set.intersection(*all_subjects))
         self.common_subjects = check_zeropadding_and_sort(self.common_subjects)
 
-        print("Found a set of %i complete subjects for data-types: %r" % \
+        print("Found a set of %i complete subjects for data-types: %r" %
               (len(self.common_subjects), [key for key in self.source]))
 
         for data_type, args in self.source.iteritems():
@@ -689,7 +719,21 @@ class MvpBetween(Mvp):
                 continue
 
             args['paths'] = [p for p in args['paths']
-                             if p.split(os.sep)[args['position']] in self.common_subjects]
+                             if p.split(os.sep)[args['position']]
+                             in self.common_subjects]
+
+
+def _check_if_number(text):
+
+    if text.isdigit():
+        return int(text)
+    else:
+        return text.lower()
+
+
+def _alphanum_key(key):
+
+    return [_check_if_number(c) for c in re.split("([0-9]+)", key)]
 
 
 def check_zeropadding_and_sort(lst):
@@ -701,10 +745,9 @@ def check_zeropadding_and_sort(lst):
 
         return sorted(lst)
     else:
-        convert = lambda text: int(text) if text.isdigit() else text.lower()
-        alphanum_key = lambda key: [convert(c) for c in
-                                    re.split("([0-9]+)", key)]
-        return sorted(lst, key=alphanum_key)
+
+        return sorted(lst, key=_alphanum_key)
+
 
 def _parallelize_4D_func_loading(f, atlas, method):
 
@@ -725,4 +768,4 @@ def _parallelize_4D_func_loading(f, atlas, method):
         raise ValueError('Specify either corr or invcorr')
 
     conn = conn[np.tril_indices(conn.shape[0], k=-1)].ravel()
-    return(conn[np.newaxis, :])
+    return conn[np.newaxis, :]

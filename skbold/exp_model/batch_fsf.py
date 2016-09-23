@@ -7,7 +7,7 @@ import multiprocessing
 
 class FsfCrawler(object):
     """
-    Given an fsf-template, this crawler creates subject-specific fsf-FEAT files,
+    Given an fsf-template, this crawler creates subject-specific fsf-FEAT files
     assuming that appropriate .bfsl files exist.
 
     Parameters
@@ -60,7 +60,8 @@ class FsfCrawler(object):
         self.sub_dirs = sorted(glob(run_paths))
         fsf_paths = [self._write_fsf(sub) for sub in self.sub_dirs]
 
-        with open(op.join(op.dirname(self.template), 'batch_fsf.sh'), 'wb') as fout:
+        shell_script = op.join(op.dirname(self.template), 'batch_fsf.sh')
+        with open(shell_script, 'wb') as fout:
 
             for i, fsf in enumerate(fsf_paths):
 
@@ -74,7 +75,7 @@ class FsfCrawler(object):
             template = f.readlines()
 
         template = [txt.replace('\n', '') for txt in template if txt != '\n']
-        template = [txt for txt in template if txt[0] != '#'] # remove comments
+        template = [txt for txt in template if txt[0] != '#']  # remove commnts
 
         self.clean_fsf = template
 

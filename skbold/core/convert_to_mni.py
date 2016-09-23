@@ -10,8 +10,8 @@ import os.path as op
 from nipype.interfaces import fsl
 
 
-def convert2mni(file2transform, reg_dir, out_dir=None, interpolation='trilinear',
-                suffix=None):
+def convert2mni(file2transform, reg_dir, out_dir=None,
+                interpolation='trilinear', suffix=None):
     """
     Transforms a nifti to mni152 (2mm) format.
     Assuming that reg_dir is a directory with transformation-files (warps)
@@ -82,4 +82,3 @@ def convert2mni(file2transform, reg_dir, out_dir=None, interpolation='trilinear'
         out_all = out_all[0]
 
     return out_all
-

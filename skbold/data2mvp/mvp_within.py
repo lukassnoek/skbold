@@ -68,8 +68,8 @@ class MvpWithin(Mvp):
         Affine corresponding to nifti-mask.
     voxel_idx : ndarray
         Array with integer-indices indicating which voxels are used in the
-        patterns relative to whole-brain space. In other words, it allows to map
-        back the patterns to a whole-brain orientation.
+        patterns relative to whole-brain space. In other words, it allows to
+        map back the patterns to a whole-brain orientation.
     X : ndarray
         The actual patterns (2D: samples X features)
     y : list or ndarray
@@ -144,8 +144,8 @@ class MvpWithin(Mvp):
             raise ValueError(msg)
 
         if self.read_labels:
-            design_file = op.join(src, 'design.con')
-            contrast_labels_current = self._extract_labels(design_file=design_file)
+            design = op.join(src, 'design.con')
+            contrast_labels_current = self._extract_labels(design_file=design)
             self.contrast_labels.extend(contrast_labels_current)
 
         if self.mask is not None:
@@ -192,9 +192,8 @@ class MvpWithin(Mvp):
                   'class labels (%i)' % (n_stat, len(self.contrast_labels))
             raise ValueError(msg)
 
-        if self.mask is None: # set attributes if no mask was given
+        if self.mask is None:  # set attributes if no mask was given
             tmp = nib.load(copes[0])
-            n_features = np.prod(tmp.shape)
             self.affine = tmp.affine
             self.nifti_header = tmp.header
             self.mask_shape = tmp.shape
@@ -273,7 +272,7 @@ class MvpWithin(Mvp):
 
         if self.invert_selection:
             indices = np.arange(len(cope_labels))
-            self.remove_idx = [x for x in indices if not x in self.remove_idx]
+            self.remove_idx = [x for x in indices if x not in self.remove_idx]
 
         _ = [cope_labels.pop(idx) for idx in np.sort(self.remove_idx)[::-1]]
 
