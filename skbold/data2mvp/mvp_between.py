@@ -273,6 +273,7 @@ class MvpBetween(Mvp):
     def add_outcome_var(self, file_path, col_name, sep='\t', index_col=0,
                         normalize=True, binarize=None, remove=None,
                         save_binarization_params=None,
+                        apply_binarization_params=None,
                         ensure_balanced=False):
         """ Sets ``y`` attribute to an outcome-variable (target).
 
@@ -298,7 +299,11 @@ class MvpBetween(Mvp):
             >>> binarize = {'type': 'median'} # binarizes according to median-split.
 
         save_binarization_params : str
-            If not none, it refers to the path to save the binarization params to.
+            If not none, it refers to the path to save the binarization params
+            to.
+        apply_binarization_params : str
+            If not none, it refers to the path to load the binarization params
+            from and apply them to the loaded target variable.
         remove : int or float or str
             Removes instances in which y == remove from MvpBetween object.
         ensure_balanced : bool
@@ -329,6 +334,31 @@ class MvpBetween(Mvp):
 
         if normalize:
             self.y = (self.y - self.y.mean()) / self.y.std()
+
+        if apply_binarization_params is not None:
+
+            with open(apply_binarization_params) as fin:
+                params = json.load(fin)
+
+            if params['type'] == 'zscore':
+                y_norm = (self.y - params['mean']) / params['std']
+                idx = np.abs(y_norm) > params['n_std']
+                y = (y_norm[idx] > 0).astype(int)
+            else:
+                msg = ("Apply binarization params other than 'zscore is "
+                       "not yet implemented.")
+                raise ValueError(msg)
+
+            self.y = y
+
+            if idx is not None:
+                self._update_common_subjects(idx)
+                self.X = self.X[idx, :]
+
+            if ensure_balanced:
+                self._undersample_majority()
+
+            return 0
 
         if binarize is None:
 
