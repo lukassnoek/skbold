@@ -3,16 +3,17 @@ from __future__ import division, print_function
 import os
 import os.path as op
 import numpy as np
+import nibabel as nib
+import pandas as pd
+import joblib
 from sklearn.metrics import (accuracy_score, precision_score, recall_score,
                              confusion_matrix, r2_score, mean_squared_error,
                              f1_score)
-import nibabel as nib
-from fnmatch import fnmatch
+from scipy import stats
+
 from itertools import combinations
 from scipy.misc import comb
-import pandas as pd
-import joblib
-from scipy import stats
+from copy import copy
 
 
 class MvpResults(object):
@@ -205,11 +206,20 @@ class MvpResults(object):
         if pipe.__class__.__name__ == 'GridSearchCV':
             pipe = pipe.best_estimator_
 
+        pipe_steps = copy(pipe.named_steps)
+
+        for name, step in pipe_steps.iteritems():
+
+            if hasattr(step, 'best_estimator_'):
+                pipe_steps[name] = step.best_estimator_
+            else:
+                pipe_steps[name] = step
+
         match = 'coef_' if self.fs in ['fwm', 'forward'] else 'scores_'
-        val = [getattr(step, match) for step in pipe.named_steps.values()
+        val = [getattr(step, match) for step in pipe_steps.values()
                if hasattr(step, match)]
 
-        ensemble = [step for step in pipe.named_steps.values()
+        ensemble = [step for step in pipe_steps.values()
                     if hasattr(step, 'estimators_')]
 
         if len(val) == 1:
@@ -224,11 +234,11 @@ class MvpResults(object):
             raise ValueError('Found more than one %s attribute in the '
                              'pipeline!' % match)
 
-        idx = [step.get_support() for step in pipe.named_steps.values()
+        idx = [step.get_support() for step in pipe_steps.values()
                if callable(getattr(step, "get_support", None))]
 
         if len(idx) == 0:
-            idx = [getattr(step, 'idx_') for step in pipe.named_steps.values()
+            idx = [getattr(step, 'idx_') for step in pipe_steps.values()
                    if hasattr(step, 'idx_')]
 
         if len(idx) == 1:
