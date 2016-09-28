@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import scipy.stats as stats
+import scipy.stats as stat
 
 
 class CrossvalSplitter(object):
@@ -71,7 +71,7 @@ class CrossvalSplitter(object):
             # first, check if train and test group do not differ
             # on continuous variables:
             for cont in self.continuous:
-                (t, p) = stats.ttest_ind(data.loc[train_idx, cont],
+                (t, p) = stat.ttest_ind(data.loc[train_idx, cont],
                                          data.loc[test_idx, cont],
                                          nan_policy='omit')
                 p_this_iter.append(p)
@@ -87,7 +87,7 @@ class CrossvalSplitter(object):
             for cat, vals in self.categorical.items():
                 count = data.groupby([cat, 'cv_group']).size()
                 count = count.unstack(level=0)[vals]
-                (chisq, p, dof, expected) = stats.chi2_contingency(count)
+                (chisq, p, dof, expected) = stat.chi2_contingency(count)
                 p_this_iter.append(p)
 
                 if verbose:
@@ -105,7 +105,6 @@ class CrossvalSplitter(object):
                 self.best_all_samples = full_sample
                 self.best_train_set = train_idx
                 self.best_test_set = test_idx
-            # break #if it's made this far, all tests are non-significant: yey!
 
         self.data = self.data.loc[self.best_all_samples]
         self.data.loc[self.best_train_set, 'cv_group'] = 'train'
@@ -159,3 +158,68 @@ class CrossvalSplitter(object):
             ax2.set_title('%s test group' % cat)
 
         plt.show()
+
+def binarize_continuous_variable(data, column_name, binarize, save=None):
+    y = data[column_name]
+
+    if binarize['type'] == 'percentile':
+        y_rank = [stat.percentileofscore(y, a, 'rank') for a in y]
+        y_rank = np.array(y_rank)
+        idx = (y_rank < binarize['low']) | (y_rank > binarize['high'])
+        low = stat.scoreatpercentile(y, binarize['low'])
+        high = stat.scoreatpercentile(y, binarize['high'])
+        y = (y_rank[idx] > 50).astype(int)
+        data = data[idx]
+
+    elif binarize['type'] == 'zscore':
+        y_norm = (y - y.mean()) / y.std()  # just to be sure
+        idx = np.abs(y_norm) > binarize['std']
+        # self.binarize_params = {'type': binarize['type'],
+        #                         'mean': y.mean(),
+        #                         'std': y.std(),
+        #                         'n_std': binarize['std']}
+        y = (y_norm[idx] > 0).astype(int)
+        data = data[idx] # only select part of the data!
+
+    elif binarize['type'] == 'constant':
+        idx = y > binarize['cutoff']
+        y = idx.astype(int)
+        # self.binarize_params = {'type': binarize['type'],
+        #                         'cutoff': binarize['cutoff']}
+
+    elif binarize['type'] == 'median':  # median-split
+        median = np.median(y)
+        y = (y > median).astype(int)
+        idx = None
+        # self.binarize_params = {'type': binarize['type'],
+        #                         'median': median}
+    data[column_name] = y
+
+    if not save==None:
+        data.to_csv(save, sep='\t')
+
+    return data
+
+if __name__ == '__main__':
+    import os.path as op
+    data_path = '/users/steven/Documents/Syncthing/MscProjects/Decoding/code/multimodal/MultimodalDecoding/behavioral_data/'
+    fid = op.join(data_path, 'ALL_BEHAV_2.tsv')
+    dat = pd.read_csv(fid, sep='\t', index_col=0)
+
+    save_path = op.join(data_path, 'ALL_BEHAV_binarized.tsv')
+    dat2 = binarize_continuous_variable(dat, column_name='ZRaven_tot', binarize = {'type':'zscore', 'std' : 0.5}, save=save_path)
+
+    train_size = dat2.shape[0]/2
+    test_size = dat2.shape[0] - train_size
+    splitter = CrossvalSplitter(file_path=save_path, train_size=train_size, test_size=test_size, categorical={'Sekse' : [1, 2],'ZRaven_tot': [0, 1]},
+                                continuous =['pashlerH'], ignore=9999)
+
+    train_idx, test_idx = splitter.split()
+    splitter.plot_results()
+    splitter.save(op.join(data_path, 'ALL_BEHAV_intelligence_split.tsv'))
+
+#
+#
+# train_size, test_size=0, categorical={},
+#                  continuous=[], include=[], exclude=None, interactions=True,
+#                  sep='\t', index_col=0, ignore=None, iterations=1000
