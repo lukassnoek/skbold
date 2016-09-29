@@ -25,7 +25,16 @@ class CrossvalSplitter(object):
                 # ignore values, such as 9999
                 data.loc[data[cont] == ignore, cont] = np.nan
 
+        if exclude is not None:
+            for key, value in exclude.items():
+                data = data[data[key] != value]
+
         self.data = data
+
+        if train_size < 1 and train_size > 0: #percentage
+            train_size = data.shape[0]/2
+            test_size = data.shape[0] - train_size
+
         self.train_size = train_size
         self.test_size = test_size
         self.categorical = categorical
@@ -43,9 +52,6 @@ class CrossvalSplitter(object):
 
         for i in range(self.iterations):
             data = self.data
-            if self.exclude is not None:
-                for key, value in self.exclude.items():
-                    data = data[data[key] != value]
 
             all_idx = data.index
 
@@ -199,27 +205,3 @@ def binarize_continuous_variable(data, column_name, binarize, save=None):
         data.to_csv(save, sep='\t')
 
     return data
-
-if __name__ == '__main__':
-    import os.path as op
-    data_path = '/users/steven/Documents/Syncthing/MscProjects/Decoding/code/multimodal/MultimodalDecoding/behavioral_data/'
-    fid = op.join(data_path, 'ALL_BEHAV_2.tsv')
-    dat = pd.read_csv(fid, sep='\t', index_col=0)
-
-    save_path = op.join(data_path, 'ALL_BEHAV_binarized.tsv')
-    dat2 = binarize_continuous_variable(dat, column_name='ZRaven_tot', binarize = {'type':'zscore', 'std' : 0.5}, save=save_path)
-
-    train_size = dat2.shape[0]/2
-    test_size = dat2.shape[0] - train_size
-    splitter = CrossvalSplitter(file_path=save_path, train_size=train_size, test_size=test_size, categorical={'Sekse' : [1, 2],'ZRaven_tot': [0, 1]},
-                                continuous =['pashlerH'], ignore=9999)
-
-    train_idx, test_idx = splitter.split()
-    splitter.plot_results()
-    splitter.save(op.join(data_path, 'ALL_BEHAV_intelligence_split.tsv'))
-
-#
-#
-# train_size, test_size=0, categorical={},
-#                  continuous=[], include=[], exclude=None, interactions=True,
-#                  sep='\t', index_col=0, ignore=None, iterations=1000
