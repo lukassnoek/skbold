@@ -239,7 +239,10 @@ class MvpBetween(Mvp):
         """
         df = self._read_behav_file(file_path=file_path, sep=sep,
                                    index_col=index_col)
-        confound = df.loc[df.index.isin(self.common_subjects), col_name]
+        df.index = check_zeropadding_and_sort(df.index.tolist())
+        common_idx = df.index.isin(self.common_subjects)
+        confound = df.loc[common_idx, col_name]
+
         confound = np.array(confound)
 
         # normalize, just to be sure
@@ -254,6 +257,11 @@ class MvpBetween(Mvp):
 
         elif backend == 'numpy':
             confound = np.hstack((np.ones((confound.shape[0], 1)), confound))
+
+        if confound.shape[0] != self.X.shape[0]:
+            msg = "Size of confound (%r) is not the same as X (%r)" % \
+                  (confound.shape[0], self.X.shape[0])
+            raise ValueError(msg)
 
         for i in range(self.X.shape[1]):
 
@@ -272,6 +280,15 @@ class MvpBetween(Mvp):
                 b = b[:, np.newaxis]
                 self.X[:, i] -= np.squeeze(confound.dot(b))
 
+    def update_sample(self, idx):
+        """ Updates the data matrix and associated attributes."""
+
+        self._update_common_subjects(idx)
+        self.X = self.X[idx, :]
+
+        if self.y is not None:
+            self.y = self.y[idx]
+
     def _undersample_majority(self):
 
         if len(np.unique(self.y)) > 5:
@@ -282,6 +299,7 @@ class MvpBetween(Mvp):
         self.y = LabelEncoder().fit(self.y).transform(self.y)
         mus = MajorityUndersampler(verbose=True)
         self.X, self.y = mus.fit().transform(self.X, self.y)
+        self._update_common_subjects(mus.idx_)
 
     def _update_common_subjects(self, idx):
         """ Updates common_subjects after indexing. """
@@ -337,7 +355,6 @@ class MvpBetween(Mvp):
         df.index = check_zeropadding_and_sort(df.index.tolist())
         common_idx = df.index.isin(self.common_subjects)
         behav = df.loc[common_idx, col_name]
-        self._update_common_subjects(common_idx)
 
         if behav.empty:
             msg = ("Couldnt find any data common to .common_subjects in the "
@@ -459,7 +476,6 @@ class MvpBetween(Mvp):
 
         common_idx = df.index.isin(self.common_subjects)
         behav = df.loc[common_idx, col_name]
-        self._update_common_subjects(common_idx)
 
         if behav.empty:
             print('Couldnt find any data common to .common_subjects in '
