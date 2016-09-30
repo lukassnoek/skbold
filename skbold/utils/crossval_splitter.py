@@ -1,12 +1,13 @@
 import pandas as pd
 import numpy as np
 import scipy.stats as stat
-
+import matplotlib.pyplot as plt
+import os.path as op
 
 class CrossvalSplitter(object):
 
     def __init__(self, file_path, train_size, test_size=0, categorical={},
-                 continuous=[], include=[], exclude=None, interactions=True,
+                 continuous=[], binarize=None, include=[], exclude=None, interactions=True,
                  sep='\t', index_col=0, ignore=None, iterations=1000):
 
         data = pd.read_csv(file_path, sep=sep, index_col=index_col)
@@ -29,10 +30,20 @@ class CrossvalSplitter(object):
             for key, value in exclude.items():
                 data = data[data[key] != value]
 
+        if binarize is not None:
+
+            for var in continuous:
+                data, idx_ = binarize_continuous_variable(data, var, binarize,
+                                                          save=None)
+
+            self.binar_idx = idx_
+        else:
+            self.binar_idx = None
+
         self.data = data
 
         if train_size < 1 and train_size > 0: #percentage
-            train_size = data.shape[0]/2
+            train_size = np.round(data.shape[0] * train_size)
             test_size = data.shape[0] - train_size
 
         self.train_size = train_size
@@ -47,6 +58,7 @@ class CrossvalSplitter(object):
         self.best_train_set = None
         self.best_test_set = None
         self.best_min_p_val = 0
+        self.fig = None
 
     def split(self, verbose=False):
 
@@ -103,8 +115,10 @@ class CrossvalSplitter(object):
                 if p < 0.05 or np.isnan(p):
                     print('test significant, trying new split...')
                     continue
-            print('Iteration %d, best min p-value found: %.3f...' %
-                  (i, self.best_min_p_val))
+
+            if verbose:
+                print('Iteration %d, best min p-value found: %.3f...' %
+                      (i, self.best_min_p_val))
 
             if min(p_this_iter) > self.best_min_p_val:
                 self.best_min_p_val = min(p_this_iter)
@@ -118,15 +132,20 @@ class CrossvalSplitter(object):
 
         return self.best_train_set, self.best_test_set
 
-    def save(self, fid):
+    def save(self, fid, save_plots=True):
         if self.best_min_p_val == 0:
             IOError('split not yet run, nothing to save!')
 
         self.data = self.data.sort_index()
         self.data.to_csv(fid, sep='\t')
 
-    def plot_results(self):
-        import matplotlib.pyplot as plt
+        if save_plots:
+
+            self.plot_results(show=False)
+            fn = op.splitext(fid)[0]
+            self.fig.savefig(fn + '.png')
+
+    def plot_results(self, show=True):
 
         train_idx = self.best_train_set
         test_idx = self.best_test_set
@@ -163,7 +182,10 @@ class CrossvalSplitter(object):
                     startangle=90)
             ax2.set_title('%s test group' % cat)
 
-        plt.show()
+        self.fig = fig
+
+        if show:
+            plt.show()
 
 def binarize_continuous_variable(data, column_name, binarize, save=None):
     y = data[column_name]
@@ -204,4 +226,4 @@ def binarize_continuous_variable(data, column_name, binarize, save=None):
     if not save==None:
         data.to_csv(save, sep='\t')
 
-    return data
+    return data, idx
