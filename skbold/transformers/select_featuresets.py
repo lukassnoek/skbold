@@ -27,12 +27,17 @@ class SelectFeatureset(BaseEstimator, TransformerMixin):
     def transform(self, X=None):
         """ Transforms mvp. """
 
+        fids = np.unique(self.mvp.featureset_id)
+        pos_idx = np.where(self.featureset_idx == fids)[0]
+
         mvp = self.mvp
 
         col_idx = np.in1d(mvp.featureset_id, self.featureset_idx)
         mvp.X = mvp.X[:, col_idx]
         mvp.voxel_idx = mvp.voxel_idx[col_idx]
         mvp.featureset_id = mvp.featureset_id[col_idx]
+        mvp.data_shape = [mvp.data_shape[pos_idx]]
+        mvp.data_name = [mvp.data_name[pos_idx]]
 
         self.mvp = mvp
         return mvp
