@@ -167,28 +167,32 @@ class MvpResults(object):
         else:
             values = values.mean(axis=0)
 
-        for i in np.unique(self.featureset_id):
+        fids = np.unique(self.mvp.featureset_id)
 
-            img = np.zeros(self.data_shape[i]).ravel()
+        for i in fids:
+
+            pos_idx = np.where(i == fids)[0]
+            img = np.zeros(self.data_shape[pos_idx]).ravel()
             subset = values[self.featureset_id == i]
 
             if subset.ndim > 1:
                 for ii in range(subset.ndim + 1):
                     tmp_idx = self.voxel_idx[self.featureset_id == i]
                     img[tmp_idx] = subset[:, ii]
-                    img = nib.Nifti1Image(img.reshape(self.data_shape[i]),
-                                          affine=self.affine[i])
+                    img = nib.Nifti1Image(img.reshape(self.data_shape[pos_idx]),
+                                          affine=self.affine[pos_idx])
                     img.to_filename(op.join(self.out_path,
-                                            self.data_name[i] +
+                                            self.data_name[pos_idx] +
                                             '_%i.nii.gz' % ii))
-                    img = np.zeros(self.data_shape[i]).ravel()
+                    img = np.zeros(self.data_shape[pos_idx]).ravel()
 
             else:
+                pos_idx = np.where(i == fids)[0]
                 img[self.voxel_idx[self.featureset_id == i]] = subset
-                img = nib.Nifti1Image(img.reshape(self.data_shape[i]),
-                                      affine=self.affine[i])
+                img = nib.Nifti1Image(img.reshape(self.data_shape[pos_idx]),
+                                      affine=self.affine[pos_idx])
                 img.to_filename(op.join(self.out_path,
-                                        self.data_name[i] + '.nii.gz'))
+                                        self.data_name[pos_idx] + '.nii.gz'))
 
     def _check_mvp_attributes(self):
 
