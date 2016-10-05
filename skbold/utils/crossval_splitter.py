@@ -163,6 +163,9 @@ class CrossvalSplitter(object):
             plt.legend(loc='upper right')
             plt.title(cont)
 
+        if not 'i' in locals():
+            i = 0
+
         for cat in self.categorical:
             i += 1
             count = data.groupby([cat, 'cv_group']).size()
