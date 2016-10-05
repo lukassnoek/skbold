@@ -35,10 +35,9 @@ class CrossvalSplitter(object):
             for var in continuous:
                 data, idx_ = binarize_continuous_variable(data, var, binarize,
                                                           save=None)
-
             self.binar_idx = idx_
         else:
-            self.binar_idx = None
+            self.binar_idx = np.ones(data.shape[0], dtype=bool)
 
         self.data = data
 
