@@ -72,8 +72,8 @@ class MultimodalVotingClassifier(BaseEstimator, ClassifierMixin):
             RoiStackingClassifier instance with fitted parameters.
         """
 
-        self.X = X
-        self.y = y
+        ## DOES NOTHING ##
+
         # for i, fs_id in enumerate(np.unique(self.mvp_train.featureset_id)):
         #
         #     featuresel = SelectFeatureset(self.mvp_train, fs_id)
@@ -112,5 +112,7 @@ class MultimodalVotingClassifier(BaseEstimator, ClassifierMixin):
 
         elif self.voting == 'soft':
             maxvotes = np.average(X, axis=1, weights=self.weights).round()
+
+        maxvotes = maxvotes.astype(int)
 
         return maxvotes
