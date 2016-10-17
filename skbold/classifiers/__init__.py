@@ -14,5 +14,6 @@ the scikit-learn estimator object.
 
 from .roi_stacking_classifier import RoiStackingClassifier
 from .roi_voting_classifier import RoiVotingClassifier
+from .multimodal_voting_classifier import MultimodalVotingClassifier
 
-__all__ = ['RoiStackingClassifier', 'RoiVotingClassifier']
+__all__ = ['RoiStackingClassifier', 'RoiVotingClassifier', 'MultimodalVotingClassifier']

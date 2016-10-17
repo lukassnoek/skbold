@@ -35,10 +35,9 @@ class CrossvalSplitter(object):
             for var in continuous:
                 data, idx_ = binarize_continuous_variable(data, var, binarize,
                                                           save=None)
-
             self.binar_idx = idx_
         else:
-            self.binar_idx = None
+            self.binar_idx = np.ones(data.shape[0], dtype=bool)
 
         self.data = data
 
@@ -162,6 +161,9 @@ class CrossvalSplitter(object):
             plt.hist(test_vals, alpha=0.5, label='Test')
             plt.legend(loc='upper right')
             plt.title(cont)
+
+        if not 'i' in locals():
+            i = 0
 
         for cat in self.categorical:
             i += 1
