@@ -36,8 +36,10 @@ class SelectFeatureset(BaseEstimator, TransformerMixin):
         mvp.X = mvp.X[:, col_idx]
         mvp.voxel_idx = mvp.voxel_idx[col_idx]
         mvp.featureset_id = mvp.featureset_id[col_idx]
+        mvp.featureset_id = np.zeros_like(mvp.featureset_id)
         mvp.data_shape = [mvp.data_shape[pos_idx]]
         mvp.data_name = [mvp.data_name[pos_idx]]
+        mvp.affine = [mvp.affine[pos_idx]]
 
         self.mvp = mvp
         return mvp
