@@ -27,12 +27,22 @@ class SelectFeatureset(BaseEstimator, TransformerMixin):
     def transform(self, X=None):
         """ Transforms mvp. """
 
-        fids = np.unique(self.mvp.featureset_id)
-        pos_idx = np.where(self.featureset_idx == fids)[0]
-
         mvp = self.mvp
-
+        fids = np.unique(mvp.featureset_id)
         col_idx = np.in1d(mvp.featureset_id, self.featureset_idx)
+        pos_idx = np.where(col_idx)[0]
+
+        if len(pos_idx) > 1:
+            msg = ("Found more than one positional index when selecting "
+                   "feature-set %i" % int(self.featureset_idx))
+            raise ValueError(msg)
+        elif len(pos_idx) == 0:
+            msg = ("Didn't find a feature-set with id '%i'."
+                   % self.featureset_idx)
+            raise ValueError(msg)
+        else:
+            pos_idx = pos_idx[0]
+
         mvp.X = mvp.X[:, col_idx]
         mvp.voxel_idx = mvp.voxel_idx[col_idx]
         mvp.featureset_id = mvp.featureset_id[col_idx]

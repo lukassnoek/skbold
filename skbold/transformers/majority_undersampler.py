@@ -42,6 +42,10 @@ class MajorityUndersampler(BaseEstimator, TransformerMixin):
             indices calculated during fit().
         """
 
+        if isinstance(y[0], (np.float64, np.float32, np.float16)):
+            print('Converting y to integer')
+            y = y.astype(int)
+
         bins = np.bincount(y)
         all_idx = np.zeros(y.size, dtype=bool)
 
