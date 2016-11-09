@@ -142,9 +142,9 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
                     mx = data[overlap].max()
                     tmp = np.zeros(data.shape)
                     tmp[overlap] = data[overlap] == mx
-                    X = np.where(tmp == 1)[0]
-                    Y = np.where(tmp == 1)[1]
-                    Z = np.where(tmp == 1)[2]
+                    X = 90 - np.where(tmp == 1)[0] * 2
+                    Y = -126 + np.where(tmp == 1)[1] * 2
+                    Z = -72 + np.where(tmp == 1)[2] * 2
                 else:
                     # If no voxels, write some default values
                     mx = 0
@@ -195,9 +195,9 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
                 tmp = np.zeros(data.shape)
                 tmp[overlap] = data[overlap] == mx
                 if save_indices:
-                    X = np.where(tmp == 1)[0]
-                    Y = np.where(tmp == 1)[1]
-                    Z = np.where(tmp == 1)[2]
+                    X = 90 - np.where(tmp == 1)[0] * 2
+                    Y = -126 + np.where(tmp == 1)[1] * 2
+                    Z = -72 + np.where(tmp == 1)[2] * 2
             else:
                 mx, mean, std = 0, 0, 0
 
