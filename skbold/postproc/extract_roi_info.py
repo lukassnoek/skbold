@@ -66,6 +66,12 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
     """
 
     data = nib.load(statfile).get_data()
+
+    sign_mask = np.ones(shape=data.shape)
+    sign_mask[data < 0] = -1
+
+    data = np.abs(data)
+
     if stat_threshold:
         data[data < stat_threshold] = 0
 
@@ -108,9 +114,23 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
 
             tmp = np.zeros(data.shape)
             tmp[cl_mask] = data[cl_mask] == mx
-            X = np.where(tmp == 1)[0]
-            Y = np.where(tmp == 1)[1]
-            Z = np.where(tmp == 1)[2]
+
+            if np.sum(tmp == 1) > 1:  # in case of multiple voxels with same stat / weight
+                X = np.where(tmp == 1)[0][0]
+                Y = np.where(tmp == 1)[1][0]
+                Z = np.where(tmp == 1)[2][0]
+            else:
+                X = np.where(tmp == 1)[0]
+                Y = np.where(tmp == 1)[1]
+                Z = np.where(tmp == 1)[2]
+
+            if sign_mask[X, Y, Z] < 0: # if weight / stat is negative, change sign of mx
+                mx = -mx
+
+            # convert to MNI-coordinates
+            X = 90 - X * 2
+            Y = -126 + Y * 2
+            Z = -72 + Z * 2
 
             # This is purely for formatting issues
             if i == 0:
@@ -142,9 +162,24 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
                     mx = data[overlap].max()
                     tmp = np.zeros(data.shape)
                     tmp[overlap] = data[overlap] == mx
-                    X = 90 - np.where(tmp == 1)[0] * 2
-                    Y = -126 + np.where(tmp == 1)[1] * 2
-                    Z = -72 + np.where(tmp == 1)[2] * 2
+
+                    if np.sum(tmp == 1) > 1:        # in case of multiple voxels with same stat / weight
+                        X = np.where(tmp == 1)[0][0]
+                        Y = np.where(tmp == 1)[1][0]
+                        Z = np.where(tmp == 1)[2][0]
+                    else:
+                        X = np.where(tmp == 1)[0]
+                        Y = np.where(tmp == 1)[1]
+                        Z = np.where(tmp == 1)[2]
+
+                    if sign_mask[X, Y, Z] < 0: # if sign of weight / stat is negative, change sign of mx
+                        mx = -mx
+
+                    # convert to MNI-coordinates
+                    X = 90 - X * 2
+                    Y = -126 + Y * 2
+                    Z = -72 + Z * 2
+
                 else:
                     # If no voxels, write some default values
                     mx = 0
