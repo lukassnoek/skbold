@@ -30,26 +30,26 @@ class SelectFeatureset(BaseEstimator, TransformerMixin):
         mvp = self.mvp
         fids = np.unique(mvp.featureset_id)
         col_idx = np.in1d(mvp.featureset_id, self.featureset_idx)
-        pos_idx = np.where(col_idx)[0]
+        # pos_idx = np.where(col_idx==featureset_idx)[0]
 
-        if len(pos_idx) > 1:
-            msg = ("Found more than one positional index when selecting "
-                   "feature-set %i" % int(self.featureset_idx))
-            raise ValueError(msg)
-        elif len(pos_idx) == 0:
-            msg = ("Didn't find a feature-set with id '%i'."
-                   % self.featureset_idx)
-            raise ValueError(msg)
-        else:
-            pos_idx = pos_idx[0]
+        # if len(pos_idx) > 1:
+        #    msg = ("Found more than one positional index when selecting "
+        #           "feature-set %i" % int(featureset_idx))
+        #    raise ValueError(msg)
+        # elif len(pos_idx) == 0:
+        #    msg = ("Didn't find a feature-set with id '%i'."
+        #           % self.featureset_idx)
+        #    raise ValueError(msg)
+        # else:
+        #    pos_idx = pos_idx[0]
 
         mvp.X = mvp.X[:, col_idx]
         mvp.voxel_idx = mvp.voxel_idx[col_idx]
         mvp.featureset_id = mvp.featureset_id[col_idx]
-        mvp.featureset_id = np.zeros_like(mvp.featureset_id)
-        mvp.data_shape = [mvp.data_shape[pos_idx]]
-        mvp.data_name = [mvp.data_name[pos_idx]]
-        mvp.affine = [mvp.affine[pos_idx]]
+        # mvp.featureset_id = np.zeros_like(mvp.featureset_id)
+        mvp.data_shape = [mvp.data_shape[self.featureset_idx]]
+        mvp.data_name = [mvp.data_name[self.featureset_idx]]
+        mvp.affine = [mvp.affine[self.featureset_idx]]
 
         self.mvp = mvp
         return mvp
