@@ -28,7 +28,7 @@ class Mvp(object):
     Parameters
     ----------
     X : ndarray
-        A 2D matrix or numpy-array with rows indicating samples and
+        A 2D numpy-array with rows indicating samples and
         columns indicating features.
     y : list or ndarray
         Array/list with labels/targets corresponding to samples in X.
@@ -63,9 +63,19 @@ class Mvp(object):
 
     def __init__(self, X=None, y=None, mask=None, mask_threshold=0):
 
-        self.mask = mask
-        self.mask_threshold = mask_threshold
-        self.mask_shape = None
+        if isinstance(mask, list):
+            msg = 'You can only pass one mask! To use custom masks for each ' \
+                  'source entry, specify the mask-key in source.'
+            raise ValueError(msg)
+
+        if mask is None:
+            self.common_mask = None
+        else:
+            maskl = nib.load(mask)
+            self.common_mask = {'path': mask, 'threshold': mask_threshold,
+                                'idx': (maskl > mask_threshold).ravel(),
+                                'shape': maskl.shape, 'affine': maskl.affine}
+
         self.nifti_header = None
         self.affine = None
         self.voxel_idx = None
@@ -158,6 +168,7 @@ class Mvp(object):
 
     def _update_mask_info(self, mask):
         # Only for internal use
+        # Is still still necessary?
         mask_vol = nib.load(mask)
         mask_idx = mask_vol.get_data() > self.mask_threshold
         self.affine = mask_vol.affine

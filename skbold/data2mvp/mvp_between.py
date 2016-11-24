@@ -98,7 +98,7 @@ class MvpBetween(Mvp):
 
         >>> mni_vol = np.zeros((91, 109, 91))
         >>> tmp_idx = mvp.featureset_id == 0
-        >>> mni_vol[mvp.featureset_id[tmp_idx] = mvp.X[0, tmp_idx]
+        >>> mni_vol[mvp.featureset_id[tmp_idx]] = mvp.X[0, tmp_idx]
 
     data_shape : list of tuples
         Original (whole-brain) shape of the loaded data, per data-type.
@@ -120,12 +120,12 @@ class MvpBetween(Mvp):
         self.common_subjects = None
         self.y = None
         self.X = []
+        self.fs_masks = [] # featureset-specific masks
         self.featureset_id = []
         self.affine = []  # This could be an array
         self.nifti_header = []
         self.voxel_idx = []
         self.data_shape = []  # This could be an array
-        self.mask_shape = None
         self.data_name = []
         self.binarize_params = None
 
@@ -146,10 +146,6 @@ class MvpBetween(Mvp):
         # Globs all paths and checks for which subs there is complete data
         self._check_complete_data()
 
-        # If a mask is specified, load it
-        if self.mask is not None:
-            self._load_mask(self.mask, self.mask_threshold)
-
         # Loop over data-types as defined in source
         for data_type, args in self.source.iteritems():
 
@@ -157,16 +153,18 @@ class MvpBetween(Mvp):
             self.data_name.append(data_type)
 
             if 'mask' in args.keys():
-
+                maskl = nib.load(args['mask'])
                 if 'mask_threshold' in args.keys():
                     th = args['mask_threshold']
                 else:
                     th = 0
 
-                self._load_mask(args['mask'], th)
-
-            elif self.mask is not None:
-                self._load_mask(self.mask, self.mask_threshold)
+                self.fs_masks.append({'path': args['mask'],
+                                      'threshold': th,
+                                      'affine': maskl.affine,
+                                      'shape': maskl.shape})
+            else:
+                self.fs_masks.append(self.common_mask)
 
             TYPES_3D = ['VBM', 'TBSS', 'Contrast*']
             if any(fnmatch(data_type, typ) for typ in TYPES_3D):
@@ -501,7 +499,67 @@ class MvpBetween(Mvp):
                                         enumerate(self.common_subjects)
                                         if idx[i]]
 
-    def write_4D(self, path=None):
+    def run_searchlight(self, out_dir, name='sl_results', n_folds=10, radius=5,
+                        mask=None, estimator=None, **kwargs):
+        """ Runs a searchlight on the mvp object.
+
+        Parameters
+        ----------
+        out_dir : str
+            Path to which to save the searchlight results
+        name : str
+            Name for the searchlight-results-file (nifti)
+        n_folds : int
+            The amount of folds in sklearn's StratifiedKFold.
+        radius : int/list
+            Radius for the searchlight. If list, it iterates over radii.
+        mask : str
+            Path to mask to apply to mvp. If nothing is listed, it will use
+            the masks applied when the mvp was created.
+        estimator : sklearn estimator or pipeline
+            Estimator to use in the classification process.
+        **kwargs : misc
+            Other arguments for initializing nilearn's searchlight object (see
+           nilearn.github.io/decoding/searchlight.html).
+        """
+
+        # to do: implement import searchlight here (so skbold does not
+        # necessarily depend on nilearn
+
+        # NOT YET TESTED
+
+        # Import OLD version
+        from sklearn.cross_validation import StratifiedKFold
+        from sklearn.svm import SVC
+        from sklearn.pipeline import Pipeline
+        from nilearn.decoding import SearchLight
+
+        nimgs = self.write_4D(return_nimg=True)
+        cv = StratifiedKFold(self.y, n_folds=10)
+
+        if estimator is None:
+            estimator = Pipeline([('scaler', StandardScaler()),
+                                  ('svm', SVC(kernel='linear', C=1))])
+
+        if isinstance(radius, (int, float)):
+            radius = [radius]
+
+        for i, nimg in enumerate(nimgs):
+
+            if mask is None:
+                mask_tmp = self.fs_masks[i]
+                mask_bool = mask_tmp['idx'].astype(int)
+
+            for r in radius:
+                sl = SearchLight(mask_img=mask_bool, radius=r, n_jobs=-1, cv=cv,
+                                 estimator=estimator, scoring='accuracy',
+                                 **kwargs)
+                sl.fit(nimg, y=self.y)
+                sl_nifti = nib.Nifti1Image(sl.scores_, nimg.affine)
+
+                nib.save(sl_nifti, op.join(out_dir, name + '_%imm.nii.gz' % r))
+
+    def write_4D(self, path=None, return_nimg=False):
         """ Writes a 4D nifti (subs = 4th dimension) of X.
 
         Parameters
@@ -515,6 +573,7 @@ class MvpBetween(Mvp):
 
         fids = np.unique(self.featureset_id)
 
+        nimgs = []
         for i, fid in enumerate(fids):
             pos_idx = np.where(i == fids)[0]
             s = self.data_shape[pos_idx]
@@ -523,22 +582,20 @@ class MvpBetween(Mvp):
             to_write[self.voxel_idx[self.featureset_id == fid]] = X_to_write.T
             to_write = to_write.reshape((s[0], s[1], s[2], to_write.shape[-1]))
             img = nib.Nifti1Image(to_write, self.affine[pos_idx])
-            img.to_filename(op.join(path, self.data_name[pos_idx]) + '.nii.gz')
+            nimgs.append(img)
+
+            if not return_nimg:
+                img.to_filename(op.join(path, self.data_name[pos_idx]) + '.nii.gz')
+
+        if return_nimg:
+            if len(nimgs) == 1:
+                return nimgs[0]
+            else:
+                return nimgs
 
         if self.y is not None:
             np.savetxt(op.join(path, 'y_4D_nifti.txt'), self.y,
                        fmt='%1.4f', delimiter='\t')
-
-    def _load_mask(self, mask, threshold):
-
-        if isinstance(mask, list):
-            msg = 'You can only pass one mask! To use custom masks for each ' \
-                  'source entry, specify the mask-key in source.'
-            raise ValueError(msg)
-
-        self.mask_index = nib.load(mask).get_data() > threshold
-        self.mask_shape = self.mask_index.shape
-        self.mask_index = self.mask_index.ravel()
 
     def _load_4D_func(self, args):
 
@@ -599,9 +656,10 @@ class MvpBetween(Mvp):
 
         voxel_idx = np.arange(np.prod(data.shape[:3]))
 
-        if self.mask_shape == data.shape[:3]:
-            data = data[self.mask_index.reshape(tmp.shape[:3])].T
-            voxel_idx = voxel_idx[self.mask_index]
+        tmp_mask = self.fs_masks[-1]
+        if tmp_mask['shape'] == data.shape[:3]:
+            data = data[tmp_mask['idx'].reshape(tmp.shape[:3])].T
+            voxel_idx = voxel_idx[tmp_mask['idx']]
         else:
             data = data.reshape(-1, data.shape[-1]).T
 
@@ -636,8 +694,9 @@ class MvpBetween(Mvp):
 
                 vol = tmp.dataobj[..., n_comp].ravel()
 
-                if self.mask_shape == tmp_shape:
-                    vol = vol[self.mask_index]
+                tmp_mask = self.fs_masks[-1]
+                if tmp_mask['shape'] == tmp_shape:
+                    vol = vol[tmp_mask['idx']]
 
                 vol = vol[np.newaxis, :]
                 vols.append(vol)
@@ -646,8 +705,9 @@ class MvpBetween(Mvp):
         # Hack to infer attributes by looking at last volume
         voxel_idx = np.arange(np.prod(tmp_shape))
 
-        if self.mask_shape == tmp_shape:
-            voxel_idx = voxel_idx[self.mask_index]
+        tmp_mask = self.fs_masks[-1]
+        if tmp_mask['shape'] == tmp_shape:
+            voxel_idx = voxel_idx[tmp_mask['idx']]
 
         _ = [self.voxel_idx.append(voxel_idx) for i in final_comps]
         _ = [self.data_shape.append(tmp_shape) for i in final_comps]
@@ -671,15 +731,16 @@ class MvpBetween(Mvp):
             tmp = nib.load(path)
             tmp_data = tmp.get_data().ravel()
 
-            if self.mask_shape == tmp.shape:
-                tmp_data = tmp_data[self.mask_index]
+            tmp_mask = self.fs_masks[-1]
+            if tmp_mask['shape'] == tmp.shape:
+                tmp_data = tmp_data[tmp_mask['idx']]
 
             data.append(tmp_data[np.newaxis, :])
 
         voxel_idx = np.arange(np.prod(tmp.shape))
 
-        if self.mask_shape == tmp.shape:
-            voxel_idx = voxel_idx[self.mask_index]
+        if tmp_mask['shape'] == tmp.shape:
+            voxel_idx = voxel_idx[tmp_mask['idx']]
 
         self.voxel_idx.append(voxel_idx)
         self.affine.append(tmp.affine)
