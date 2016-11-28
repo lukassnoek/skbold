@@ -34,7 +34,7 @@ class Mvp(object):
         Array/list with labels/targets corresponding to samples in X.
     mask : str
         Absolute path to nifti-file that will mask (index) the patterns.
-    mask_threshold : int or float
+    mask_thres : int or float
         Minimum value for mask (in cases of probabilistic masks).
 
     Attributes
@@ -61,7 +61,7 @@ class Mvp(object):
     a 'custom' multivariate-pattern set with meta-data.
     """
 
-    def __init__(self, X=None, y=None, mask=None, mask_threshold=0):
+    def __init__(self, X=None, y=None, mask=None, mask_thres=0):
 
         if isinstance(mask, list):
             msg = 'You can only pass one mask! To use custom masks for each ' \
@@ -72,8 +72,8 @@ class Mvp(object):
             self.common_mask = None
         else:
             maskl = nib.load(mask)
-            self.common_mask = {'path': mask, 'threshold': mask_threshold,
-                                'idx': (maskl > mask_threshold).ravel(),
+            self.common_mask = {'path': mask, 'threshold': mask_thres,
+                                'idx': (maskl.get_data() > mask_thres).ravel(),
                                 'shape': maskl.shape, 'affine': maskl.affine}
 
         self.nifti_header = None

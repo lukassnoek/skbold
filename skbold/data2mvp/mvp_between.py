@@ -106,11 +106,11 @@ class MvpBetween(Mvp):
         List of names of data-types.
     """
     def __init__(self, source, subject_idf='sub0???', remove_zeros=True,
-                 X=None, y=None, mask=None, mask_threshold=0,
+                 X=None, y=None, mask=None, mask_thres=0,
                  subject_list=None):
 
         super(MvpBetween, self).__init__(X=X, y=y, mask=mask,
-                                         mask_threshold=mask_threshold)
+                                         mask_thres=mask_thres)
 
         self.source = source
         self.remove_zeros = remove_zeros
