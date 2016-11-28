@@ -159,7 +159,7 @@ class MvpResults(object):
 
                         scores[:, :, number] += val
 
-            values = scores / 3
+            values = scores / n_class
 
         if to_tstat:
             n = values.shape[0]
@@ -283,13 +283,12 @@ class MvpResults(object):
 
         W = val
         X = self.X[:, idx]
-        s = W.dot(X.T)
+        A = np.cov(X.T).dot(W)
 
-        if len(np.unique(self.y)) < 3:
-            A = np.cov(X.T).dot(W)
-        else:
-            X_cov = np.cov(X.T)
-            A = X_cov.dot(W.T).dot(np.linalg.pinv(np.cov(s)))
+        # Old calc
+        # X_cov = np.cov(X.T)
+        # --> s needs to be one-hot-encoded
+        # A = X_cov.dot(W).dot(np.linalg.pinv(np.cov(s)))
 
         return A
 
