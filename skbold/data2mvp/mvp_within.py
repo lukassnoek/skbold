@@ -84,7 +84,7 @@ class MvpWithin(Mvp):
                  mask_threshold=0):
 
         super(MvpWithin, self).__init__(X=X, y=y, mask=mask,
-                                        mask_threshold=mask_threshold)
+                                        mask_thres=mask_threshold)
 
         self.source = source
         self.read_labels = read_labels
