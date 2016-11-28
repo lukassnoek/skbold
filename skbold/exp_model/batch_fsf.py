@@ -29,7 +29,7 @@ class FsfCrawler(object):
     """
 
     def __init__(self, template, preproc_dir, run_idf, output_dir=None,
-                 subject_idf='sub', func_idf='.nii.gz', n_cores=1):
+                 subject_idf='sub', func_idf='func', n_cores=1):
 
         self.template = template
         self.preproc_dir = preproc_dir
