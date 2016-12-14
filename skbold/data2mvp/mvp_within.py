@@ -148,14 +148,15 @@ class MvpWithin(Mvp):
             contrast_labels_current = self._extract_labels(design_file=design)
             self.contrast_labels.extend(contrast_labels_current)
 
-        if self.mask is not None:
+        if self.common_mask is not None:
 
             if self.ref_space == 'epi':
                 reg_dir = op.join(src, 'reg')
-                self.mask = convert2epi(self.mask, reg_dir, reg_dir)
+                self.common_mask = convert2epi(self.common_mask, reg_dir,
+                                               reg_dir)
 
             if self.voxel_idx is None:
-                self._update_mask_info(self.mask)
+                self._update_mask_info(self.common_mask)
 
         if self.ref_space == 'epi':
             stat_dir = op.join(src, 'stats')
@@ -192,7 +193,7 @@ class MvpWithin(Mvp):
                   'class labels (%i)' % (n_stat, len(self.contrast_labels))
             raise ValueError(msg)
 
-        if self.mask is None:  # set attributes if no mask was given
+        if self.common_mask is None:  # set attributes if no mask was given
             tmp = nib.load(copes[0])
             self.affine = tmp.affine
             self.nifti_header = tmp.header
