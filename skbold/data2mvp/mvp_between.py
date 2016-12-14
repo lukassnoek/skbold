@@ -10,7 +10,7 @@ import warnings
 from glob import glob
 from fnmatch import fnmatch
 from skbold.core import Mvp
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, LogisticRegression
 from nilearn.input_data import NiftiLabelsMasker
 from nilearn.datasets import fetch_atlas_aal, fetch_atlas_harvard_oxford
 from sklearn.covariance import GraphLassoCV
@@ -214,6 +214,62 @@ class MvpBetween(Mvp):
         df = pd.read_csv(file_path, sep=sep, index_col=index_col)
         df.index = [str(i) for i in df.index.tolist()]
         return df
+
+    def calculate_confound_weighting(self, file_path, col_name, sep='\t',
+                                     index_col=0, estimator=None):
+        """ Calculates inverse probability weighting for confounds.
+
+        Note: should be moved to mvp-core
+
+        Parameters
+        ----------
+        file_path : str
+            Absolute path to spreadsheet-like file including the confounding
+            variable.
+        col_name : str
+            Column name in spreadsheet containing the confouding variable
+        sep : str
+            Separator to parse the spreadsheet-like file.
+        index_col : int
+            Which column to use as index (should correspond to subject-name).
+        estimator : scikit-learn estimator
+            Estimator used to calculate p(y=1 | confound-array)
+
+        Returns
+        -------
+        ipw : array
+            Array with inverse probability weights for the samples, based on
+            the confounds indicated by col_name.
+
+        References
+        ----------
+        Linn, K.A., Gaonkar, B., Doshi, J., Davatzikos, C., & Shinohara, R.
+        (2016). Addressing confounding in predictive models with an application
+        to neuroimaging. Int. J. Biostat., 12(1): 31-44.
+
+        Code adapted from https://github.com/kalinn/IPW-SVM.
+
+        """
+
+        if estimator is None:
+            estimator = LogisticRegression()
+
+        df = self._read_behav_file(file_path=file_path, sep=sep,
+                                   index_col=index_col)
+
+        df.index = check_zeropadding_and_sort(df.index.tolist())
+        common_idx = df.index.isin(self.common_subjects)
+        confound = np.array(df.loc[common_idx, col_name])
+
+        # Fit confounds to y
+        estimator.fit(confound, self.y)
+
+        # Calculate p(y=1 | confounds)
+        prob = estimator.predict_proba(confound)
+
+        # Inverse of prob = inverse probability weighting (IPW) factor
+        self.ipw = 1.0/prob
+        return self.ipw
 
     def regress_out_confounds(self, file_path, col_name, backend='numpy',
                               sep='\t', index_col=0):
