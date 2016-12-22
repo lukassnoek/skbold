@@ -6,7 +6,6 @@ __version__ = '0.2.5'
 
 import classifiers
 import core
-import data2mvp
 import exp_model
 import postproc
 import transformers
@@ -19,5 +18,5 @@ testdata_path = join(data_path, 'test_data')
 roidata_path = join(data_path, 'ROIs')
 harvardoxford_path = join(roidata_path, 'harvard_oxford')
 
-__all__ = ['classifiers', 'core', 'data', 'data2mvp', 'exp_model',
+__all__ = ['classifiers', 'core', 'data', 'exp_model',
            'postproc', 'transformers', 'utils', 'harvardoxford_path']

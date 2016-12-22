@@ -9,9 +9,11 @@ import os
 import os.path as op
 from nipype.interfaces import fsl
 
+# TODO: remove nipype dependency
 
-def convert2mni(file2transform, reg_dir, out_dir=None, interpolation='trilinear',
-                suffix=None):
+
+def convert2mni(file2transform, reg_dir, out_dir=None,
+                interpolation='trilinear', suffix=None):
     """
     Transforms a nifti to mni152 (2mm) format.
     Assuming that reg_dir is a directory with transformation-files (warps)
@@ -29,6 +31,9 @@ def convert2mni(file2transform, reg_dir, out_dir=None, interpolation='trilinear'
         the to-be transformed file.
     interpolation : str
         Interpolation used by flirt. Default is 'trilinear'.
+    suffix : str
+        What to append to name when converted (default : basename
+        file2transform).
 
     Returns
     -------

@@ -113,11 +113,12 @@ class PresentationLogfileCrawler(object):
                                skip_blank_lines=True)
 
         # Clean up unnecessary columns
-        to_drop = ['Uncertainty', 'Subject', 'Trial', 'Uncertainty.1', 'ReqTime',
-                   'ReqDur', 'Stim Type', 'Pair Index']
-        _ = [df.drop(col, axis=1, inplace=True) for col in to_drop if col in df.columns]
+        to_drop = ['Uncertainty', 'Subject', 'Trial', 'Uncertainty.1',
+                   'ReqTime', 'ReqDur', 'Stim Type', 'Pair Index']
+        _ = [df.drop(col, axis=1, inplace=True)
+             for col in to_drop if col in df.columns]
 
-        # Ugly hack to find pulsecode, because some numeric codes are written as str
+        # Ugly hack to find pulsecode, because some numeric codes are str
         df['Code'] = df['Code'].astype(str)
         df['Code'] = [np.float(x) if x.isdigit() else x for x in df['Code']]
         pulse_idx = np.where(df['Code'] == self.pulsecode)[0]

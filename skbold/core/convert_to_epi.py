@@ -10,6 +10,9 @@ import os.path as op
 from nipype.interfaces import fsl
 
 
+# TODO: remove nipype dependency
+
+
 def convert2epi(file2transform, reg_dir, out_dir=None,
                 interpolation='trilinear', suffix='epi'):
     """
@@ -29,6 +32,8 @@ def convert2epi(file2transform, reg_dir, out_dir=None,
         the to-be transformed file.
     interpolation : str
         Interpolation used by flirt. Default is 'trilinear'.
+    suffix : str
+        What to suffix the transformed file with (default : 'epi')
 
     Returns
     -------

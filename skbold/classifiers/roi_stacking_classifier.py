@@ -13,7 +13,7 @@ import numpy as np
 import os
 import os.path as op
 import joblib
-from joblib import Parallel, delayed
+from sklearn.externals.joblib import Parallel, delayed
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.svm import SVC
 from skbold.transformers import RoiIndexer, MeanEuclidean, \
