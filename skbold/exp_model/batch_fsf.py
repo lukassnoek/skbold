@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import os.path as op
 from glob import glob
 import nibabel as nib
@@ -305,7 +306,8 @@ class MelodicCrawler(object):
                     'npts': hdr['dim'][4],
                     'feat_files': "\"%s\"" % func_file,
                     'outputdir': "\"%s\"" % ica_dir,
-                    'varnorm': self.varnorm}
+                    'varnorm': self.varnorm,
+                    'totalVoxels': np.prod(hdr['dim'][1:5])}
 
         fsf_out = []
         # Loop over lines in cleaned template-fsf
