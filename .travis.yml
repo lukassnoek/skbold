@@ -24,9 +24,11 @@ before_install:
   - conda config --add channels conda-forge
   - conda install --yes python=$TRAVIS_PYTHON_VERSION pip scipy numpy pandas scikit-learn joblib nipype h5py seaborn
   - pip install nibabel nilearn pytest pytest-cov coveralls pytest-pep8
-  - bash <(wget -q -O- http://neuro.debian.net/_files/neurodebian-travis.sh)
-  - sudo apt-get -y update && sudo apt-get install -y -qq fsl-core
-  - source /etc/fsl/fsl.sh &&
+  - sudo apt-get install -y curl
+  - curl -sSL http://neuro.debian.net/lists/trusty.us-ca.full >> /etc/apt/sources.list.d/neurodebian.sources.list
+  - sudo apt-key adv --recv-keys --keyserver hkp://pgp.mit.edu:80 0xA5D32F012649A5A9
+  - sudo apt-get update
+  - sudo apt-get install -y fsl-core
   - export FSLOUTPUTTYPE=NIFTI_GZ
 install:
   # Replace dep1 dep2 ... with your dependencies
