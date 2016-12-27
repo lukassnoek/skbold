@@ -7,7 +7,7 @@ The exp_model subpackage contains some (pre)processing functions and classes
 that help in preparing to fit a first-level GLM on fMRI data across multiple
 subjects.
 
-.. _Presentation: https://www.neurobs.com/menu_presentation/menu_features/features_overview
+.. _Presentation: https://www.neurobs.com
 .. _Eprime: https://www.pstnet.com/eprime.cfm
 
 The PresentationLogfileCrawler (and its function-equivalent

@@ -1,15 +1,18 @@
 skbold - utilities and tools for machine learning on BOLD-fMRI data
 ===================================================================
 
-.. image:: https://travis-ci.org/lukassnoek/skbold.svg?branch=develop
+.. image:: https://travis-ci.org/lukassnoek/skbold.svg?branch=master
     :target: https://travis-ci.org/lukassnoek/skbold
 
-.. image:: https://readthedocs.org/projects/skbold/badge/?version=develop
-    :target: http://skbold.readthedocs.io/en/develop/?badge=master
+.. image:: https://readthedocs.org/projects/skbold/badge/?version=latest
+    :target: http://skbold.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
+ 
+.. image:: https://coveralls.io/repos/github/lukassnoek/skbold/badge.svg?branch=master
+    :target: https://coveralls.io/github/lukassnoek/skbold?branch=master
 
-.. image:: https://coveralls.io/repos/github/lukassnoek/skbold/badge.svg
-    :target: https://coveralls.io/github/lukassnoek/skbold
+.. image:: https://img.shields.io/badge/code%20style-pep8-orange.svg
+    :target: https://www.python.org/dev/peps/pep-0008
 
 .. _scikit-learn: http://scikit-learn.org/
 .. _FSL: http://fsl.fmrib.ox.ac.uk/fsl

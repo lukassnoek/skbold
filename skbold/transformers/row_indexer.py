@@ -1,5 +1,4 @@
 import numpy as np
-from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class RowIndexer(object):
@@ -37,9 +36,9 @@ class RowIndexer(object):
         mvp = self.mvp
         selection = np.zeros(mvp.X.shape[0], dtype=bool)
         selection[self.idx] = True
-        X_not_selected = mvp.X[~selection,:]
+        X_not_selected = mvp.X[~selection, :]
         y_not_selected = mvp.y[~selection]
-        mvp.X = mvp.X[selection,:]
+        mvp.X = mvp.X[selection, :]
         mvp.y = mvp.y[selection]
 
         return mvp, X_not_selected, y_not_selected

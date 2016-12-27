@@ -11,7 +11,9 @@ class SelectFeatureset(BaseEstimator, TransformerMixin):
     Parameters
     ----------
     mvp : mvp-object
-    featureset_idx : ???
+        Used to extract meta-data.
+    featureset_idx : ndarray
+        Array with indices which map to unique feature-set voxels.
     """
 
     def __init__(self, mvp, featureset_idx):
@@ -26,11 +28,28 @@ class SelectFeatureset(BaseEstimator, TransformerMixin):
         """ Transforms mvp. """
 
         mvp = self.mvp
-
+        fids = np.unique(mvp.featureset_id)
         col_idx = np.in1d(mvp.featureset_id, self.featureset_idx)
-        mvp.X = mvp.X[:,col_idx]
+        pos_idx = np.where(col_idx)[0]
+
+        if len(pos_idx) > 1:
+            msg = ("Found more than one positional index when selecting "
+                   "feature-set %i" % int(self.featureset_idx))
+            raise ValueError(msg)
+        elif len(pos_idx) == 0:
+            msg = ("Didn't find a feature-set with id '%i'."
+                   % self.featureset_idx)
+            raise ValueError(msg)
+        else:
+            pos_idx = pos_idx[0]
+
+        mvp.X = mvp.X[:, col_idx]
         mvp.voxel_idx = mvp.voxel_idx[col_idx]
         mvp.featureset_id = mvp.featureset_id[col_idx]
+        mvp.featureset_id = np.zeros_like(mvp.featureset_id)
+        mvp.data_shape = [mvp.data_shape[pos_idx]]
+        mvp.data_name = [mvp.data_name[pos_idx]]
+        mvp.affine = [mvp.affine[pos_idx]]
 
         self.mvp = mvp
         return mvp

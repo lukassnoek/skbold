@@ -13,6 +13,7 @@ import nibabel as nib
 import os.path as op
 import numpy as np
 from glob import glob
+from copy import copy
 
 
 class Mvp(object):
@@ -27,13 +28,13 @@ class Mvp(object):
     Parameters
     ----------
     X : ndarray
-        A 2D matrix or numpy-array with rows indicating samples and
+        A 2D numpy-array with rows indicating samples and
         columns indicating features.
     y : list or ndarray
         Array/list with labels/targets corresponding to samples in X.
     mask : str
         Absolute path to nifti-file that will mask (index) the patterns.
-    mask_threshold : int or float
+    mask_thres : int or float
         Minimum value for mask (in cases of probabilistic masks).
 
     Attributes
@@ -46,8 +47,8 @@ class Mvp(object):
         Affine corresponding to nifti-mask.
     voxel_idx : ndarray
         Array with integer-indices indicating which voxels are used in the
-        patterns relative to whole-brain space. In other words, it allows to map
-        back the patterns to a whole-brain orientation.
+        patterns relative to whole-brain space. In other words, it allows to
+        map back the patterns to a whole-brain orientation.
     X : ndarray
         The actual patterns (2D: samples X features)
     y : list or ndarray
@@ -60,11 +61,21 @@ class Mvp(object):
     a 'custom' multivariate-pattern set with meta-data.
     """
 
-    def __init__(self, X=None, y=None, mask=None, mask_threshold=0):
+    def __init__(self, X=None, y=None, mask=None, mask_thres=0):
 
-        self.mask = mask
-        self.mask_threshold = mask_threshold
-        self.mask_shape = None
+        if isinstance(mask, list):
+            msg = 'You can only pass one mask! To use custom masks for each ' \
+                  'source entry, specify the mask-key in source.'
+            raise ValueError(msg)
+
+        if mask is None:
+            self.common_mask = None
+        else:
+            maskl = nib.load(mask)
+            self.common_mask = {'path': mask, 'threshold': mask_thres,
+                                'idx': (maskl.get_data() > mask_thres).ravel(),
+                                'shape': maskl.shape, 'affine': maskl.affine}
+
         self.nifti_header = None
         self.affine = None
         self.voxel_idx = None
@@ -111,8 +122,53 @@ class Mvp(object):
             self.X = None
             joblib.dump(self, fn + '_header.jl', compress=3)
 
+    def update_mask(self, mask, threshold=0):
+        # For external use
+
+        if isinstance(mask, (str, unicode)):
+            mask = nib.load(mask).get_data() > threshold
+
+        if isinstance(mask, list):
+
+            if not isinstance(threshold, list):
+                threshold = [threshold] * len(mask)
+
+            if all(isinstance(m, (str, unicode)) for m in mask):
+                mask = [nib.load(copy(m)).get_data() > threshold[i]
+                        for i, m in enumerate(mask)]
+
+            to_iterate = zip(copy(mask), copy(threshold),
+                             np.unique(self.featureset_id))
+            unpack = True
+        else:
+            to_iterate = np.unique(self.featureset_id)
+            unpack = False
+
+        indices = []
+
+        for it in to_iterate:
+
+            if unpack:
+                mask, threshold, i = it
+            else:
+                i = it
+
+            fids = np.unique(self.featureset_id)
+            posidx = np.where(i == fids)[0]
+            tmp = np.zeros(self.data_shape[posidx]).ravel()
+            fidx = self.featureset_id == i
+            tmp[self.voxel_idx[fidx]] = 1
+            tmp[mask.ravel()] += 1
+            indices.append((tmp == 2)[self.voxel_idx[fidx]])
+
+        indices = np.concatenate(indices, axis=0)
+        self.X = self.X[:, indices]
+        self.featureset_id = self.featureset_id[indices]
+        self.voxel_idx = self.voxel_idx[indices]
+
     def _update_mask_info(self, mask):
-        # Not useful anymore?
+        # Only for internal use
+        # Is still still necessary?
         mask_vol = nib.load(mask)
         mask_idx = mask_vol.get_data() > self.mask_threshold
         self.affine = mask_vol.affine

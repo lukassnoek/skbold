@@ -9,7 +9,6 @@
 # (http://sebastianraschka.com/Articles/2014_ensemble_classifier.html)
 
 import glob
-import os
 import numpy as np
 import os.path as op
 from sklearn.base import BaseEstimator, ClassifierMixin
@@ -20,16 +19,17 @@ from sklearn.preprocessing import StandardScaler
 from copy import copy, deepcopy
 
 import skbold
-roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs', 'harvard_oxford')
+roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs',
+                  'harvard_oxford')
 
 
 class RoiVotingClassifier(BaseEstimator, ClassifierMixin):
     """
-    This classifier fits a base-estimator (by default a linear SVM) on different
-    feature sets (i.e. voxels) from different regions of interest (which are
-    drawn from the Harvard-Oxford Cortical atlas), and subsequently the final
-    prediction is derived through a max-voting rule, which can be either
-    'soft' (argmax of mean class probability) or 'hard' (max of class
+    This classifier fits a base-estimator (by default a linear SVM) on
+    different feature sets (i.e. voxels) from different regions of interest
+    (which are drawn from the Harvard-Oxford Cortical atlas), and subsequently
+    the final prediction is derived through a max-voting rule, which can be
+    either 'soft' (argmax of mean class probability) or 'hard' (max of class
     prediction).
 
     Notes
@@ -88,8 +88,8 @@ class RoiVotingClassifier(BaseEstimator, ClassifierMixin):
             mask_dir = op.join(op.dirname(roi_dir), mask_type)
             self.masks = glob.glob(op.join(mask_dir, '*nii.gz'))
 
-        self.pipes = [] # This will gather all roi-specific pipelines
-        self.clf = clf # base-classifier
+        self.pipes = []  # This will gather all roi-specific pipelines
+        self.clf = clf  # base-classifier
 
         # If no weights are specified, use equal weights
         if weights is None:
@@ -156,6 +156,7 @@ class RoiVotingClassifier(BaseEstimator, ClassifierMixin):
 
         elif self.voting == 'soft':
             votes = np.asarray([p.predict_proba(X) for p in self.pipes])
-            maxvotes = np.average(votes, axis=0, weights=self.weights).argmax(axis=-1)
+            maxvotes = np.average(votes, axis=0,
+                                  weights=self.weights).argmax(axis=-1)
 
-        return(maxvotes)
+        return maxvotes

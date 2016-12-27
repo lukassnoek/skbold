@@ -52,7 +52,8 @@ class PresentationLogfileCrawler(object):
     """
 
     def __init__(self, in_file, con_names, con_codes, con_design=None,
-                 con_duration=None, pulsecode=30, write_bfsl=False, verbose=True):
+                 con_duration=None, pulsecode=30, write_bfsl=False,
+                 verbose=True):
 
         if isinstance(in_file, str):
             in_file = [in_file]
@@ -67,12 +68,13 @@ class PresentationLogfileCrawler(object):
                 con_duration = [con_duration]
 
             if len(con_duration) < len(con_names):
-                con_duration = con_duration * len(con_names)
+                con_duration *= len(con_names)
 
         self.con_duration = con_duration
 
         design_params = ['univar', 'multivar', None]
-        msg = 'Unknown design-parameter; please choose from: %r' % design_params
+        msg = 'Unknown design-parameter; please choose from: %r' % \
+              design_params
         if isinstance(con_design, str):
             if con_design not in design_params:
                 raise ValueError(msg)
@@ -118,18 +120,19 @@ class PresentationLogfileCrawler(object):
         _ = [df.drop(col, axis=1, inplace=True)
              for col in to_drop if col in df.columns]
 
-        # Ugly hack to find pulsecode, because some numeric codes are str
+        # Ugly hack to find pulsecode, because some numeric codes are
+        # written as str
         df['Code'] = df['Code'].astype(str)
         df['Code'] = [np.float(x) if x.isdigit() else x for x in df['Code']]
         pulse_idx = np.where(df['Code'] == self.pulsecode)[0]
 
-        if len(pulse_idx) > 1: # take first pulse if multiple pulses are logged
+        if len(pulse_idx) > 1:  # take first pulse if mult pulses are logged
             pulse_idx = int(pulse_idx[0])
 
         # pulse_t = absolute time of first pulse
         pulse_t = df['Time'][df['Code'] == self.pulsecode].iloc[0]
         df['Time'] = (df['Time'] - float(pulse_t)) / 10000.0
-        df['Duration'] = df['Duration'] / 10000.0
+        df['Duration'] /= 10000.0
 
         trial_names = []
         trial_onsets = []
@@ -149,12 +152,15 @@ class PresentationLogfileCrawler(object):
                     idx = df['Code'].isin(code)
 
                 elif all(isinstance(c, str) for c in code):
-                    idx = [any(c in x for c in code) if isinstance(x, str) else False for x in df['Code']]
+                    idx = [any(c in x for c in code)
+                           if isinstance(x, str) else False
+                           for x in df['Code']]
                     idx = np.array(idx)
 
             elif len(code) == 1 and type(code[0]) == str:
                 # Code is single string
-                idx = [code[0] in x if type(x) == str else False for x in df['Code']]
+                idx = [code[0] in x if type(x) == str
+                       else False for x in df['Code']]
                 idx = np.array(idx)
             else:
                 idx = df['Code'] == code
@@ -169,23 +175,29 @@ class PresentationLogfileCrawler(object):
                 to_write['Duration'] = df['Duration'][idx]
                 n_nan = np.sum(np.isnan(to_write['Duration']))
                 if n_nan > 1:
-                    msg = 'In total, %i NaNs found for Duration. Specify duration manually.' % n_nan
+                    msg = ('In total, %i NaNs found for Duration. '
+                           'Specify duration manually.' % n_nan)
                     raise ValueError(msg)
-                to_write['Duration'] = [np.round(x, decimals=2) for x in to_write['Duration']]
+                to_write['Duration'] = [np.round(x, decimals=2)
+                                        for x in to_write['Duration']]
             else:
                 to_write['Duration'] = [self.con_duration[i]] * idx.sum()
 
             to_write['Weight'] = np.ones((np.sum(idx), 1))
-            to_write['Name'] = [self.con_names[i] + '_%i' % (j + 1) for j in range(idx.sum())]
+            to_write['Name'] = [self.con_names[i] + '_%i' % (j + 1)
+                                for j in range(idx.sum())]
 
             if self.con_design[i] == 'univar':
                 trial_names.append(to_write['Name'].tolist())
                 trial_onsets.append(to_write['Time'].tolist())
                 trial_durations.append(to_write['Duration'].tolist())
             elif self.con_design[i] == 'multivar':
-                _ = [trial_names.append([x]) for x in to_write['Name'].tolist()]
-                _ = [trial_onsets.append([x]) for x in to_write['Time'].tolist()]
-                _ = [trial_durations.append([x]) for x in to_write['Duration'].tolist()]
+                _ = [trial_names.append([x])
+                     for x in to_write['Name'].tolist()]
+                _ = [trial_onsets.append([x])
+                     for x in to_write['Time'].tolist()]
+                _ = [trial_durations.append([x])
+                     for x in to_write['Duration'].tolist()]
 
             self.to_write = to_write
 
@@ -240,8 +252,7 @@ class PresentationLogfileCrawler(object):
 
 
 def parse_presentation_logfile(in_file, con_names, con_codes, con_design=None,
-                               con_duration=None, pulsecode=30,
-                               write_bfsl=False, verbose=True):
+                               con_duration=None, pulsecode=30):
     """
     Function-interface for PresentationLogfileCrawler. Can be used to create
     a Nipype node.
@@ -266,16 +277,13 @@ def parse_presentation_logfile(in_file, con_names, con_codes, con_design=None,
         here manually (per condition).
     pulsecode : int
         Code with which the first (or any) pulse is logged.
-    write_bfsl : bool
-        Whether to write out a .bfsl file per condition.
-    verbose : bool
-        Print out intermediary output.
     """
 
     from skbold.exp_model import PresentationLogfileCrawler
 
     plc = PresentationLogfileCrawler(in_file=in_file, con_names=con_names,
-                                     con_codes=con_codes, con_design=con_design,
+                                     con_codes=con_codes,
+                                     con_design=con_design,
                                      con_duration=con_duration,
                                      pulsecode=pulsecode, write_bfsl=True,
                                      verbose=False)

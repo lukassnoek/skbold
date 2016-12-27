@@ -90,4 +90,3 @@ def convert2epi(file2transform, reg_dir, out_dir=None,
         out_all = out_all[0]
 
     return out_all
-

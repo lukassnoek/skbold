@@ -2,8 +2,19 @@ language: python
 python:
   - "2.7"
 
+branches:
+  only:
+    - master
+
+env:
+  - TOXENV=py27
+
 before_install:
   - sudo apt-get update
+  - bash <(wget -q -O- http://neuro.debian.net/_files/neurodebian-travis.sh)
+  - sudo apt-get -y update && sudo apt-get install -y -qq fsl-core
+  - source /etc/fsl/fsl.sh
+  - export FSLOUTPUTTYPE=NIFTI_GZ
   # We do this conditionally because it saves us some downloading if the
   # version is the same.
   - wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
@@ -16,14 +27,14 @@ before_install:
   - conda info -a
   - conda config --add channels conda-forge
   - conda install --yes python=$TRAVIS_PYTHON_VERSION pip scipy numpy pandas scikit-learn joblib nipype h5py seaborn
-  - pip install nibabel nilearn pytest-cov coveralls
+  - pip install nibabel nilearn pytest pytest-cov coveralls pytest-pep8
 
 install:
   # Replace dep1 dep2 ... with your dependencies
   - python setup.py install
 
 script:
-  - py.test
+  - py.test -v --cov skbold --cov-report term-missing skbold
 
 after_success:
     - coveralls

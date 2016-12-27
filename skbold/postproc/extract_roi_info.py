@@ -14,7 +14,8 @@ import pandas as pd
 from scipy.ndimage.measurements import label
 
 import skbold
-roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs', 'harvard_oxford')
+roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs',
+                  'harvard_oxford')
 
 
 def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
@@ -65,6 +66,12 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
     """
 
     data = nib.load(statfile).get_data()
+
+    sign_mask = np.ones(shape=data.shape)
+    sign_mask[data < 0] = -1
+
+    data = np.abs(data)
+
     if stat_threshold:
         data[data < stat_threshold] = 0
 
@@ -107,14 +114,29 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
 
             tmp = np.zeros(data.shape)
             tmp[cl_mask] = data[cl_mask] == mx
-            X = np.where(tmp == 1)[0]
-            Y = np.where(tmp == 1)[1]
-            Z = np.where(tmp == 1)[2]
+
+            if np.sum(tmp == 1) > 1:  # in case of multiple voxels with same stat / weight
+                X = np.where(tmp == 1)[0][0]
+                Y = np.where(tmp == 1)[1][0]
+                Z = np.where(tmp == 1)[2][0]
+            else:
+                X = np.where(tmp == 1)[0]
+                Y = np.where(tmp == 1)[1]
+                Z = np.where(tmp == 1)[2]
+
+            if sign_mask[X, Y, Z] < 0: # if weight / stat is negative, change sign of mx
+                mx = -mx
+
+            # convert to MNI-coordinates
+            X = 90 - X * 2
+            Y = -126 + Y * 2
+            Z = -72 + Z * 2
 
             # This is purely for formatting issues
             if i == 0:
                 stat = op.basename(statfile).split('.')[0].split('_')[-1]
-                c = op.basename(op.dirname(statfile)).split('.')[0] + '_' + stat
+                c = op.basename(op.dirname(statfile)).split('.')[0]
+                c += '_%s' % stat
             else:
                 c = ''
 
@@ -140,15 +162,30 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
                     mx = data[overlap].max()
                     tmp = np.zeros(data.shape)
                     tmp[overlap] = data[overlap] == mx
-                    X = np.where(tmp == 1)[0]
-                    Y = np.where(tmp == 1)[1]
-                    Z = np.where(tmp == 1)[2]
+
+                    if np.sum(tmp == 1) > 1:        # in case of multiple voxels with same stat / weight
+                        X = np.where(tmp == 1)[0][0]
+                        Y = np.where(tmp == 1)[1][0]
+                        Z = np.where(tmp == 1)[2][0]
+                    else:
+                        X = np.where(tmp == 1)[0]
+                        Y = np.where(tmp == 1)[1]
+                        Z = np.where(tmp == 1)[2]
+
+                    if sign_mask[X, Y, Z] < 0: # if sign of weight / stat is negative, change sign of mx
+                        mx = -mx
+
+                    # convert to MNI-coordinates
+                    X = 90 - X * 2
+                    Y = -126 + Y * 2
+                    Z = -72 + Z * 2
+
                 else:
                     # If no voxels, write some default values
                     mx = 0
                     X, Y, Z = 0, 0, 0
 
-                to_append = {'Contrast': '', 'cluster': (i + 1+ 0.1),
+                to_append = {'Contrast': '', 'cluster': (i + 1 + 0.1),
                              'k cluster': '', 'max cluster': '', 'x': '',
                              'y': '', 'z': '', 'Region': mask_name,
                              'k region': k, 'max region': mx}
@@ -164,12 +201,13 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
                         'y', 'z', 'Region', 'k region', 'max region']
         df = df[cols_ordered]
         df = df[df['k region'] > min_clust_size]
-        df = df.sort_values(by=['cluster', 'k region'], ascending=[True, False])
+        df = df.sort_values(by=['cluster', 'k region'],
+                            ascending=[True, False])
         df['cluster'] = ['' if val % 1 != 0 else val for val in df['cluster']]
 
-    else: # If not extracting info per cluster, but wholebrain
+    else:  # If not extracting info per cluster, but wholebrain
         print('Analyzing %s' % statfile)
-        col_names = ['roi', 'k', 'max', 'mean', 'sd', 'X','Y', 'Z']
+        col_names = ['roi', 'k', 'max', 'mean', 'sd', 'X', 'Y', 'Z']
         results = pd.DataFrame(columns=col_names)
 
         # Only loop over masks
@@ -192,9 +230,9 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
                 tmp = np.zeros(data.shape)
                 tmp[overlap] = data[overlap] == mx
                 if save_indices:
-                    X = np.where(tmp == 1)[0]
-                    Y = np.where(tmp == 1)[1]
-                    Z = np.where(tmp == 1)[2]
+                    X = 90 - np.where(tmp == 1)[0] * 2
+                    Y = -126 + np.where(tmp == 1)[1] * 2
+                    Z = -72 + np.where(tmp == 1)[2] * 2
             else:
                 mx, mean, std = 0, 0, 0
 

@@ -33,8 +33,10 @@ class MeanEuclidean(BaseEstimator, TransformerMixin):
         distance.
     """
 
-    def __init__(self, cutoff=2.3, normalize=False, fisher=False):
+    def __init__(self, cutoff=2.3, percentage=False, normalize=False,
+                 fisher=False):
         self.cutoff = cutoff
+        self.percentage = percentage
         self.normalize = normalize
         self.fisher = fisher
         self.idx_ = None
@@ -78,16 +80,21 @@ class MeanEuclidean(BaseEstimator, TransformerMixin):
             tmp = a - b
 
             if self.fisher:
-                tmp = tmp / np.sqrt(a.std()**2 + b.std()**2)
+                diff_patterns[i, :] = (tmp ** 2) / (a.std() + b.std())
+            else:
+                diff_patterns[i, :] = np.abs((tmp - tmp.mean()) / tmp.std())
 
-            diff_patterns[i, :] = np.abs((tmp - tmp.mean()) / tmp.std())
-
-        self.condition_idx_ = diff_patterns > self.cutoff
-        self.condition_scores_ = diff_patterns
         mean_diff = np.mean(diff_patterns, axis=0)
-
-        self.idx_ = mean_diff > self.cutoff
+        self.condition_scores_ = diff_patterns
         self.scores_ = mean_diff
+
+        if self.cutoff < 1 and self.percentage:
+            n = np.round(n_features * self.cutoff).astype(int)
+            self.condition_idx_ = np.argsort(diff_patterns, axis=1)[:, -n:]
+            self.idx_ = np.argsort(mean_diff)[-n:]
+        else:
+            self.condition_idx_ = diff_patterns > self.cutoff
+            self.idx_ = mean_diff > self.cutoff
 
         return self
 
@@ -105,5 +112,4 @@ class MeanEuclidean(BaseEstimator, TransformerMixin):
             Transformed array of shape = [n_samples, n_features] given the
             indices calculated during fit().
         """
-
         return X[:, self.idx_]

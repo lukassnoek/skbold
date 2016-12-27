@@ -15,8 +15,8 @@ def test_fsl2mvp_within():
 
     mvp_within = MvpWithin(source=testfeats, read_labels=True,
                            remove_contrast=[], invert_selection=None,
-                           ref_space='epi', beta2tstat=True, remove_zeros=False,
-                           mask=None)
+                           ref_space='epi', beta2tstat=True,
+                           remove_zeros=False, mask=None)
 
     mvp_within.create()
     assert len(mvp_within.contrast_labels) == 2 * len(true_labels)

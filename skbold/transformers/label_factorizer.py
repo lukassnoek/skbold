@@ -79,4 +79,3 @@ class LabelFactorizer(BaseEstimator, TransformerMixin):
     def get_new_labels(self):
         """ Returns new labels based on factorization. """
         return self.new_labels_
-

@@ -1,5 +1,5 @@
-from setuptools import setup, find_packages
 import skbold
+from setuptools import setup, find_packages
 
 REQUIREMENTS = [
     'scipy>=0.17',
@@ -11,7 +11,8 @@ REQUIREMENTS = [
     'nipype>=0.12',
     'joblib>=0.9',
     'seaborn',
-    'nilearn'
+    'nilearn',
+    'configparser'
 ]
 
 VERSION = skbold.__version__
@@ -27,13 +28,13 @@ setup(
                 'multivoxel pattern analyses of fMRI data.',
     long_description=readme(),
     classifiers=[
-        'Development Status :: 1 - Planning',
+        'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Science/Research',
         'Operating System :: POSIX :: Linux',
         'Programming Language :: Python :: 2.7',
         'Topic :: Scientific/Engineering :: Bio-Informatics'],
-    keywords="fMRI scikit-learn RSA machine learning",
-    url='lukassnoek.github.io/skbold',
+    keywords="fMRI MVPA decoding machine learning",
+    url='http://skbold.readthedocs.io/en/latest/',
     author='Lukas Snoek',
     author_email='lukassnoek@gmail.com',
     license='MIT',
