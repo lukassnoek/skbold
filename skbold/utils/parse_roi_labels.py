@@ -10,15 +10,27 @@ from glob import glob
 
 
 def parse_roi_labels(atlas_type='Talairach'):
+    """ Parses xml-files belonging to FSL atlases.
 
+    Parameters
+    ----------
+    atlas_type : str
+        String identifying which atlas needs to be parsed.
+
+    Returns
+    -------
+    info_dict : dict
+        Dictionary with indices and coordinates (values) per
+        ROI (keys).
+    """
     available_atlases = ['HarvardOxford-Cortical',
                          'HarvardOxford-Cortical-Lateralized',
                          'HardvardOxford-Subcortical',
                          'MNI', 'JHU-labels', 'JHU-tracts',
                          'Talairach']
 
-    # roidata_root = roidata_path
-    roidata_root = '../data/ROIs'
+    roidata_root = roidata_path
+    # roidata_root = '../data/ROIs'
 
     xml = glob(op.join(roidata_root, '*', atlas_type + '.xml'))
 
@@ -61,7 +73,6 @@ def parse_roi_labels(atlas_type='Talairach'):
 def merge_ho_atlases():
     # merges subcortical and cortical masks
     probs = ['0', '25', '50']
-
 
     pass
 

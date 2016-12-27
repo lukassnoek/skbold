@@ -4,21 +4,22 @@
 
 """
 .. _ReadTheDocs: http://skbold.readthedocs.io
-The utils subpackage contains for extra utilities for machine learning
-pipelines on fMRI data. The MvpResults* objects can be used to keep track of
-model evaluation metrics across cross-validation folds and keeps track of
-feature weights. More information can be found on the homepage of
+The utils subpackage contains some extra utilities for machine learning
+pipelines on fMRI data. Most notably, the CrossvalSplitter class
+allows for the construction of counterbalanced splits between
+train- and test-sets (e.g. counterbalancing a certain confounding
+variable in the train-set and between the train- and test-set).
+
+More information can be found on the homepage of
 ReadTheDocs_.
+
+To do:
+- extend crossvalsplitter to create 3 groups (train, cv, test)
 """
 
-
-from .mvp_results import (MvpResults, MvpResultsClassification,
-                          MvpResultsRegression, MvpAverageResults)
 from .sort_numbered_list import sort_numbered_list
-from .decoding_splits import make_counterbalanced_split
 from .crossval_splitter import CrossvalSplitter
+from .parse_roi_labels import parse_roi_labels
 
-__all__ = ['MvpResultsClassification', 'MvpResults',
-           'MvpResultsRegression', 'MvpAverageResults',
-           'sort_numbered_list', 'make_counterbalanced_split',
-           'MvpAverageResults', 'CrossvalSplitter']
+__all__ = ['sort_numbered_list', 'CrossvalSplitter',
+           'parse_roi_labels']

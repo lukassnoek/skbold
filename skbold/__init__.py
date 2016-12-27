@@ -2,13 +2,13 @@
 # Contact: lukassnoek@gmail.com
 # License: 3 clause BSD
 
-import classifiers
+import estimators
 import core
 import exp_model
 import postproc
-import transformers
-import utils
+import feature_extraction
 import feature_selection
+import utils
 from os.path import dirname, join
 
 __version__ = '0.3.0'
@@ -18,5 +18,6 @@ testdata_path = join(data_path, 'test_data')
 roidata_path = join(data_path, 'ROIs')
 harvardoxford_path = join(roidata_path, 'harvard_oxford')
 
-__all__ = ['classifiers', 'core', 'data', 'exp_model',
-           'postproc', 'transformers', 'utils', 'harvardoxford_path']
+__all__ = ['estimators', 'core', 'data', 'exp_model',
+           'postproc', 'feature_extraction', 'utils',
+           'harvardoxford_path', 'feature_selection']

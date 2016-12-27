@@ -11,10 +11,14 @@ from glob import glob
 from fnmatch import fnmatch
 from skbold.core import Mvp
 from sklearn.linear_model import LinearRegression, LogisticRegression
-from nilearn.input_data import NiftiLabelsMasker
-from nilearn.datasets import fetch_atlas_aal, fetch_atlas_harvard_oxford
 from sklearn.covariance import GraphLassoCV
 from sklearn.externals.joblib import Parallel, delayed
+
+try:
+    from nilearn.decoding import SearchLight
+except ImportError as e:
+    print("Skbold's searchlight functionality not available.")
+
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from ..transformers import MajorityUndersampler
 
@@ -653,34 +657,6 @@ class MvpBetween(Mvp):
             np.savetxt(op.join(path, 'y_4D_nifti.txt'), self.y,
                        fmt='%1.4f', delimiter='\t')
 
-    def _load_4D_func(self, args):
-
-        if args['atlas'] == 'aal':
-
-            aal = fetch_atlas_aal()
-            aal = {'file': aal.maps}
-            atlas_filename = aal['file']
-        else:
-            harvard_oxford = fetch_atlas_harvard_oxford(
-                'cort-maxprob-thr25-2mm')
-            harvard_oxford = {'file': harvard_oxford.maps}
-            atlas_filename = harvard_oxford['file']
-
-        data = Parallel(n_jobs=args['n_cores'])(delayed(
-             _parallelize_4D_func_loading)(f, atlas_filename, args['method'])
-             for f in args['paths'])
-
-        # Load last func for some meta-data
-        data = np.concatenate(data, axis=0)
-
-        func = nib.load(args['paths'][0])
-        self.voxel_idx.append(np.arange(data.shape[1]))
-        self.affine.append(func.affine)
-        self.data_shape.append(func.shape)
-        feature_ids = np.ones(data.shape[1], dtype=np.uint32) * len(self.X)
-        self.featureset_id.append(feature_ids)
-        self.X.append(data)
-
     def _load_4D_anat(self, args):
 
         # some checks
@@ -883,25 +859,3 @@ def check_zeropadding_and_sort(lst):
     else:
 
         return sorted(lst, key=_alphanum_key)
-
-
-def _parallelize_4D_func_loading(f, atlas, method):
-
-    func = nib.load(f)
-    roi_masker = NiftiLabelsMasker(labels_img=atlas,
-                                   standardize=True,
-                                   resampling_target=None)
-
-    time_series = roi_masker.fit_transform(func)
-
-    if method == 'corr':
-        conn = np.corrcoef(time_series.T)
-    elif method == 'invcorr':
-        graphlasso = GraphLassoCV()
-        graphlasso.fit(time_series)
-        conn = graphlasso.precision_
-    else:
-        raise ValueError('Specify either corr or invcorr')
-
-    conn = conn[np.tril_indices(conn.shape[0], k=-1)].ravel()
-    return conn[np.newaxis, :]

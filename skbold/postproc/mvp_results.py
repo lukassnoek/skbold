@@ -6,14 +6,13 @@ import numpy as np
 import nibabel as nib
 import pandas as pd
 import joblib
-from sklearn.metrics import (accuracy_score, precision_score, recall_score,
-                             confusion_matrix, r2_score, mean_squared_error,
-                             f1_score)
 from scipy import stats
-
 from itertools import combinations
 from scipy.misc import comb
 from copy import copy
+from sklearn.metrics import (accuracy_score, precision_score, recall_score,
+                             confusion_matrix, r2_score, mean_squared_error,
+                             f1_score)
 
 
 class MvpResults(object):
@@ -57,6 +56,7 @@ class MvpResults(object):
 
         self.mvp = mvp
         self.n_iter = n_iter
+        self.n_vox = np.zeros(self.n_iter)
         self.fs = feature_scoring
         self.verbose = verbose
         self.X = mvp.X
@@ -67,6 +67,8 @@ class MvpResults(object):
         self.voxel_idx = mvp.voxel_idx
         self.featureset_id = mvp.featureset_id
         self.iter = 0
+        self.voxel_values = None
+        self.df = None
 
         if out_path is None:
             out_path = os.getcwd()
@@ -139,7 +141,7 @@ class MvpResults(object):
 
         if multiclass == 'ovo':
             # in scikit-learn 'ovo', Positive labels are reversed
-            values = values * -1
+            values *= -1
             n_class = len(np.unique(self.mvp.y))
             n_models = comb(n_class, 2, exact=True)
             cmb = list(combinations(range(n_models), 2))
@@ -212,7 +214,7 @@ class MvpResults(object):
 
         pipe_steps = copy(pipe.named_steps)
 
-        for name, step in pipe_steps.iteritems():
+        for name, step in pipe_steps.items():
 
             if hasattr(step, 'best_estimator_'):
                 pipe_steps[name] = step.best_estimator_
@@ -340,12 +342,9 @@ class MvpResultsRegression(MvpResults):
             Indices of current test-trials.
         y_pred : ndarray
             Predictions of current test-trials.
-        values : ndarray
-            Values of features for model in the current fold. This can be the
-            entire pipeline (in this case, it is extracted automaticlly). When
-            a pipeline is passed, the idx-parameter does not have to be passed.
-        idx : ndarray
-            Index mapping the 'values' back to whole-brain space.
+        pipeline : scikit-learn Pipeline object
+            pipeline from which relevant scores/coefficients will be
+            extracted.
         """
         i = self.iter
         y_true = self.y[test_idx]
@@ -392,7 +391,7 @@ class MvpResultsClassification(MvpResults):
         Whether to print extra output.
     """
 
-    def __init__(self, mvp, n_iter, feature_scoring='', verbose=False,
+    def __init__(self, mvp, n_iter, feature_scoring='fwm', verbose=False,
                  out_path=None):
 
         super(MvpResultsClassification,
@@ -406,7 +405,6 @@ class MvpResultsClassification(MvpResults):
         self.f1 = np.zeros(self.n_iter)
         self.n_class = np.unique(self.mvp.y).size
         self.confmat = np.zeros((self.n_iter, self.n_class, self.n_class))
-        self.n_vox = np.zeros(self.n_iter)
         self.n_class = len(np.unique(mvp.y))
         if self.n_class < 3 or self.fs == 'ufs':
             self.voxel_values = np.zeros((self.n_iter, mvp.X.shape[1]))

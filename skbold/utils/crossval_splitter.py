@@ -4,6 +4,7 @@ import scipy.stats as stat
 import matplotlib.pyplot as plt
 import os.path as op
 
+
 class CrossvalSplitter(object):
 
     def __init__(self, data, train_size, vars, cb_between_splits=False,

@@ -1,14 +1,7 @@
-import glob
 import numpy as np
-import os.path as op
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.svm import SVC
-from skbold.transformers import SelectFeatureset, MeanEuclidean
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
-from copy import copy, deepcopy
 
-import skbold
 
 class MultimodalVotingClassifier(BaseEstimator, ClassifierMixin):
     """

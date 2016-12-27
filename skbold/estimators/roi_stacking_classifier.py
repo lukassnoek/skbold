@@ -11,15 +11,12 @@
 import glob
 import numpy as np
 import os
-import os.path as op
-import joblib
-
-from sklearn.externals.joblib import Parallel, delayed
 import skbold
+import os.path as op
+from sklearn.externals.joblib import Parallel, delayed, dump
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.svm import SVC
-from skbold.transformers import RoiIndexer, MeanEuclidean, \
-    IncrementalFeatureCombiner
+from skbold.feature_extraction import RoiIndexer, IncrementalFeatureCombiner
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.cross_validation import StratifiedKFold
@@ -384,4 +381,4 @@ def _fit_base_parallel(rsc, X, y, i):
     fn = op.join(rsc.stack_dir, 'scores_fold_%i.npy' % (i + 1))
     np.save(fn, scores)
     fn = op.join(rsc.stack_dir, 'pipes_fold_%i.pickle' % (i + 1))
-    joblib.dump(inner_pipes, fn, compress=3)
+    dump(inner_pipes, fn, compress=3)
