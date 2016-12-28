@@ -6,10 +6,10 @@
 
 from transformers import PCAfilter, ArrayPermuter, PatternAverager,\
     AverageRegionTransformer, RoiIndexer, RowIndexer, ClusterThreshold,\
-    SelectFeatureset
+    SelectFeatureset, IncrementalFeatureCombiner
 
 __all__ = ['PatternAverager', 'ArrayPermuter', 'AverageRegionTransformer',
            'PCAfilter', 'RoiIndexer', 'RowIndexer', 'ClusterThreshold',
-           'SelectFeatureset']
+           'SelectFeatureset', 'IncrementalFeatureCombiner']
 
 

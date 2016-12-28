@@ -1,13 +1,14 @@
 language: python
 python:
   - "2.7"
-
+  - "3.5"
 branches:
   only:
     - master
+    - develop
 
-env:
-  - TOXENV=py27
+#env:
+#  - TOXENV=py27
 
 before_install:
   - sudo apt-get update

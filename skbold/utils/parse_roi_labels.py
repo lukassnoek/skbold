@@ -4,9 +4,12 @@
 # Contact: lukassnoek@gmail.com
 # License: 3 clause BSD
 
+import skbold
 import os.path as op
-from skbold import roidata_path
 from glob import glob
+
+roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs',
+                  'harvard_oxford')
 
 
 def parse_roi_labels(atlas_type='Talairach'):

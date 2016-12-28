@@ -12,11 +12,9 @@ All comply with the scikit-learn API, using fit() and transform() methods.
 """
 
 from filters import GenericUnivariateSelect, SelectAboveCutoff
-from label_preproc import LabelFactorizer, MajorityUndersampler
 from selectors import fisher_criterion_score
 
 __all__ = ['GenericUnivariateSelect', 'SelectAboveCutoff',
-           'LabelFactorizer', 'MajorityUndersampler',
            'fisher_criterion_score']
 
 

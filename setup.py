@@ -4,13 +4,9 @@ from setuptools import setup, find_packages
 REQUIREMENTS = [
     'scipy>=0.17',
     'numpy>=1.10',
-    'scikit-learn>=0.17',
+    'scikit-learn>=0.18',
     'pandas>=0.17',
     'nibabel>=2.0',
-    'matplotlib',
-    'nipype>=0.12',
-    'joblib>=0.9',
-    'seaborn',
     'nilearn',
     'configparser'
 ]

@@ -146,8 +146,10 @@ class ClusterThreshold(BaseEstimator, TransformerMixin):
         minimum cluster size to be set for cluster-thresholding
     """
 
-    def __init__(self, mvp, selector=f_classif, min_cluster_size=20):
+    def __init__(self, mvp, min_score, selector=f_classif,
+                 min_cluster_size=20):
 
+        self.min_score = min_score
         self.selector = selector
         self.min_cluster_size = min_cluster_size
         self.mask_shape = mvp.mask_shape
@@ -170,14 +172,14 @@ class ClusterThreshold(BaseEstimator, TransformerMixin):
         """
 
         self.scores_ = self.selector(X, y, *args)
-        self.idx_ = self.transformer.idx_
+        self.idx_ = self.scores_ > self.min_score
 
         # X_fs = univariate feature values in wholebrain space
         X_fs = np.zeros(self.mask_shape).ravel()
         X_fs[self.mask_idx] = self.scores_
         X_fs = X_fs.reshape(self.mask_shape)
 
-        clustered, num_clust = label(X_fs > self.transformer.cutoff)
+        clustered, num_clust = label(X_fs > self.min_score)
         values, counts = np.unique(clustered.ravel(), return_counts=True)
         n_clust = np.argmax(np.sort(counts)[::-1] < self.min_cluster_size)
 
@@ -518,3 +520,73 @@ class SelectFeatureset(BaseEstimator, TransformerMixin):
 
         self.mvp = mvp
         return mvp
+
+
+class IncrementalFeatureCombiner(BaseEstimator, TransformerMixin):
+    """
+    Indexes a set of features with a number of (sorted) features.
+    Parameters
+    ----------
+    scores : ndarray
+        Array of shape = n_features, or [n_features, n_class] in case of
+        soft/hard voting in, e.g., a roi_stacking_classifier
+        (see classifiers.roi_stacking_classifier).
+    cutoff : int or float
+        If int, it refers the absolute number of features included, sorted
+        from high to low (w.r.t. scores). If float, it selects a proportion
+        of features.
+    """
+
+    def __init__(self, scores, cutoff):
+
+        self.scores = scores
+        self.cutoff = cutoff
+        self.idx_ = None
+
+    def fit(self, X, y=None):
+        """ Fits IncrementalFeatureCombiner transformer.
+        Parameters
+        ----------
+        X : ndarray
+            Numeric (float) array of shape = [n_samples, n_features]
+        """
+        if self.cutoff >= 1:
+
+            if self.scores.ndim > 1:
+                mean_scores = self.scores.mean(axis=-1)
+            else:
+                mean_scores = self.scores
+
+            best = np.argsort(mean_scores)[::-1][0:self.cutoff]
+            self.idx_ = np.zeros(mean_scores.size, dtype=bool)
+            self.idx_[best] = True
+
+        else:
+            self.idx_ = self.scores > self.cutoff
+
+            if self.idx_.ndim > 1 and X.shape[1] == self.idx_.shape[0]:
+                self.idx_ = self.idx_.sum(axis=1)
+
+        if self.idx_.ndim > 1:
+            self.idx_ = self.idx_.ravel()
+        return self
+
+    def transform(self, X, y=None):
+        """ Transforms a pattern (X) given the indices calculated during fit().
+        Parameters
+        ----------
+        X : ndarray
+            Numeric (float) array of shape = [n_samples, n_features]
+        Returns
+        -------
+        X : ndarray
+            Transformed array of shape = [n_samples, n_features] given the
+            indices calculated during fit().
+        """
+        if self.idx_.size != X.shape[1]:
+            n_class = X.shape[1] / self.idx_.size
+            X_tmp = X.reshape((X.shape[0], n_class, self.idx_.size))
+            X_tmp = X_tmp[:, :, self.idx_]
+            return X_tmp.reshape((X.shape[0], np.prod(X_tmp.shape[1:])))
+        else:
+            return X[:, self.idx_]

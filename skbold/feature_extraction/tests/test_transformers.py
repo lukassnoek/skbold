@@ -29,7 +29,7 @@ def test_array_permuter():
 
 def test_cluster_threshold():
 
-    transf = ClusterThreshold(mvp=mvp_within)
+    transf = ClusterThreshold(mvp=mvp_within, min_score=2)
     transf.fit(mvp_within.X, mvp_within.y)
     transf.transform(mvp_within.X)
 

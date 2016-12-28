@@ -11,8 +11,6 @@ from glob import glob
 from fnmatch import fnmatch
 from skbold.core import Mvp
 from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.covariance import GraphLassoCV
-from sklearn.externals.joblib import Parallel, delayed
 
 try:
     from nilearn.decoding import SearchLight
@@ -20,7 +18,7 @@ except ImportError as e:
     print("Skbold's searchlight functionality not available.")
 
 from sklearn.preprocessing import StandardScaler, LabelEncoder
-from ..transformers import MajorityUndersampler
+from ..preproc import MajorityUndersampler
 
 
 class MvpBetween(Mvp):

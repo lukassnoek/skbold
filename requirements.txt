@@ -3,11 +3,6 @@ numpy>=1.10
 scikit-learn>=0.17
 pandas>=0.17
 nibabel>=2.0
-matplotlib
-h5py
-nipype>=0.12
-joblib>=0.9
 funcsigs
-seaborn
 nilearn
 configparser
