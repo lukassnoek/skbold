@@ -4,7 +4,7 @@
 
 """Description."""
 
-from transformers import PCAfilter, ArrayPermuter, PatternAverager,\
+from .transformers import PCAfilter, ArrayPermuter, PatternAverager,\
     AverageRegionTransformer, RoiIndexer, RowIndexer, ClusterThreshold,\
     SelectFeatureset, IncrementalFeatureCombiner
 
