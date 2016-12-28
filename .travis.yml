@@ -33,7 +33,7 @@ before_install:
 install:
   # Replace dep1 dep2 ... with your dependencies
   - python setup.py install
-
+  - pip install tox-travis
 script:
   - py.test -v --cov skbold --cov-report term-missing skbold
 

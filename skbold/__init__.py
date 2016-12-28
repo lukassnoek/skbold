@@ -2,7 +2,8 @@
 # Contact: lukassnoek@gmail.com
 # License: 3 clause BSD
 
-import estimators
+
+from . import estimators
 import core
 import exp_model
 import postproc
