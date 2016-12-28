@@ -171,7 +171,7 @@ class ClusterThreshold(BaseEstimator, TransformerMixin):
 
         """
 
-        self.scores_ = self.selector(X, y, *args)
+        self.scores_, _ = self.selector(X, y, *args)
         self.idx_ = self.scores_ > self.min_score
 
         # X_fs = univariate feature values in wholebrain space
