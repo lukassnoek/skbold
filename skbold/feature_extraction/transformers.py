@@ -9,12 +9,12 @@ import skbold
 import numpy as np
 import nibabel as nib
 
+from ..core import convert2epi
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.feature_selection import f_classif
 from sklearn.decomposition import PCA
 from scipy.ndimage import label
 from glob import glob
-from skbold.core import convert2epi
 
 roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs',
                   'harvard_oxford')

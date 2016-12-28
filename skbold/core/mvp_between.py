@@ -9,7 +9,7 @@ import nibabel as nib
 import scipy.stats as stat
 from glob import glob
 from fnmatch import fnmatch
-from skbold.core import Mvp
+from .mvp import Mvp
 from sklearn.linear_model import LinearRegression, LogisticRegression
 
 try:

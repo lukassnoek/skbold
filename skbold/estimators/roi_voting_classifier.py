@@ -14,7 +14,7 @@ import os.path as op
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.svm import SVC
 from skbold.feature_extraction import RoiIndexer
-from skbold.feature_selection import fisher_criterion_score
+from ..feature_selection import fisher_criterion_score, SelectAboveCutoff
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from copy import copy, deepcopy
@@ -76,7 +76,7 @@ class RoiVotingClassifier(BaseEstimator, ClassifierMixin):
         # scaling and minor (univariate) feature selection is desired.
         if preproc_pipeline is None:
             scaler = StandardScaler()
-            transformer = MeanEuclidean(cutoff=1, normalize=False)
+            transformer = SelectAboveCutoff(1, fisher_criterion_score)
             preproc_pipeline = Pipeline([('transformer', transformer),
                                          ('scaler', scaler)])
 

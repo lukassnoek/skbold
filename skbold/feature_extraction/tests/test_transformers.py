@@ -1,7 +1,9 @@
+from __future__ import absolute_import
+
 import inspect
 import os.path as op
-from skbold.core import MvpWithin
 from skbold import feature_extraction
+from skbold.core import MvpWithin
 from skbold import testdata_path
 from skbold.feature_extraction import *
 

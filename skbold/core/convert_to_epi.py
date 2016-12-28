@@ -76,6 +76,8 @@ def convert2epi(file2transform, reg_dir, out_dir=None,
             cmd = 'flirt -in %s -ref %s -out %s -applyxfm -init %s -interp %s' % \
                   (f, ref_file, out_file, matrix_file, interpolation)
 
+        status = subprocess.call(cmd, shell=True)
+
         out_all.append(out_file)
         out_name = None
 

@@ -11,21 +11,23 @@
 import glob
 import numpy as np
 import os
+from copy import copy, deepcopy
 import skbold
 import os.path as op
-from sklearn.externals.joblib import Parallel, delayed, dump
+from ..core import convert2epi
+from ..feature_extraction import RoiIndexer, IncrementalFeatureCombiner
+from ..feature_selection import fisher_criterion_score, SelectAboveCutoff
+from sklearn.externals.joblib import Parallel, delayed, dump, load
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.svm import SVC
-from skbold.feature_extraction import RoiIndexer, IncrementalFeatureCombiner
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.cross_validation import StratifiedKFold
-from copy import copy, deepcopy
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import precision_score
 from sklearn.grid_search import GridSearchCV
+
 import warnings
-from skbold.core import convert2epi
 
 warnings.filterwarnings('ignore')  # hack to turn off UndefinedMetricWarning
 
@@ -98,7 +100,7 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
 
         if preproc_pipe == 'default':
             scaler = StandardScaler()
-            transformer = MeanEuclidean(cutoff=1, normalize=False)
+            transformer = SelectAboveCutoff(1, fisher_criterion_score)
             preproc_pipe = Pipeline([('transformer', transformer),
                                      ('scaler', scaler)])
 
@@ -226,7 +228,7 @@ class RoiStackingClassifier(BaseEstimator, ClassifierMixin):
         for i in range(len(self.base_pipes)):
 
             if all(isinstance(p, str) for p in self.base_pipes):
-                outer_pipe = joblib.load(self.base_pipes[i])
+                outer_pipe = load(self.base_pipes[i])
                 os.remove(self.base_pipes[i])
             else:
                 outer_pipe = self.base_pipes[i]

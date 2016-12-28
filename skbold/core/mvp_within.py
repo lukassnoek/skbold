@@ -2,8 +2,8 @@ import os.path as op
 import pandas as pd
 import numpy as np
 import nibabel as nib
-from skbold.core import Mvp, convert2epi, convert2mni
-from skbold.utils import sort_numbered_list
+from ..core import Mvp, convert2epi, convert2mni
+from ..utils import sort_numbered_list
 from sklearn.preprocessing import LabelEncoder
 from glob import glob
 

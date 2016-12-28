@@ -27,13 +27,13 @@ before_install:
   # Useful for debugging any issues with conda
   - conda info -a
   - conda config --add channels conda-forge
-  - conda install --yes python=$TRAVIS_PYTHON_VERSION pip scipy numpy pandas scikit-learn joblib nipype h5py seaborn
+  - conda install --yes python=$TRAVIS_PYTHON_VERSION pip scipy numpy pandas scikit-learn
   - pip install nibabel nilearn pytest pytest-cov coveralls pytest-pep8
 
 install:
   # Replace dep1 dep2 ... with your dependencies
   - python setup.py install
-  - pip install tox-travis
+
 script:
   - py.test -v --cov skbold --cov-report term-missing skbold
 

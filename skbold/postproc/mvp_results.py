@@ -5,7 +5,7 @@ import os.path as op
 import numpy as np
 import nibabel as nib
 import pandas as pd
-import joblib
+from sklearn.externals import joblib
 from scipy import stats
 from itertools import combinations
 from scipy.misc import comb

@@ -8,12 +8,12 @@
 from __future__ import print_function, absolute_import, division
 
 import os
-import joblib
 import nibabel as nib
 import os.path as op
 import numpy as np
 from glob import glob
 from copy import copy
+from sklearn.externals import joblib
 
 
 class Mvp(object):

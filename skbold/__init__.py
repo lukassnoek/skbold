@@ -4,12 +4,12 @@
 
 
 from . import estimators
-import core
-import exp_model
-import postproc
-import feature_extraction
-import feature_selection
-import utils
+from . import core
+from . import exp_model
+from . import postproc
+from . import feature_extraction
+from . import feature_selection
+from . import utils
 from os.path import dirname, join
 
 __version__ = '0.3.0'
