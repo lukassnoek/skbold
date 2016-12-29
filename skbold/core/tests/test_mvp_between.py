@@ -7,6 +7,11 @@ import shutil
 
 mask = op.join(roidata_path, 'GrayMatter.nii.gz')
 
+cmd = 'cp -r %s/run1.feat %s/mock_subjects/sub00%i'
+_ = [os.system(cmd % (testdata_path, testdata_path, i+1)) for i in range(9)
+     if not op.isdir(op.join(testdata_path, 'mock_subjects',
+                             'sub00%i' % (i + 1), 'run1.feat'))]
+
 
 def test_mvp_between_create():
     """ Tests create() method of MvpBetween. """
@@ -61,6 +66,7 @@ def test_mvp_between_write_4D():
     os.remove(op.join(testdata_path, 'Contrast2.nii.gz'))
     os.remove(op.join(testdata_path, 'y_4D_nifti.txt'))
 
+
 def test_mvp_between_split():
 
     source = dict()
@@ -75,4 +81,3 @@ def test_mvp_between_split():
     spaths = glob(op.join(testdata_path, 'mock_subjects',
                           'sub*', 'run1.feat'))
     _ = [shutil.rmtree(s) for s in spaths]
-
