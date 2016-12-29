@@ -7,9 +7,6 @@ import shutil
 
 mask = op.join(roidata_path, 'GrayMatter.nii.gz')
 
-#cmd = 'cp -r %s/run1.feat %s/mock_subjects/sub00%i'
-#_ = [os.system(cmd % (testdata_path, testdata_path, i+1)) for i in range(9)]
-
 
 def test_mvp_between_create():
     """ Tests create() method of MvpBetween. """
