@@ -6,10 +6,9 @@ from glob import glob
 import shutil
 
 mask = op.join(roidata_path, 'GrayMatter.nii.gz')
-cmd = 'cp -rs %s/run1.feat %s/mock_subjects/sub00%i'
-_ = [os.system(cmd % (testdata_path, testdata_path, i+1)) for i in range(9)
-     if not op.isdir(op.join(testdata_path, 'mock_subjects',
-                             'sub00%i' % (i+1), 'run1.feat'))]
+
+cmd = 'cp -r %s/run1.feat %s/mock_subjects/sub00%i'
+_ = [os.system(cmd % (testdata_path, testdata_path, i+1)) for i in range(9)]
 
 
 def test_mvp_between_create():
