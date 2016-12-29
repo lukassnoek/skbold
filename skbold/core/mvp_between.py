@@ -151,7 +151,7 @@ class MvpBetween(Mvp):
         self._check_complete_data()
 
         # Loop over data-types as defined in source
-        for data_type, args in self.source.iteritems():
+        for data_type, args in self.source.items():
 
             print('Processing: %s ...' % data_type)
             self.data_name.append(data_type)
@@ -786,7 +786,7 @@ class MvpBetween(Mvp):
 
     def _check_complete_data(self):
 
-        for data_type, args in self.source.iteritems():
+        for data_type, args in self.source.items():
 
             if '4D_anat' in data_type:
                 continue
@@ -826,7 +826,7 @@ class MvpBetween(Mvp):
         print("Found a set of %i complete subjects for data-types: %r" %
               (len(self.common_subjects), [key for key in self.source]))
 
-        for data_type, args in self.source.iteritems():
+        for data_type, args in self.source.items():
 
             if '4D_anat' in data_type:
                 continue
