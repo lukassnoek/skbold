@@ -3,9 +3,10 @@ from skbold.core import MvpBetween
 from skbold import testdata_path, roidata_path
 import os
 from glob import glob
+import shutil
 
 mask = op.join(roidata_path, 'GrayMatter.nii.gz')
-cmd = 'cp -r %s/run1.feat %s/mock_subjects/sub00%i'
+cmd = 'cp -rs %s/run1.feat %s/mock_subjects/sub00%i'
 _ = [os.system(cmd % (testdata_path, testdata_path, i+1)) for i in range(9)
      if not op.isdir(op.join(testdata_path, 'mock_subjects',
                              'sub00%i' % (i+1), 'run1.feat'))]
@@ -75,3 +76,7 @@ def test_mvp_between_split():
     mvp.create()
     fpath = op.join(testdata_path, 'sample_behav.tsv')
     mvp.split(fpath, col_name='group', target='train')
+    spaths = glob(op.join(testdata_path, 'mock_subjects',
+                          'sub*', 'run1.feat'))
+    _ = [shutil.rmtree(s) for s in spaths]
+
