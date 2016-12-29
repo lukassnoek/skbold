@@ -20,7 +20,7 @@ except ImportError as e:
     print("Skbold's searchlight functionality not available.")
 
 from sklearn.preprocessing import StandardScaler, LabelEncoder
-from ..preproc import MajorityUndersampler
+from ..preproc import MajorityUndersampler, LabelBinarizer
 
 
 class MvpBetween(Mvp):
@@ -230,7 +230,7 @@ class MvpBetween(Mvp):
         file_path : str
             Absolute path to spreadsheet-like file including the confounding
             variable.
-        col_name : str
+        col_name : str or List[str]
             Column name in spreadsheet containing the confouding variable
         sep : str
             Separator to parse the spreadsheet-like file.
@@ -266,6 +266,10 @@ class MvpBetween(Mvp):
         confound = np.array(df.loc[common_idx, col_name])
 
         # Fit confounds to y
+
+        if confound.ndim == 1:
+            confound = confound[:, np.newaxis]
+
         estimator.fit(confound, self.y)
 
         # Calculate p(y=1 | confounds)
@@ -284,7 +288,7 @@ class MvpBetween(Mvp):
         file_path : str
             Absolute path to spreadsheet-like file including the confounding
             variable.
-        col_name : str
+        col_name : str or List[str]
             Column name in spreadsheet containing the confouding variable
         backend : str
             Which algorithm to use to regress out the confound. The option
@@ -365,10 +369,7 @@ class MvpBetween(Mvp):
                                 enumerate(self.common_subjects) if idx[i]]
 
     def add_y(self, file_path, col_name, sep='\t', index_col=0,
-              normalize=False, binarize=None, remove=None,
-              save_binarization_params=None,
-              apply_binarization_params=None,
-              ensure_balanced=False):
+              normalize=False, remove=None, ensure_balanced=False):
         """ Sets ``y`` attribute to an outcome-variable (target).
 
         Parameters
@@ -383,21 +384,6 @@ class MvpBetween(Mvp):
             Which column to use as index (should correspond to subject-name).
         normalize : bool
             Whether to normalize (0 mean, unit std) the outcome variable.
-        binarize : dict
-            If not None, the outcome variable will be binarized along the
-            key-value pairs in the binarize-argument. Options:
-
-            >>> binarize = {'type': 'percentile', 'high': .75, 'low': .25}
-            >>> binarize = {'type': 'zscore', 'std': 1}
-            >>> binarize = {'type': 'constant', 'cutoff': 10}
-            >>> binarize = {'type': 'median'}
-
-        save_binarization_params : str
-            If not none, it refers to the path to save the binarization params
-            to.
-        apply_binarization_params : str
-            If not none, it refers to the path to load the binarization params
-            from and apply them to the loaded target variable.
         remove : int or float or str
             Removes instances in which y == remove from MvpBetween object.
         ensure_balanced : bool
@@ -428,76 +414,22 @@ class MvpBetween(Mvp):
         if normalize:
             self.y = (self.y - self.y.mean()) / self.y.std()
 
-        if apply_binarization_params is not None:
+        if ensure_balanced:
+            self._undersample_majority()
 
-            with open(apply_binarization_params) as fin:
-                params = json.load(fin)
+    def apply_binarization_params(self, param_file, ensure_balanced=False):
 
-            if params['type'] == 'zscore':
-                y_norm = (self.y - params['mean']) / params['std']
-                idx = np.abs(y_norm) > params['n_std']
-                y = (y_norm[idx] > 0).astype(int)
-            else:
-                msg = ("Apply binarization params other than 'zscore is "
-                       "not yet implemented.")
-                raise ValueError(msg)
+        with open(param_file) as fin:
+            params = json.load(fin)
 
-            self.y = y
-
-            if idx is not None:
-                self._update_common_subjects(idx)
-                self.X = self.X[idx, :]
-
-            if ensure_balanced:
-                self._undersample_majority()
-
-            return 0
-
-        if binarize is None:
-
-            if ensure_balanced:
-                self._undersample_majority()
-            return 0
-        else:
-            y = self.y
-
-        if binarize['type'] == 'percentile':
-            y_rank = [stat.percentileofscore(y, a, 'rank') for a in y]
-            y_rank = np.array(y_rank)
-            idx = (y_rank < binarize['low']) | (y_rank > binarize['high'])
-            low = stat.scoreatpercentile(y, binarize['low'])
-            high = stat.scoreatpercentile(y, binarize['high'])
-            self.binarize_params = {'type': 'percentile',
-                                    'low': low,
-                                    'high': high}
-            y = (y_rank[idx] > 50).astype(int)
-
-        elif binarize['type'] == 'zscore':
-            y_norm = (y - y.mean()) / y.std()  # just to be sure
-            idx = np.abs(y_norm) > binarize['std']
-            self.binarize_params = {'type': binarize['type'],
-                                    'mean': y.mean(),
-                                    'std': y.std(),
-                                    'n_std': binarize['std']}
+        if params['type'] == 'zscore':
+            y_norm = (self.y - params['mean']) / params['std']
+            idx = np.abs(y_norm) > params['n_std']
             y = (y_norm[idx] > 0).astype(int)
-
-        elif binarize['type'] == 'constant':
-            y = (y > binarize['cutoff']).astype(int)
-            idx = None
-            self.binarize_params = {'type': binarize['type'],
-                                    'cutoff': binarize['cutoff']}
-        elif binarize['type'] == 'median':  # median-split
-            median = np.median(y)
-            y = (y > median).astype(int)
-            idx = None
-            self.binarize_params = {'type': binarize['type'],
-                                    'median': median}
-
-        if save_binarization_params is not None:
-
-            with open(op.join(save_binarization_params,
-                              'binarization_params.json'), 'w') as fout:
-                json.dump(self.binarize_params, fout)
+        else:
+            msg = ("Apply binarization params other than 'zscore is "
+                   "not yet implemented.")
+            raise ValueError(msg)
 
         self.y = y
 
@@ -507,6 +439,41 @@ class MvpBetween(Mvp):
 
         if ensure_balanced:
             self._undersample_majority()
+
+    def binarize_y(self, params, save_path=None, ensure_balanced=False):
+        """ Binarizes mvp's y-attribute using a specified method.
+
+        Parameters
+        ----------
+        params : dict
+            The outcome variable (y) will be binarized along the
+            key-value pairs in the params-argument. Options:
+
+            >>> params = {'type': 'percentile', 'high': .75, 'low': .25}
+            >>> params = {'type': 'zscore', 'std': 1}
+            >>> params = {'type': 'constant', 'cutoff': 10}
+            >>> params = {'type': 'median'}
+        save_path : str
+            If not None (default), this should be an absolute path referring
+            to where the binarization-params should be saved.
+        ensure_balanced : bool
+            Whether to ensure balanced classes (if True, done by undersampling
+            the majority class).
+        """
+        options = ['percentile', 'zscore', 'constant', 'median']
+
+        labb = LabelBinarizer(params)
+        self.X, y = labb.fit_transform(self.X, self.y)
+
+        if labb.idx_ is not None:
+            self._update_common_subjects(labb.idx_)
+
+        if ensure_balanced:
+            self._undersample_majority()
+
+        if save_path is not None:
+            # to do: save params as json
+            pass
 
     def split(self, file_path, col_name, target, sep='\t', index_col=0):
         """ Splits an MvpBetween object based on some external index.

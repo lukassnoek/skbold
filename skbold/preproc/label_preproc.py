@@ -7,6 +7,7 @@
 from __future__ import print_function, division, absolute_import
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
+import scipy.stats as stat
 
 
 class LabelFactorizer(BaseEstimator, TransformerMixin):
@@ -143,3 +144,76 @@ class MajorityUndersampler(BaseEstimator, TransformerMixin):
         self.idx_ = all_idx
 
         return X[all_idx, :], y[all_idx]
+
+
+class LabelBinarizer(BaseEstimator, TransformerMixin):
+
+    def __init__(self, params):
+        """ Initializes LabelBinarizer object. """
+        self.params = params
+        self.idx_ = None
+        self.binarize_params = None
+
+    def fit(self, X=None, y=None):
+        """ Does nothing, but included for scikit-learn pipelines. """
+        return self
+
+    def transform(self, X, y):
+        """ Binarizes y-attribute.
+
+        Parameters
+        ----------
+        X : ndarray
+            Numeric (float) array of shape = [n_samples, n_features]
+
+        Returns
+        -------
+        X : ndarray
+            Transformed array of shape = [n_samples, n_features] given the
+            indices calculated during fit().
+        """
+
+        options = ['percentile', 'zscore', 'constant', 'median']
+        params = self.params
+
+        if params['type'] == 'percentile':
+            y_rank = [stat.percentileofscore(y, a, 'rank') for a in y]
+            y_rank = np.array(y_rank)
+            idx = (y_rank < params['low']) | (y_rank > params['high'])
+            low = stat.scoreatpercentile(y, params['low'])
+            high = stat.scoreatpercentile(y, params['high'])
+            self.binarize_params = {'type': 'percentile',
+                                    'low': low,
+                                    'high': high}
+            y = (y_rank[idx] > 50).astype(int)
+
+        elif params['type'] == 'zscore':
+            y_norm = (y - y.mean()) / y.std()  # just to be sure
+            idx = np.abs(y_norm) > params['std']
+            self.binarize_params = {'type': params['type'],
+                                    'mean': y.mean(),
+                                    'std': y.std(),
+                                    'n_std': params['std']}
+            y = (y_norm[idx] > 0).astype(int)
+
+        elif params['type'] == 'constant':
+            y = (y > params['cutoff']).astype(int)
+            idx = None
+            self.binarize_params = {'type': params['type'],
+                                    'cutoff': params['cutoff']}
+        elif params['type'] == 'median':  # median-split
+            median = np.median(y)
+            y = (y > median).astype(int)
+            idx = None
+            self.binarize_params = {'type': params['type'],
+                                    'median': median}
+        else:
+            msg = 'Unknown type; please choose from: %r' % options
+            raise KeyError(msg)
+
+        if idx is not None:
+            X = X[idx, :]
+
+        self.idx_ = idx
+
+        return X, y

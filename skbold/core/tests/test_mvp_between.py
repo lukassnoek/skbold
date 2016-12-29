@@ -78,6 +78,59 @@ def test_mvp_between_split():
     mvp.create()
     fpath = op.join(testdata_path, 'sample_behav.tsv')
     mvp.split(fpath, col_name='group', target='train')
+
+
+def test_mvp_between_calculate_confound_weighting():
+
+    source = dict()
+    source['Contrast1'] = {'path': op.join(testdata_path, 'mock_subjects',
+                                           'sub*', 'run1.feat', 'stats',
+                                           'cope1.nii.gz')}
+
+    mvp = MvpBetween(source=source, subject_idf='sub???', mask=mask)
+    mvp.create()
+    fpath = op.join(testdata_path, 'sample_behav.tsv')
+    mvp.add_y(fpath, col_name='var_categorical', index_col=0,
+              remove=999)
+    mvp.calculate_confound_weighting(fpath, 'confound_categorical')
+
+    assert(len(mvp.ipw) == mvp.X.shape[0])
+
+
+def test_mvp_between_calculate_confound_weighting_two_vars():
+
+    source = dict()
+    source['Contrast1'] = {'path': op.join(testdata_path, 'mock_subjects',
+                                           'sub*', 'run1.feat', 'stats',
+                                           'cope1.nii.gz')}
+
+    mvp = MvpBetween(source=source, subject_idf='sub???', mask=mask)
+    mvp.create()
+    fpath = op.join(testdata_path, 'sample_behav.tsv')
+    mvp.add_y(fpath, col_name='var_categorical', index_col=0,
+              remove=999)
+    mvp.calculate_confound_weighting(fpath, ['confound_categorical',
+                                             'confound_continuous'])
+
+    assert(len(mvp.ipw) == mvp.X.shape[0])
+
+
+def test_mvp_between_regress_out_confounds():
+
+    source = dict()
+    source['Contrast1'] = {'path': op.join(testdata_path, 'mock_subjects',
+                                           'sub*', 'run1.feat', 'stats',
+                                           'cope1.nii.gz')}
+
+    mvp = MvpBetween(source=source, subject_idf='sub???', mask=mask)
+    mvp.create()
+    fpath = op.join(testdata_path, 'sample_behav.tsv')
+    mvp.add_y(fpath, col_name='var_categorical', index_col=0,
+              remove=999)
+    mvp.regress_out_confounds(fpath, ['confound_categorical',
+                                      'confound_continuous'])
+
+    # assert(len(mvp.ipw) == mvp.X.shape[0])
     spaths = glob(op.join(testdata_path, 'mock_subjects',
                           'sub*', 'run1.feat'))
     _ = [shutil.rmtree(s) for s in spaths]
