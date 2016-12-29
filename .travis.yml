@@ -30,6 +30,7 @@ before_install:
 
 install:
   # Replace dep1 dep2 ... with your dependencies
+  - echo $PWD/skbold/data/test_data/mock_subjects/sub00* | xargs -n 1 cp -rs $PWD/skbold/data/test_data/run1.feat
   - python setup.py install
 
 script:
