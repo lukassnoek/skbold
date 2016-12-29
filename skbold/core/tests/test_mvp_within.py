@@ -4,7 +4,7 @@ from skbold import testdata_path
 import os
 
 
-def test_fsl2mvp_within():
+def test_mvp_within():
 
     testfeats = [op.join(testdata_path, 'run1.feat'),
                  op.join(testdata_path, 'run2.feat')]
