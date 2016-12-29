@@ -361,15 +361,14 @@ class MvpBetween(Mvp):
 
     def _update_common_subjects(self, idx):
         """ Updates common_subjects after indexing. """
-
         self.common_subjects = [sub for i, sub in
                                 enumerate(self.common_subjects) if idx[i]]
 
-    def add_outcome_var(self, file_path, col_name, sep='\t', index_col=0,
-                        normalize=True, binarize=None, remove=None,
-                        save_binarization_params=None,
-                        apply_binarization_params=None,
-                        ensure_balanced=False):
+    def add_y(self, file_path, col_name, sep='\t', index_col=0,
+              normalize=False, binarize=None, remove=None,
+              save_binarization_params=None,
+              apply_binarization_params=None,
+              ensure_balanced=False):
         """ Sets ``y`` attribute to an outcome-variable (target).
 
         Parameters
@@ -420,7 +419,6 @@ class MvpBetween(Mvp):
             raise ValueError(msg)
 
         self.y = np.array(behav)
-
         if remove is not None:
             idx = self.y != remove
             self.y = self.y[idx]
