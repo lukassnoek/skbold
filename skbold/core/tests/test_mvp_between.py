@@ -64,5 +64,14 @@ def test_mvp_between_write_4D():
     os.remove(op.join(testdata_path, 'Contrast2.nii.gz'))
     os.remove(op.join(testdata_path, 'y_4D_nifti.txt'))
 
+def test_mvp_between_split():
 
+    source = dict()
+    source['Contrast1'] = {'path': op.join(testdata_path, 'mock_subjects',
+                                           'sub*', 'run1.feat', 'stats',
+                                           'cope1.nii.gz')}
 
+    mvp = MvpBetween(source=source, subject_idf='sub???', mask=mask)
+    mvp.create()
+    fpath = op.join(testdata_path, 'sample_behav.tsv')
+    mvp.split(fpath, col_name='group', target='train')
