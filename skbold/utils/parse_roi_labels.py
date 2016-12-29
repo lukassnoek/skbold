@@ -4,6 +4,8 @@
 # Contact: lukassnoek@gmail.com
 # License: 3 clause BSD
 
+from __future__ import division, print_function, absolute_import
+from io import open
 import skbold
 import os.path as op
 from glob import glob
@@ -78,5 +80,3 @@ def merge_ho_atlases():
     probs = ['0', '25', '50']
 
     pass
-
-

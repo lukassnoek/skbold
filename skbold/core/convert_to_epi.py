@@ -5,6 +5,7 @@
 # Contact: lukassnoek@gmail.com
 # License: 3 clause BSD
 
+from __future__ import division, print_function, absolute_import
 import os
 import os.path as op
 import subprocess
@@ -73,8 +74,9 @@ def convert2epi(file2transform, reg_dir, out_dir=None,
             cmd = 'applywarp -i %s -r %s -o %s -w %s -interp %s' % \
                   (f, ref_file, out_file, warp_file, interpolation)
         else:
-            cmd = 'flirt -in %s -ref %s -out %s -applyxfm -init %s -interp %s' % \
-                  (f, ref_file, out_file, matrix_file, interpolation)
+            cmd = ('flirt -in %s -ref %s -out %s -applyxfm -init %s '
+                   '-interp %s' % (f, ref_file, out_file, matrix_file,
+                                   interpolation))
 
         status = subprocess.call(cmd, shell=True)
 

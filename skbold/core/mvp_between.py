@@ -1,3 +1,5 @@
+from __future__ import division, print_function, absolute_import
+
 import os
 import re
 import json
@@ -122,7 +124,7 @@ class MvpBetween(Mvp):
         self.common_subjects = None
         self.y = None
         self.X = []
-        self.fs_masks = [] # featureset-specific masks
+        self.fs_masks = []  # featureset-specific masks
         self.featureset_id = []
         self.affine = []  # This could be an array
         self.nifti_header = []
@@ -609,9 +611,9 @@ class MvpBetween(Mvp):
                 mask_bool = mask_tmp['idx'].astype(int)
 
             for r in radius:
-                sl = SearchLight(mask_img=mask_bool, radius=r, n_jobs=-1, cv=cv,
-                                 estimator=estimator, scoring='accuracy',
-                                 **kwargs)
+                sl = SearchLight(mask_img=mask_bool, radius=r, n_jobs=-1,
+                                 cv=cv, estimator=estimator,
+                                 scoring='accuracy', **kwargs)
                 sl.fit(nimg, y=self.y)
                 sl_nifti = nib.Nifti1Image(sl.scores_, nimg.affine)
 
@@ -624,6 +626,8 @@ class MvpBetween(Mvp):
         ----------
         path : str
             Absolute path to save nifti to.
+        return_nimg : bool
+            Whether to actually return the Nifti1-image object.
         """
 
         if path is None:
@@ -643,7 +647,8 @@ class MvpBetween(Mvp):
             nimgs.append(img)
 
             if not return_nimg:
-                img.to_filename(op.join(path, self.data_name[pos_idx]) + '.nii.gz')
+                img.to_filename(op.join(path,
+                                        self.data_name[pos_idx]) + '.nii.gz')
 
         if return_nimg:
             if len(nimgs) == 1:

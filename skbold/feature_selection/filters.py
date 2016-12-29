@@ -5,6 +5,7 @@
 # Contact: lukassnoek@gmail.com
 # License: 3 clause BSD
 
+from __future__ import division, print_function, absolute_import
 from sklearn.feature_selection.univariate_selection import (_BaseFilter,
                                                             check_is_fitted,
                                                             SelectPercentile,
@@ -13,7 +14,6 @@ from sklearn.feature_selection.univariate_selection import (_BaseFilter,
                                                             SelectFdr,
                                                             SelectKBest)
 from sklearn.feature_selection import f_classif
-from scipy.ndimage import label
 import numpy as np
 
 

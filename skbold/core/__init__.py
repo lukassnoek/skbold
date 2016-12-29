@@ -13,7 +13,7 @@ that are used throughout the package. Subclasses of Mvp (``MvpWithin`` and
 The ``MvpWithin`` object is meant as a data-structure that contains a set of
 multivoxel fMRI patterns of *single trials, for a single subject*, hence
 the 'within' part (i.e. within-subjects). Currently, it has a single
-public method, ``create()``, that loads a set of contrasts from a FSL-firstlevel
+public method, ``create()``, loading a set of contrasts from a FSL-firstlevel
 directory (i.e. a .feat-directory). Thus, importantly, it assumes that the
 single-trial patterns are already modelled, on a single-trial basis, using
 some kind of GLM. These trialwise patterns are then horizontally stacked

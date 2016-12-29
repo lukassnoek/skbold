@@ -2,6 +2,7 @@
 # Contact: lukassnoek@gmail.com
 # License: 3 clause BSD
 
+from __future__ import absolute_import
 
 from . import estimators
 from . import core

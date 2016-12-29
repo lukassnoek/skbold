@@ -7,6 +7,7 @@
 
 # Note: this implementation was inspired by the code of S. Rashka
 # (http://sebastianraschka.com/Articles/2014_ensemble_classifier.html)
+from __future__ import division, print_function, absolute_import
 
 import glob
 import numpy as np

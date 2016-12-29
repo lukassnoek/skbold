@@ -7,9 +7,9 @@ skbold - utilities and tools for machine learning on BOLD-fMRI data
 .. image:: https://readthedocs.org/projects/skbold/badge/?version=latest
     :target: http://skbold.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
- 
-.. image:: https://coveralls.io/repos/github/lukassnoek/skbold/badge.svg?branch=master
-    :target: https://coveralls.io/github/lukassnoek/skbold?branch=master
+
+.. image:: https://coveralls.io/repos/github/lukassnoek/skbold/badge.svg?branch=develop
+    :target: https://coveralls.io/github/lukassnoek/skbold?branch=develop
 
 .. image:: https://img.shields.io/badge/code%20style-pep8-orange.svg
     :target: https://www.python.org/dev/peps/pep-0008

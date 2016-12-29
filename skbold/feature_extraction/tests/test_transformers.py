@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 
 import inspect
 import os.path as op
@@ -23,11 +23,13 @@ mvp_within = MvpWithin(source=testfeats, read_labels=True,
 
 mvp_within.create()
 
+
 def test_array_permuter():
 
     transf = ArrayPermuter()
     transf.fit(mvp_within.X, mvp_within.y)
     transf.transform(mvp_within.X)
+
 
 def test_cluster_threshold():
 

@@ -5,6 +5,7 @@
 # Contact: lukassnoek@gmail.com
 # License: 3 clause BSD
 
+from __future__ import division, print_function, absolute_import
 import os.path as op
 
 

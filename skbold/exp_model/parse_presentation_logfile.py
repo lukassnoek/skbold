@@ -4,8 +4,8 @@
 # Contact: lukassnoek@gmail.com
 # License: 3 clause BSD
 
-from __future__ import division, print_function
-
+from __future__ import division, print_function, absolute_import
+from builtins import range
 import os
 import os.path as op
 import pandas as pd

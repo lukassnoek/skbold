@@ -11,5 +11,3 @@ from .transformers import PCAfilter, ArrayPermuter, PatternAverager,\
 __all__ = ['PatternAverager', 'ArrayPermuter', 'AverageRegionTransformer',
            'PCAfilter', 'RoiIndexer', 'RowIndexer', 'ClusterThreshold',
            'SelectFeatureset', 'IncrementalFeatureCombiner']
-
-

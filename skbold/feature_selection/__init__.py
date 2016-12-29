@@ -16,5 +16,3 @@ from .selectors import fisher_criterion_score
 
 __all__ = ['GenericUnivariateSelect', 'SelectAboveCutoff',
            'fisher_criterion_score']
-
-

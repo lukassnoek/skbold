@@ -5,7 +5,8 @@
 # Contact: lukassnoek@gmail.com
 # License: 3 clause BSD
 
-from __future__ import division, print_function
+from __future__ import division, print_function, absolute_import
+from builtins import range
 import numpy as np
 import nibabel as nib
 from glob import glob
@@ -115,7 +116,8 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
             tmp = np.zeros(data.shape)
             tmp[cl_mask] = data[cl_mask] == mx
 
-            if np.sum(tmp == 1) > 1:  # in case of multiple voxels with same stat / weight
+            # in case of multiple voxels with same stat / weight
+            if np.sum(tmp == 1) > 1:
                 X = np.where(tmp == 1)[0][0]
                 Y = np.where(tmp == 1)[1][0]
                 Z = np.where(tmp == 1)[2][0]
@@ -124,7 +126,8 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
                 Y = np.where(tmp == 1)[1]
                 Z = np.where(tmp == 1)[2]
 
-            if sign_mask[X, Y, Z] < 0: # if weight / stat is negative, change sign of mx
+            # if weight / stat is negative, change sign of mx
+            if sign_mask[X, Y, Z] < 0:
                 mx = -mx
 
             # convert to MNI-coordinates
@@ -163,7 +166,8 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
                     tmp = np.zeros(data.shape)
                     tmp[overlap] = data[overlap] == mx
 
-                    if np.sum(tmp == 1) > 1:        # in case of multiple voxels with same stat / weight
+                    # in case of multiple voxels with same stat / weight
+                    if np.sum(tmp == 1) > 1:
                         X = np.where(tmp == 1)[0][0]
                         Y = np.where(tmp == 1)[1][0]
                         Z = np.where(tmp == 1)[2][0]
@@ -172,7 +176,8 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
                         Y = np.where(tmp == 1)[1]
                         Z = np.where(tmp == 1)[2]
 
-                    if sign_mask[X, Y, Z] < 0: # if sign of weight / stat is negative, change sign of mx
+                    # if sign of weight / stat is negative, change sign of mx
+                    if sign_mask[X, Y, Z] < 0:
                         mx = -mx
 
                     # convert to MNI-coordinates

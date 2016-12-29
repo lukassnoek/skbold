@@ -1,5 +1,6 @@
-from __future__ import division, print_function
+from __future__ import division, print_function, absolute_import
 
+from builtins import range
 import os
 import os.path as op
 import numpy as np
@@ -181,8 +182,8 @@ class MvpResults(object):
                 for ii in range(subset.ndim + 1):
                     tmp_idx = self.voxel_idx[self.featureset_id == i]
                     img[tmp_idx] = subset[:, ii]
-                    img = nib.Nifti1Image(img.reshape(self.data_shape[pos_idx]),
-                                          affine=self.affine[pos_idx])
+                    img = nib.Nifti1Image(img.reshape(
+                        self.data_shape[pos_idx]), affine=self.affine[pos_idx])
                     img.to_filename(op.join(self.out_path,
                                             self.data_name[pos_idx] +
                                             '_%i.nii.gz' % ii))

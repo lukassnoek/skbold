@@ -13,7 +13,8 @@
 # Contact: lukassnoek@gmail.com
 # License: 3 clause BSD
 
-from __future__ import print_function, division
+from __future__ import print_function, division, absolute_import
+from builtins import range
 import numpy as np
 from itertools import combinations
 

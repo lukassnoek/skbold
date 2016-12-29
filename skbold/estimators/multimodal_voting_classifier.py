@@ -1,3 +1,5 @@
+from __future__ import division, print_function, absolute_import
+
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.svm import SVC
@@ -6,7 +8,7 @@ from sklearn.svm import SVC
 class MultimodalVotingClassifier(BaseEstimator, ClassifierMixin):
     """
     This classifier fits a base-estimator (by default a linear SVM) on
-    different feature sets of different modalities (i.e., VBM, TBSS, BOLD, etc),
+    different feature sets of different modalities (i.e. VBM, TBSS, BOLD, etc),
     and subsequently the final prediction is derived through a max-voting rule,
     which can be either 'soft' (argmax of mean class probability) or 'hard'
     (max of class prediction).
@@ -65,7 +67,7 @@ class MultimodalVotingClassifier(BaseEstimator, ClassifierMixin):
             RoiStackingClassifier instance with fitted parameters.
         """
 
-        ## DOES NOTHING ##
+        # DOES NOTHING
 
         # for i, fs_id in enumerate(np.unique(self.mvp_train.featureset_id)):
         #

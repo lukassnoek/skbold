@@ -1,3 +1,6 @@
+from __future__ import division, print_function, absolute_import
+from builtins import range
+from io import open
 import os
 import numpy as np
 import os.path as op
@@ -197,9 +200,11 @@ class FsfCrawler(object):
                 fsf_out.append('set fmri(ortho%i.%i) 0' % ((i + 1), x))
 
             fsf_out.append('set fmri(conpic_real.%i) 0' % (i + 1))
-            fsf_out.append('set fmri(conname_real.%i) \"%s\"' % ((i + 1), basename))
+            fsf_out.append('set fmri(conname_real.%i) \"%s\"' % ((i + 1),
+                                                                 basename))
             fsf_out.append('set fmri(conpic_orig.%i) 0' % (i + 1))
-            fsf_out.append('set fmri(conname_orig.%i) \"%s\"' % ((i + 1), basename))
+            fsf_out.append('set fmri(conname_orig.%i) \"%s\"' % ((i + 1),
+                                                                 basename))
 
             for x in range(n_evs):
                 to_set = "1" if (x + 1) == (i + 1) else "0"
@@ -425,18 +430,3 @@ class MelodicCrawler(object):
             mc_cmd = self._copy_mc(sub_dir, ica_dir)
 
         return op.join(sub_dir, 'melodic.fsf'), reg_cmd, mc_cmd
-
-
-if __name__ == '__main__':
-    preproc = op.join(op.dirname(op.dirname(op.abspath(__file__))), 'data',
-                      'test_data', 'preprocessed')
-
-    output_dir = op.join(op.dirname(preproc), 'firstlevel')
-
-    fsfcrawler = FsfCrawler(preproc_dir=preproc, output_dir=output_dir,
-                            run_idf='mytask',
-                            template='mvpa',
-                            subject_idf='sub', func_idf='func',
-                            prewhiten=True, n_cores=1)
-
-    fsfcrawler.crawl()
