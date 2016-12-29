@@ -815,7 +815,7 @@ class MvpBetween(Mvp):
                                 for p in args['paths']]
 
         all_subjects = [set(args['subjects'])
-                        for args in self.source.itervalues()]
+                        for args in self.source.values()]
 
         if self.subject_list is not None:
             all_subjects.append(set(self.subject_list))
