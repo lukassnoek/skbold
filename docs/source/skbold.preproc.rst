@@ -1,10 +1,10 @@
-skbold.utils package
-====================
+skbold.preproc package
+======================
 
 Module contents
 ---------------
 
-.. automodule:: skbold.utils
+.. automodule:: skbold.preproc
     :members:
     :undoc-members:
     :show-inheritance:

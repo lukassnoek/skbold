@@ -5,17 +5,18 @@
 
 .. include:: ../README.rst
 
-Contents:
-=========
+Code documentation:
+===================
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
-   source/skbold.classifiers
-   source/skbold.transformers
    source/skbold.core
-   source/skbold.data2mvp
+   source/skbold.estimators
    source/skbold.exp_model
+   source/skbold.feature_extraction
+   source/skbold.feature_selection
+   source/skbold.pipelines
    source/skbold.postproc
-   source/skbold.quality_control
+   source/skbold.preproc
    source/skbold.utils
 

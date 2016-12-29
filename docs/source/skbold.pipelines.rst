@@ -1,10 +1,10 @@
-skbold.utils package
-====================
+skbold.pipelines package
+========================
 
 Module contents
 ---------------
 
-.. automodule:: skbold.utils
+.. automodule:: skbold.pipelines
     :members:
     :undoc-members:
     :show-inheritance:

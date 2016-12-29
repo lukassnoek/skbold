@@ -1,10 +1,10 @@
-skbold.utils package
-====================
+skbold.estimators package
+=========================
 
 Module contents
 ---------------
 
-.. automodule:: skbold.utils
+.. automodule:: skbold.estimators
     :members:
     :undoc-members:
     :show-inheritance:
