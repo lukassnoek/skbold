@@ -14,6 +14,10 @@ skbold - utilities and tools for machine learning on BOLD-fMRI data
 .. image:: https://img.shields.io/badge/code%20style-pep8-orange.svg
     :target: https://www.python.org/dev/peps/pep-0008
 
+.. image:: https://img.shields.io/badge/python-2.7-blue.svg
+
+.. image:: https://img.shields.io/badge/python-3.5-blue.svg
+
 .. _scikit-learn: http://scikit-learn.org/
 .. _FSL: http://fsl.fmrib.ox.ac.uk/fsl
 .. _mlxtend: https://github.com/rasbt/mlxtend
