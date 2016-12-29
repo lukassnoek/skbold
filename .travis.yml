@@ -9,11 +9,11 @@ branches:
     - develop
 
 before_install:
-  - sudo apt-get update
-  - bash <(wget -q -O- http://neuro.debian.net/_files/neurodebian-travis.sh)
-  - sudo apt-get -y update && sudo apt-get install -y -qq fsl-core
-  - source /etc/fsl/fsl.sh
-  - export FSLOUTPUTTYPE=NIFTI_GZ
+  #- sudo apt-get update
+  #- bash <(wget -q -O- http://neuro.debian.net/_files/neurodebian-travis.sh)
+  #- sudo apt-get -y update && sudo apt-get install -y -qq fsl-core
+  #- source /etc/fsl/fsl.sh
+  #- export FSLOUTPUTTYPE=NIFTI_GZ
   # We do this conditionally because it saves us some downloading if the
   # version is the same.
   - wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
