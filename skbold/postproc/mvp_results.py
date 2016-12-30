@@ -400,6 +400,11 @@ class MvpResultsClassification(MvpResults):
                              feature_scoring=feature_scoring,
                              verbose=verbose, out_path=out_path)
 
+        if np.unique(self.y)[0] != 0:
+            msg = ('Your class-labels (y) should be coded {0, 1, 2 ... P}, '
+                   'not {-1, 0, ... P} or {1, 2, 3 ... P}')
+            raise ValueError(msg)
+
         self.accuracy = np.zeros(self.n_iter)
         self.recall = np.zeros(self.n_iter)
         self.precision = np.zeros(self.n_iter)

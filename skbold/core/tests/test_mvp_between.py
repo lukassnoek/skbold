@@ -69,8 +69,8 @@ def mvp2c():
 def test_mvp_between_add_y(mvp1c):
     fpath = op.join(testdata_path, 'sample_behav.tsv')
     mvp1c.add_y(fpath, col_name='var_categorical', index_col=0, remove=999)
-    assert(len(mvp1c.y) == 8)
-    assert(mvp1c.common_subjects == ['sub001', 'sub002', 'sub003', 'sub004',
+    assert(len(mvp1c.y) == 7)
+    assert(mvp1c.common_subjects == ['sub001', 'sub002', 'sub004',
                                      'sub005', 'sub006', 'sub007', 'sub009'])
     assert(len(mvp1c.common_subjects) == mvp1c.X.shape[0] == mvp1c.y.size)
     mvp1c.add_y(fpath, col_name='var_categorical', index_col=0, remove=999,
@@ -138,15 +138,14 @@ def test_mvp_between_update_sample(mvp1c):
     fpath = op.join(testdata_path, 'sample_behav.tsv')
     mvp1c.add_y(fpath, col_name='var_categorical', index_col=0,
                 remove=999)
-    print(mvp1c.common_subjects)
-    idx = np.array([True, True, True, False, True, True, True, False])
+    idx = np.array([True, True, True, False, True, True, False])
     mvp1c.update_sample(idx)
-    assert(len(mvp1c.y) == 6)
+    assert(len(mvp1c.y) == 5)
     assert(len(mvp1c.y) == mvp1c.X.shape[0], len(mvp1c.common_subjects))
-    assert(mvp1c.common_subjects == ['sub001', 'sub002', 'sub003', 'sub005',
+    assert(mvp1c.common_subjects == ['sub001', 'sub002', 'sub004',
                                      'sub006', 'sub007'])
 
-"""
+
 @pytest.mark.parametrize("var", ['confound_categorical',
                                  'confound_continuous',
                                  ['confound_categorical',
@@ -156,7 +155,6 @@ def test_mvp_between_regress_out_confounds(mvp1c, var):
     fpath = op.join(testdata_path, 'sample_behav.tsv')
     mvp1c.add_y(fpath, col_name='var_categorical', index_col=0, remove=999)
     mvp1c.regress_out_confounds(fpath, var)
-"""
 
 
 def test_teardown():

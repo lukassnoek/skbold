@@ -13,6 +13,7 @@ from glob import glob
 from fnmatch import fnmatch
 from .mvp import Mvp
 from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.preprocessing import Imputer
 
 try:
     from nilearn.decoding import SearchLight
@@ -220,7 +221,8 @@ class MvpBetween(Mvp):
         return df
 
     def calculate_confound_weighting(self, file_path, col_name, sep='\t',
-                                     index_col=0, estimator=None):
+                                     index_col=0, estimator=None,
+                                     nan_strategy='depends'):
         """ Calculates inverse probability weighting for confounds.
 
         Note: should be moved to mvp-core
@@ -238,6 +240,8 @@ class MvpBetween(Mvp):
             Which column to use as index (should correspond to subject-name).
         estimator : scikit-learn estimator
             Estimator used to calculate p(y=1 | confound-array)
+        nan_strategy : str
+            How to impute NaNs.
 
         Returns
         -------
@@ -265,6 +269,8 @@ class MvpBetween(Mvp):
         common_idx = df.index.isin(self.common_subjects)
         confound = np.array(df.loc[common_idx, col_name])
 
+        confound, _ = self._deal_with_missing_values(confound, nan_strategy)
+
         # Fit confounds to y
 
         if confound.ndim == 1:
@@ -280,7 +286,7 @@ class MvpBetween(Mvp):
         return self.ipw
 
     def regress_out_confounds(self, file_path, col_name, backend='numpy',
-                              sep='\t', index_col=0):
+                              sep='\t', index_col=0, nan_strategy='depends'):
         """ Regresses out a confounding variable from X.
 
         Parameters
@@ -298,6 +304,8 @@ class MvpBetween(Mvp):
             Separator to parse the spreadsheet-like file.
         index_col : int
             Which column to use as index (should correspond to subject-name).
+        nan_strategy : str
+            How to impute NaNs.
         """
         df = self._read_behav_file(file_path=file_path, sep=sep,
                                    index_col=index_col)
@@ -306,6 +314,8 @@ class MvpBetween(Mvp):
         confound = df.loc[common_idx, col_name]
 
         confound = np.array(confound)
+
+        confound, _ = self._deal_with_missing_values(confound, nan_strategy)
 
         # normalize, just to be sure
         confound = StandardScaler().fit_transform(confound)
@@ -369,7 +379,8 @@ class MvpBetween(Mvp):
                                 enumerate(self.common_subjects) if idx[i]]
 
     def add_y(self, file_path, col_name, sep='\t', index_col=0,
-              normalize=False, remove=None, ensure_balanced=False):
+              normalize=False, remove=None, ensure_balanced=False,
+              nan_strategy='remove'):
         """ Sets ``y`` attribute to an outcome-variable (target).
 
         Parameters
@@ -389,6 +400,11 @@ class MvpBetween(Mvp):
         ensure_balanced : bool
             Whether to ensure balanced classes (if True, done by undersampling
             the majority class).
+        nan_strategy : str
+            Strategy on how to deal with NaNs. Default: 'remove'. Also, a
+            specific string, int, or float can be specified when you want to
+            impute a specific value. Other options,
+            see: sklearn.preprocessing.Imputer.
         """
 
         # Assumes index corresponds to self.common_subjects
@@ -405,17 +421,52 @@ class MvpBetween(Mvp):
             raise ValueError(msg)
 
         self.y = np.array(behav)
+
         if remove is not None:
             idx = self.y != remove
             self.y = self.y[idx]
-            self.X = self.X[self.y != remove, :]
+            self.X = self.X[idx, :]
             self._update_common_subjects(idx)
+
+        self.y, idx = self._deal_with_missing_values(self.y, nan_strategy)
 
         if normalize:
             self.y = (self.y - self.y.mean()) / self.y.std()
 
         if ensure_balanced:
             self._undersample_majority()
+
+    def _deal_with_missing_values(self, arr, nan_strategy):
+        """ Removes or imputes missing values. """
+
+        possibilities = ['remove', 'mean', 'median', 'most_frequent',
+                         'depends']
+
+        if nan_strategy == 'depends':
+            cont = len(np.unique(arr)) > 5
+            nan_strategy = 'mean' if cont else 'most_frequent'
+
+        if arr.ndim < 2:
+            arr = arr[:, np.newaxis]
+
+        if nan_strategy == 'remove':
+            idx = ~np.isnan(arr).any(axis=1)
+            arr = arr[idx]
+        elif nan_strategy not in possibilities:
+            arr[np.isnan(arr)] = nan_strategy
+            idx = None
+        else:
+            imp = Imputer(strategy=nan_strategy, axis=0)
+            arr = imp.fit_transform(arr)
+            idx = None
+        arr = np.squeeze(arr)
+
+        if idx is not None:
+            self.y = self.y[idx]
+            self.X = self.X[idx, :]
+            self._update_common_subjects(idx)
+
+        return arr, idx
 
     def apply_binarization_params(self, param_file, ensure_balanced=False):
         """ Applies binarization-parameters to y. """
@@ -474,7 +525,8 @@ class MvpBetween(Mvp):
             with open(op.join(save_path, 'binarize_params.pkl'), 'wb') as w:
                 pickle.dump(labb.binarize_params, w)
 
-    def split(self, file_path, col_name, target, sep='\t', index_col=0):
+    def split(self, file_path, col_name, target, sep='\t', index_col=0,
+              nan_strategy='train'):
         """ Splits an MvpBetween object based on some external index.
 
         Parameters
@@ -490,6 +542,8 @@ class MvpBetween(Mvp):
             Separator to parse the spreadsheet-like file.
         index_col : int
             Which column to use as index (should correspond to subject-name).
+        nan_strategy : str
+            Which value to impute if the labeling is absent. Default: 'train'.
         """
 
         # Assumes index corresponds to self.common_subjects
@@ -505,6 +559,7 @@ class MvpBetween(Mvp):
             return 0
 
         behav.index = check_zeropadding_and_sort(behav.index.tolist())
+        behav[behav.isnull()] = nan_strategy
         idx = np.array(behav) == target
 
         if idx.sum() == 0:
