@@ -2,8 +2,6 @@ import os.path as op
 from skbold.core import MvpBetween
 from skbold import testdata_path, roidata_path
 import os
-from glob import glob
-import shutil
 import pytest
 import numpy as np
 
@@ -17,7 +15,7 @@ dpath = op.join(testdata_path, 'mock_subjects', 'sub*', 'run1.feat', 'stats')
 bmask = op.join(roidata_path, 'GrayMatter.nii.gz')
 slist = ['sub001', 'sub002', 'sub003', 'sub004']
 
-"""
+
 @pytest.mark.parametrize("source",
                          [{'Contrast1': {'path': dpath + '/cope1.nii.gz'}},
                           {'Contrast1': {'path': dpath + '/cope1.nii.gz'},
@@ -32,7 +30,6 @@ def test_mvp_between_create(source, mask, subject_list):
 
     mvp = MvpBetween(source=source, subject_idf='sub???', mask=mask)
     mvp.create()
-"""
 
 
 @pytest.fixture
@@ -145,7 +142,7 @@ def test_mvp_between_update_sample(mvp1c):
     assert(mvp1c.common_subjects == ['sub001', 'sub002', 'sub004',
                                      'sub006', 'sub007'])
 
-
+"""
 @pytest.mark.parametrize("var", ['confound_categorical',
                                  'confound_continuous',
                                  ['confound_categorical',
@@ -155,7 +152,7 @@ def test_mvp_between_regress_out_confounds(mvp1c, var):
     fpath = op.join(testdata_path, 'sample_behav.tsv')
     mvp1c.add_y(fpath, col_name='var_categorical', index_col=0, remove=999)
     mvp1c.regress_out_confounds(fpath, var)
-
+"""
 
 # def test_teardown():
 

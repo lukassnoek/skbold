@@ -627,7 +627,10 @@ class MvpBetween(Mvp):
 
             if mask is None:
                 mask_tmp = self.fs_masks[i]
-                mask_bool = mask_tmp['idx'].astype(int)
+                if mask_tmp is not None:
+                    mask_bool = mask_tmp['idx'].astype(int)
+                else:
+                    mask_bool = np.ones(nimg.shape, dtype=bool)
 
             for r in radius:
                 sl = SearchLight(mask_img=mask_bool, radius=r, n_jobs=-1,
@@ -711,6 +714,10 @@ class MvpBetween(Mvp):
         voxel_idx = np.arange(np.prod(data.shape[:3]))
 
         tmp_mask = self.fs_masks[-1]
+        if tmp_mask is None:
+            tmp_mask = {'shape': data.shape[:3],
+                        'idx': np.ones(np.prod(data.shape[:3]), dtype=bool)}
+
         if tmp_mask['shape'] == data.shape[:3]:
             data = data[tmp_mask['idx'].reshape(tmp.shape[:3])].T
             voxel_idx = voxel_idx[tmp_mask['idx']]
@@ -749,6 +756,10 @@ class MvpBetween(Mvp):
                 vol = tmp.dataobj[..., n_comp].ravel()
 
                 tmp_mask = self.fs_masks[-1]
+                if tmp_mask is None:
+                    tmp_mask = {'idx': np.ones(np.prod(vol.shape), dtype=bool),
+                                'shape': tmp_shape}
+
                 if tmp_mask['shape'] == tmp_shape:
                     vol = vol[tmp_mask['idx']]
 
@@ -760,6 +771,10 @@ class MvpBetween(Mvp):
         voxel_idx = np.arange(np.prod(tmp_shape))
 
         tmp_mask = self.fs_masks[-1]
+        if tmp_mask is None:
+            tmp_mask = {'idx': np.ones(voxel_idx.size, dtype=bool),
+                        'shape': tmp_shape}
+
         if tmp_mask['shape'] == tmp_shape:
             voxel_idx = voxel_idx[tmp_mask['idx']]
 
@@ -786,6 +801,9 @@ class MvpBetween(Mvp):
             tmp_data = tmp.get_data().ravel()
 
             tmp_mask = self.fs_masks[-1]
+            if tmp_mask is None:
+                tmp_mask = {'idx': np.ones(tmp_data.size, dtype=bool),
+                            'shape': tmp.shape}
             if tmp_mask['shape'] == tmp.shape:
                 tmp_data = tmp_data[tmp_mask['idx']]
 
