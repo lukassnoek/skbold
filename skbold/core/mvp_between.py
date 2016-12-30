@@ -420,7 +420,7 @@ class MvpBetween(Mvp):
     def apply_binarization_params(self, param_file, ensure_balanced=False):
 
         with open(param_file, 'r') as fin:
-            params = json.load(fin)
+            params = json.load(fin, encoding='utf-8')
 
         if params['type'] == 'zscore':
             y_norm = (self.y - params['mean']) / params['std']
