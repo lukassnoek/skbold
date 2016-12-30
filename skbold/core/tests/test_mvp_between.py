@@ -153,10 +153,3 @@ def test_mvp_between_regress_out_confounds(mvp1c, var):
     mvp1c.add_y(fpath, col_name='var_categorical', index_col=0, remove=999)
     mvp1c.regress_out_confounds(fpath, var)
 """
-
-# def test_teardown():
-
-    # setup code
-    # spaths = glob(op.join(testdata_path, 'mock_subjects',
-    #                      'sub*', 'run1.feat'))
-    # _ = [shutil.rmtree(s) for s in spaths]

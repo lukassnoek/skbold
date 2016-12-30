@@ -212,8 +212,12 @@ class MvpResults(object):
 
         if pipe.__class__.__name__ == 'GridSearchCV':
             pipe = pipe.best_estimator_
-
-        pipe_steps = copy(pipe.named_steps)
+        elif pipe.__class__.__name__ != 'Pipeline':
+            # hack to allow non-pipelines
+            pipe.idx_ = np.ones(pipe.coef_.size, dtype=bool)
+            pipe_steps = {pipe.__class__.__name__: pipe}
+        else:
+            pipe_steps = copy(pipe.named_steps)
 
         for name, step in pipe_steps.items():
 
