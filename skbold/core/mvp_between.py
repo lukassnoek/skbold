@@ -471,7 +471,8 @@ class MvpBetween(Mvp):
             self._undersample_majority()
 
         if save_path is not None:
-            with open(op.join(save_path, 'binarize_params.json'), 'w') as w:
+            with open(op.join(save_path, 'binarize_params.json'), 'w',
+                      encoding="utf-8") as w:
                 json.dump(labb.binarize_params, w, indent=4)
 
     def split(self, file_path, col_name, target, sep='\t', index_col=0):
