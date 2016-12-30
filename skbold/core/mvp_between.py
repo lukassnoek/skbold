@@ -8,7 +8,7 @@ import os.path as op
 import pandas as pd
 import numpy as np
 import nibabel as nib
-import scipy.stats as stat
+from io import open
 from glob import glob
 from fnmatch import fnmatch
 from .mvp import Mvp
@@ -449,7 +449,7 @@ class MvpBetween(Mvp):
             The outcome variable (y) will be binarized along the
             key-value pairs in the params-argument. Options:
 
-            >>> params = {'type': 'percentile', 'high': .75, 'low': .25}
+            >>> params = {'type': 'percentile', 'high': 75, 'low': 25}
             >>> params = {'type': 'zscore', 'std': 1}
             >>> params = {'type': 'constant', 'cutoff': 10}
             >>> params = {'type': 'median'}
@@ -460,10 +460,9 @@ class MvpBetween(Mvp):
             Whether to ensure balanced classes (if True, done by undersampling
             the majority class).
         """
-        options = ['percentile', 'zscore', 'constant', 'median']
 
         labb = LabelBinarizer(params)
-        self.X, y = labb.fit_transform(self.X, self.y)
+        self.X, self.y = labb.fit().transform(self.X, self.y)
 
         if labb.idx_ is not None:
             self._update_common_subjects(labb.idx_)
@@ -472,8 +471,8 @@ class MvpBetween(Mvp):
             self._undersample_majority()
 
         if save_path is not None:
-            # to do: save params as json
-            pass
+            with open(op.join(save_path, 'binarize_params.json'), 'wb') as w:
+                json.dump(labb.binarize_params, w, indent=4)
 
     def split(self, file_path, col_name, target, sep='\t', index_col=0):
         """ Splits an MvpBetween object based on some external index.

@@ -4,17 +4,40 @@ from skbold import testdata_path, roidata_path
 import os
 from glob import glob
 import shutil
+import pytest
+import numpy as np
 
-mask = op.join(roidata_path, 'GrayMatter.nii.gz')
 
 cmd = 'cp -r %s/run1.feat %s/mock_subjects/sub00%i'
 _ = [os.system(cmd % (testdata_path, testdata_path, i+1)) for i in range(9)
      if not op.isdir(op.join(testdata_path, 'mock_subjects',
                              'sub00%i' % (i + 1), 'run1.feat'))]
 
+dpath = op.join(testdata_path, 'mock_subjects', 'sub*', 'run1.feat', 'stats')
+bmask = op.join(roidata_path, 'GrayMatter.nii.gz')
+slist = ['sub001', 'sub002', 'sub003', 'sub004']
 
-def test_mvp_between_create():
-    """ Tests create() method of MvpBetween. """
+"""
+@pytest.mark.parametrize("source",
+                         [{'Contrast1': {'path': dpath + '/cope1.nii.gz'}},
+                          {'Contrast1': {'path': dpath + '/cope1.nii.gz'},
+                           'Contrast2': {'path': dpath + '/cope2.nii.gz'}}])
+@pytest.mark.parametrize("mask", [bmask, None])
+@pytest.mark.parametrize("subject_list", [None, slist])
+def test_mvp_between_create(source, mask, subject_list):
+    source = dict()
+    source['Contrast1'] = {'path': op.join(testdata_path, 'mock_subjects',
+                                           'sub*', 'run1.feat', 'stats',
+                                           'cope1.nii.gz')}
+
+    mvp = MvpBetween(source=source, subject_idf='sub???', mask=mask)
+    mvp.create()
+"""
+
+
+@pytest.fixture
+def mvp1c():
+    mask = op.join(roidata_path, 'GrayMatter.nii.gz')
 
     source = dict()
     source['Contrast1'] = {'path': op.join(testdata_path, 'mock_subjects',
@@ -23,26 +46,12 @@ def test_mvp_between_create():
 
     mvp = MvpBetween(source=source, subject_idf='sub???', mask=mask)
     mvp.create()
+    return mvp
 
 
-def test_mvp_between_add_y():
-    source = dict()
-    source['Contrast1'] = {'path': op.join(testdata_path, 'mock_subjects',
-                                           'sub*', 'run1.feat', 'stats',
-                                           'cope1.nii.gz')}
-
-    mvp = MvpBetween(source=source, subject_idf='sub???', mask=mask)
-    mvp.create()
-    fpath = op.join(testdata_path, 'sample_behav.tsv')
-    mvp.add_y(fpath, col_name='var_categorical', index_col=0,
-              remove=999)
-    assert(len(mvp.common_subjects) == mvp.X.shape[0] == mvp.y.size)
-    mvp.add_y(fpath, col_name='var_categorical', index_col=0,
-              remove=999, ensure_balanced=True)
-    assert(mvp.y.mean() == 0.5)
-
-
-def test_mvp_between_write_4D():
+@pytest.fixture
+def mvp2c():
+    mask = op.join(roidata_path, 'GrayMatter.nii.gz')
 
     source = dict()
     source['Contrast1'] = {'path': op.join(testdata_path, 'mock_subjects',
@@ -54,83 +63,105 @@ def test_mvp_between_write_4D():
 
     mvp = MvpBetween(source=source, subject_idf='sub???', mask=mask)
     mvp.create()
-    fpath = op.join(testdata_path, 'sample_behav.tsv')
-    mvp.add_y(fpath, col_name='var_categorical', index_col=0,
-              remove=999)
-    mvp.write_4D(testdata_path)
-    assert(op.isfile(op.join(testdata_path, 'Contrast1.nii.gz')))
-    assert(op.isfile(op.join(testdata_path, 'Contrast2.nii.gz')))
+    return mvp
 
-    # for local clean-up
-    os.remove(op.join(testdata_path, 'Contrast1.nii.gz'))
-    os.remove(op.join(testdata_path, 'Contrast2.nii.gz'))
+
+def test_mvp_between_add_y(mvp1c):
+    fpath = op.join(testdata_path, 'sample_behav.tsv')
+    mvp1c.add_y(fpath, col_name='var_categorical', index_col=0, remove=999)
+    assert(len(mvp1c.y) == 8)
+    assert(mvp1c.common_subjects == ['sub001', 'sub002', 'sub003', 'sub004',
+                                     'sub005', 'sub006', 'sub007', 'sub009'])
+    assert(len(mvp1c.common_subjects) == mvp1c.X.shape[0] == mvp1c.y.size)
+    mvp1c.add_y(fpath, col_name='var_categorical', index_col=0, remove=999,
+                ensure_balanced=True)
+    assert(mvp1c.y.mean() == 0.5)
+
+
+@pytest.mark.parametrize("mvp", [mvp1c(), mvp2c()])
+def test_mvp_between_write_4D(mvp):
+
+    fpath = op.join(testdata_path, 'sample_behav.tsv')
+    mvp.add_y(fpath, col_name='var_categorical', index_col=0, remove=999)
+    mvp.write_4D(testdata_path)
+
+    for data_name in mvp.data_name:
+        assert(op.isfile(op.join(testdata_path, '%s.nii.gz' % data_name)))
+        os.remove(op.join(testdata_path, '%s.nii.gz' % data_name))
+
     os.remove(op.join(testdata_path, 'y_4D_nifti.txt'))
 
 
-def test_mvp_between_split():
+@pytest.mark.parametrize("mvp", [mvp1c(), mvp2c()])
+def test_mvp_between_split(mvp):
 
-    source = dict()
-    source['Contrast1'] = {'path': op.join(testdata_path, 'mock_subjects',
-                                           'sub*', 'run1.feat', 'stats',
-                                           'cope1.nii.gz')}
-
-    mvp = MvpBetween(source=source, subject_idf='sub???', mask=mask)
-    mvp.create()
     fpath = op.join(testdata_path, 'sample_behav.tsv')
     mvp.split(fpath, col_name='group', target='train')
 
 
-def test_mvp_between_calculate_confound_weighting():
-
-    source = dict()
-    source['Contrast1'] = {'path': op.join(testdata_path, 'mock_subjects',
-                                           'sub*', 'run1.feat', 'stats',
-                                           'cope1.nii.gz')}
-
-    mvp = MvpBetween(source=source, subject_idf='sub???', mask=mask)
-    mvp.create()
+@pytest.mark.parametrize("params", [{'type': 'percentile',
+                                     'high': 60, 'low': 40},
+                                    {'type': 'constant', 'cutoff': 100},
+                                    {'type': 'median'},
+                                    {'type': 'zscore', 'std': 0.25}])
+def test_mvp_between_binarize_y(mvp1c, params):
     fpath = op.join(testdata_path, 'sample_behav.tsv')
-    mvp.add_y(fpath, col_name='var_categorical', index_col=0,
-              remove=999)
-    mvp.calculate_confound_weighting(fpath, 'confound_categorical')
+    mvp1c.add_y(fpath, col_name='var_continuous', index_col=0)
+    mvp1c.binarize_y(params, ensure_balanced=True, save_path=testdata_path)
+    assert((np.unique(mvp1c.y) == [0, 1]).all())
+    assert(op.isfile(op.join(testdata_path, 'binarize_params.json')))
 
-    assert(len(mvp.ipw) == mvp.X.shape[0])
 
-
-def test_mvp_between_calculate_confound_weighting_two_vars():
-
-    source = dict()
-    source['Contrast1'] = {'path': op.join(testdata_path, 'mock_subjects',
-                                           'sub*', 'run1.feat', 'stats',
-                                           'cope1.nii.gz')}
-
-    mvp = MvpBetween(source=source, subject_idf='sub???', mask=mask)
-    mvp.create()
+def test_mvp_between_apply_binarization_params(mvp1c):
     fpath = op.join(testdata_path, 'sample_behav.tsv')
-    mvp.add_y(fpath, col_name='var_categorical', index_col=0,
-              remove=999)
-    mvp.calculate_confound_weighting(fpath, ['confound_categorical',
-                                             'confound_continuous'])
-
-    assert(len(mvp.ipw) == mvp.X.shape[0])
+    mvp1c.add_y(fpath, col_name='var_continuous', index_col=0)
+    mvp1c.apply_binarization_params(op.join(testdata_path,
+                                            'binarize_params.json'))
+    os.remove(op.join(testdata_path, 'binarize_params.json'))
 
 
-def test_mvp_between_regress_out_confounds():
+@pytest.mark.parametrize("cols", ['confound_categorical',
+                                  ['confound_categorical',
+                                   'confound_continuous']])
+def test_mvp_between_calculate_confound_weighting(mvp1c, cols):
 
-    source = dict()
-    source['Contrast1'] = {'path': op.join(testdata_path, 'mock_subjects',
-                                           'sub*', 'run1.feat', 'stats',
-                                           'cope1.nii.gz')}
-
-    mvp = MvpBetween(source=source, subject_idf='sub???', mask=mask)
-    mvp.create()
     fpath = op.join(testdata_path, 'sample_behav.tsv')
-    mvp.add_y(fpath, col_name='var_categorical', index_col=0,
-              remove=999)
-    mvp.regress_out_confounds(fpath, ['confound_categorical',
-                                      'confound_continuous'])
+    mvp1c.add_y(fpath, col_name='var_categorical', index_col=0,
+                remove=999)
+    mvp1c.calculate_confound_weighting(fpath, cols)
+    assert((mvp1c.ipw > 1).all())
+    assert(len(mvp1c.ipw) == mvp1c.X.shape[0])
 
-    # assert(len(mvp.ipw) == mvp.X.shape[0])
+
+def test_mvp_between_update_sample(mvp1c):
+
+    fpath = op.join(testdata_path, 'sample_behav.tsv')
+    mvp1c.add_y(fpath, col_name='var_categorical', index_col=0,
+                remove=999)
+    print(mvp1c.common_subjects)
+    idx = np.array([True, True, True, False, True, True, True, False])
+    mvp1c.update_sample(idx)
+    assert(len(mvp1c.y) == 6)
+    assert(len(mvp1c.y) == mvp1c.X.shape[0], len(mvp1c.common_subjects))
+    assert(mvp1c.common_subjects == ['sub001', 'sub002', 'sub003', 'sub005',
+                                     'sub006', 'sub007'])
+
+"""
+@pytest.mark.parametrize("var", ['confound_categorical',
+                                 'confound_continuous',
+                                 ['confound_categorical',
+                                  'confound_continuous']])
+def test_mvp_between_regress_out_confounds(mvp1c, var):
+
+    fpath = op.join(testdata_path, 'sample_behav.tsv')
+    mvp1c.add_y(fpath, col_name='var_categorical', index_col=0, remove=999)
+    mvp1c.regress_out_confounds(fpath, var)
+"""
+
+
+def test_teardown():
+
+    # setup code
     spaths = glob(op.join(testdata_path, 'mock_subjects',
                           'sub*', 'run1.feat'))
     _ = [shutil.rmtree(s) for s in spaths]
