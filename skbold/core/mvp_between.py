@@ -419,7 +419,7 @@ class MvpBetween(Mvp):
 
     def apply_binarization_params(self, param_file, ensure_balanced=False):
 
-        with open(param_file) as fin:
+        with open(param_file, 'r') as fin:
             params = json.load(fin)
 
         if params['type'] == 'zscore':
@@ -471,7 +471,7 @@ class MvpBetween(Mvp):
             self._undersample_majority()
 
         if save_path is not None:
-            with open(op.join(save_path, 'binarize_params.json'), 'wb') as w:
+            with open(op.join(save_path, 'binarize_params.json'), 'w') as w:
                 json.dump(labb.binarize_params, w, indent=4)
 
     def split(self, file_path, col_name, target, sep='\t', index_col=0):
