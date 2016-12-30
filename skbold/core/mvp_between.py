@@ -2,7 +2,7 @@ from __future__ import division, print_function, absolute_import
 
 import os
 import re
-import json
+import pickle
 import warnings
 import os.path as op
 import pandas as pd
@@ -418,9 +418,9 @@ class MvpBetween(Mvp):
             self._undersample_majority()
 
     def apply_binarization_params(self, param_file, ensure_balanced=False):
-
-        with open(param_file, 'r') as fin:
-            params = json.load(fin, encoding='utf-8')
+        """ Applies binarization-parameters to y. """
+        with open(param_file, 'rb') as fin:
+            params = pickle.load(fin)
 
         if params['type'] == 'zscore':
             y_norm = (self.y - params['mean']) / params['std']
@@ -471,9 +471,8 @@ class MvpBetween(Mvp):
             self._undersample_majority()
 
         if save_path is not None:
-            with open(op.join(save_path, 'binarize_params.json'), 'w',
-                      encoding="utf-8") as w:
-                json.dump(labb.binarize_params, w, indent=4)
+            with open(op.join(save_path, 'binarize_params.pkl'), 'wb') as w:
+                pickle.dump(labb.binarize_params, w)
 
     def split(self, file_path, col_name, target, sep='\t', index_col=0):
         """ Splits an MvpBetween object based on some external index.

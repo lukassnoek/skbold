@@ -109,15 +109,15 @@ def test_mvp_between_binarize_y(mvp1c, params):
     mvp1c.add_y(fpath, col_name='var_continuous', index_col=0)
     mvp1c.binarize_y(params, ensure_balanced=True, save_path=testdata_path)
     assert((np.unique(mvp1c.y) == [0, 1]).all())
-    assert(op.isfile(op.join(testdata_path, 'binarize_params.json')))
+    assert(op.isfile(op.join(testdata_path, 'binarize_params.pkl')))
 
 
 def test_mvp_between_apply_binarization_params(mvp1c):
     fpath = op.join(testdata_path, 'sample_behav.tsv')
     mvp1c.add_y(fpath, col_name='var_continuous', index_col=0)
     mvp1c.apply_binarization_params(op.join(testdata_path,
-                                            'binarize_params.json'))
-    os.remove(op.join(testdata_path, 'binarize_params.json'))
+                                            'binarize_params.pkl'))
+    os.remove(op.join(testdata_path, 'binarize_params.pkl'))
 
 
 @pytest.mark.parametrize("cols", ['confound_categorical',
