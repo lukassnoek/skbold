@@ -65,3 +65,4 @@ target/
 *.ipynb_checkpoints*
 skbold/data/test_data/*/epi_masks
 skbold/data/test_data/epi_masks
+skbold/data/test_data/mock_subjects/sub*/run1.feat

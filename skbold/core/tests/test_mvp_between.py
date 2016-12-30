@@ -157,9 +157,9 @@ def test_mvp_between_regress_out_confounds(mvp1c, var):
     mvp1c.regress_out_confounds(fpath, var)
 
 
-def test_teardown():
+# def test_teardown():
 
     # setup code
-    spaths = glob(op.join(testdata_path, 'mock_subjects',
-                          'sub*', 'run1.feat'))
-    _ = [shutil.rmtree(s) for s in spaths]
+    # spaths = glob(op.join(testdata_path, 'mock_subjects',
+    #                      'sub*', 'run1.feat'))
+    # _ = [shutil.rmtree(s) for s in spaths]
