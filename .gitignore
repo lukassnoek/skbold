@@ -63,3 +63,5 @@ target/
 *.ipynb_checkpoints*
 docs
 skbold/data/test_data/epi_masks
+skbold/data/test_data/mock_subjects/
+
