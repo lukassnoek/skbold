@@ -72,7 +72,10 @@ def extract_roi_info(statfile, stat_name=None, roi_type='unilateral',
         Dataframe corresponding to the written csv-file.
     """
 
-    data = nib.load(statfile).get_data()
+    if isinstance(statfile, (str, unicode)):
+        data = nib.load(statfile).get_data()
+    else:
+        data = statfile
 
     sign_mask = np.ones(shape=data.shape)
     sign_mask[data < 0] = -1
@@ -294,3 +297,13 @@ def extract_roi_info(statfile, stat_name=None, roi_type='unilateral',
     df.to_csv(filename, index=False, header=True, sep='\t')
 
     return df
+
+
+if __name__ == '__main__':
+
+    from scipy.ndimage import gaussian_filter
+
+    data = np.random.rand(91, 109, 91)
+    data = gaussian_filter(data, 2)
+    print(data.max())
+    #extract_roi_info(data, stat_threshold=2)
