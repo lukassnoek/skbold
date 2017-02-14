@@ -1,6 +1,9 @@
 # Extract region-specific info for a given statistic-file (nifti) and
 # outputs a csv-file which can be copy-pasted directly in a Word (ugh..) file.
 
+# Note: this is quite likely the ugliest code I've ever written.
+# My apologies.
+
 # Author: Lukas Snoek [lukassnoek.github.io]
 # Contact: lukassnoek@gmail.com
 # License: 3 clause BSD
@@ -18,10 +21,10 @@ roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs',
                   'harvard_oxford')
 
 
-def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
-                     cluster_engine='scipy', min_clust_size=20,
-                     stat_threshold=None, mask_threshold=20,
-                     save_indices=True):
+def extract_roi_info(statfile, stat_name=None, roi_type='unilateral',
+                     per_cluster=True, cluster_engine='scipy',
+                     min_clust_size=20, stat_threshold=None, mask_threshold=20,
+                     save_indices=True, verbose=True):
 
     """
     Extracts information per ROI for a given statistics-file.
@@ -35,6 +38,8 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
     ----------
     statfile : str
         Absolute path to statistics-file (nifti) that needs to be evaluated.
+    stat_name : str
+        Name for the contrast/stat-file that is being analyzed.
     roi_type : str
         Whether to  use unilateral or bilateral masks (thus far, only Harvard-
         Oxford atlas masks are supported.)
@@ -58,6 +63,8 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
         masks while still covering most of the entire brain.
     save_indices : bool
         Whether to save the indices (coordinates) of peaks of clusters.
+    verbose : bool
+        Whether to print some output regarding the parsing process.
 
     Returns
     -------
@@ -75,7 +82,6 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
     if stat_threshold:
         data[data < stat_threshold] = 0
 
-    stat_name = op.basename(statfile).split('.')[0]
     masks = glob(op.join(roi_dir, roi_type, '*.nii.gz'))
 
     df_list = []
@@ -84,7 +90,6 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
 
         col_names = ['Contrast', 'cluster', 'k cluster', 'max cluster',
                      'x', 'y', 'z', 'Region', 'k region', 'max region']
-        results = pd.DataFrame(columns=col_names)
 
         # Start clustering of data
         if cluster_engine == 'scipy':
@@ -105,9 +110,13 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
 
         print('Analyzing %i clusters for %s' % (len(cluster_nrs), statfile))
 
+        cluster_list = []
         # Looping over clusters
         for i, cluster_id in enumerate(cluster_nrs):
-            print('Processing cluster %i' % (i+1))
+
+            if verbose:
+                print('Processing cluster %i' % (i+1))
+
             cl_mask = clustered == cluster_id
             k = cl_mask.sum()
             mx = data[cl_mask].max()
@@ -115,7 +124,8 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
             tmp = np.zeros(data.shape)
             tmp[cl_mask] = data[cl_mask] == mx
 
-            if np.sum(tmp == 1) > 1:  # in case of multiple voxels with same stat / weight
+            # in case of multiple voxels with same stat / weight
+            if np.sum(tmp == 1) > 1:
                 X = np.where(tmp == 1)[0][0]
                 Y = np.where(tmp == 1)[1][0]
                 Z = np.where(tmp == 1)[2][0]
@@ -124,7 +134,8 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
                 Y = np.where(tmp == 1)[1]
                 Z = np.where(tmp == 1)[2]
 
-            if sign_mask[X, Y, Z] < 0: # if weight / stat is negative, change sign of mx
+            # if weight / stat is negative, change sign of mx
+            if sign_mask[X, Y, Z] < 0:
                 mx = -mx
 
             # convert to MNI-coordinates
@@ -134,20 +145,26 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
 
             # This is purely for formatting issues
             if i == 0:
-                stat = op.basename(statfile).split('.')[0].split('_')[-1]
-                c = op.basename(op.dirname(statfile)).split('.')[0]
-                c += '_%s' % stat
+
+                if stat_name is None:
+                    stat = op.basename(statfile).split('.')[0].split('_')[-1]
+                    c = op.basename(op.dirname(statfile)).split('.')[0]
+                    c += '_%s' % stat
+                else:
+                    c = stat_name
             else:
                 c = ''
 
-            to_append = {'Contrast': c, 'cluster': (i+1), 'k cluster': k,
-                         'max cluster': mx, 'x': X, 'y': Y, 'z': Z,
+            to_append = {'Contrast': c, 'cluster': (i+1), 'k cluster': str(k),
+                         'max cluster': mx, 'x': str(X[0]), 'y': str(Y[0]),
+                         'z': str(Z[0]),
                          'Region': '', 'k region': '', 'max region': ''}
 
-            df_list.append(pd.DataFrame(to_append, index=[0]))
+            cluster_list.append(to_append)
 
+            roi_list = []
             # Loop over ROIs
-            for mask in masks:
+            for imask, mask in enumerate(masks):
                 mask_name = op.basename(mask).split('.')[0].split('_')
                 if roi_type == 'unilateral':
                     mask_name[0] += '.'
@@ -163,7 +180,8 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
                     tmp = np.zeros(data.shape)
                     tmp[overlap] = data[overlap] == mx
 
-                    if np.sum(tmp == 1) > 1:        # in case of multiple voxels with same stat / weight
+                    # in case of multiple voxels with same stat / weight
+                    if np.sum(tmp == 1) > 1:
                         X = np.where(tmp == 1)[0][0]
                         Y = np.where(tmp == 1)[1][0]
                         Z = np.where(tmp == 1)[2][0]
@@ -172,7 +190,8 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
                         Y = np.where(tmp == 1)[1]
                         Z = np.where(tmp == 1)[2]
 
-                    if sign_mask[X, Y, Z] < 0: # if sign of weight / stat is negative, change sign of mx
+                    # if sign of weight / stat is negative, change sign of mx
+                    if sign_mask[X, Y, Z] < 0:
                         mx = -mx
 
                     # convert to MNI-coordinates
@@ -185,25 +204,50 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
                     mx = 0
                     X, Y, Z = 0, 0, 0
 
-                to_append = {'Contrast': '', 'cluster': (i + 1 + 0.1),
-                             'k cluster': '', 'max cluster': '', 'x': '',
-                             'y': '', 'z': '', 'Region': mask_name,
-                             'k region': k, 'max region': mx}
+                if imask == 0:
 
-                to_append = pd.DataFrame(to_append, index=[0])
-                df_list.append(to_append)
+                    cluster_list[-1]['Region'] = mask_name
+                    cluster_list[-1]['k region'] = k
+                    cluster_list[-1]['max region'] = mx
+
+                else:
+
+                    to_append = {'Contrast': '', 'cluster': (i + 1 + 0.1),
+                                 'k cluster': '', 'max cluster': '', 'x': '',
+                                 'y': '', 'z': '', 'Region': mask_name,
+                                 'k region': k, 'max region': mx}
+
+                    if k > cluster_list[-1]['k region']:
+                        to_append['Region'] = cluster_list[-1]['Region']
+                        to_append['k region'] = cluster_list[-1]['k region']
+                        to_append['max region'] = cluster_list[-1]['max region'],
+                        cluster_list[-1]['Region'] = mask_name
+                        cluster_list[-1]['k region'] = k
+                        cluster_list[-1]['max region'] = mx
+
+                    roi_list.append(to_append)
+
+            roi_dfs = pd.concat([pd.DataFrame(tmp, [0]) for tmp in roi_list])
+            roi_dfs = roi_dfs[roi_dfs['k region'] > min_clust_size]
+            roi_dfs = roi_dfs.sort_values(by=['cluster', 'k region'],
+                                          ascending=[True, False])
+
+            whiteline = {key: '' if key != 'cluster' else (i + 1 + 0.1)
+                         for key in roi_dfs.keys()}
+
+            roi_dfs = roi_dfs.append(whiteline, ignore_index=True)
+            df_list.append(pd.DataFrame(cluster_list[-1], [0]))
+            df_list.append(roi_dfs)
 
         # Concatenate dataframes!
         df = pd.concat(df_list)
-
         # Some cleaning / processing
         cols_ordered = ['Contrast', 'cluster', 'k cluster', 'max cluster', 'x',
                         'y', 'z', 'Region', 'k region', 'max region']
         df = df[cols_ordered]
-        df = df[df['k region'] > min_clust_size]
-        df = df.sort_values(by=['cluster', 'k region'],
-                            ascending=[True, False])
-        df['cluster'] = ['' if val % 1 != 0 else val for val in df['cluster']]
+
+        df['cluster'] = ['' if (val % 1) != 0 else str(val)
+                         for val in df['cluster']]
 
     else:  # If not extracting info per cluster, but wholebrain
         print('Analyzing %s' % statfile)
@@ -246,7 +290,6 @@ def extract_roi_info(statfile, roi_type='unilateral', per_cluster=True,
         df = df[['roi', 'k', 'max', 'mean', 'sd', 'X', 'Y', 'Z']]
         df = df[df['k'] > min_clust_size]
 
-    print(df)
     filename = op.join(op.dirname(statfile), 'roi_info_%s.csv' % stat_name)
     df.to_csv(filename, index=False, header=True, sep='\t')
 
