@@ -80,7 +80,7 @@ def extract_roi_info(statfile, stat_name=None, roi_type='unilateral',
     sign_mask = np.ones(shape=data.shape)
     sign_mask[data < 0] = -1
 
-    data = np.abs(data)
+    # data = np.abs(data)
 
     if stat_threshold:
         data[data < stat_threshold] = 0
@@ -91,9 +91,6 @@ def extract_roi_info(statfile, stat_name=None, roi_type='unilateral',
 
     if per_cluster:
 
-        col_names = ['Contrast', 'cluster', 'k cluster', 'max cluster',
-                     'x', 'y', 'z', 'Region', 'k region', 'max region']
-
         # Start clustering of data
         if cluster_engine == 'scipy':
             clustered, num_clust = label(data > 0)
@@ -101,7 +98,7 @@ def extract_roi_info(statfile, stat_name=None, roi_type='unilateral',
             n_clust = np.argmax(np.sort(counts)[::-1] < min_clust_size)
 
             if n_clust == 0:
-                print('No (sufficiently large) clusters for %s' % statfile)
+                print('No (sufficiently large) clusters!')
                 return 0
 
             # Sort and trim
@@ -111,7 +108,7 @@ def extract_roi_info(statfile, stat_name=None, roi_type='unilateral',
             # Not yet implemented
             pass
 
-        print('Analyzing %i clusters for %s' % (len(cluster_nrs), statfile))
+        print('Analyzing %i clusters for %s' % (len(cluster_nrs), stat_name))
 
         cluster_list = []
         # Looping over clusters
@@ -306,4 +303,18 @@ if __name__ == '__main__':
     data = np.random.rand(91, 109, 91)
     data = gaussian_filter(data, 2)
     print(data.max())
-    #extract_roi_info(data, stat_threshold=2)
+    import nibabel as nib
+    import nipype.interfaces.fsl as fsl
+    from skbold import roidata_path
+    import os.path as op
+
+    mni = op.join(roidata_path, 'GrayMatter.nii.gz')
+    #mni = fsl.Info.standard_image('MNI152_T1_2mm.nii.gz')
+    affine = nib.load(mni).affine
+    mni = nib.load(mni).get_data() > 0
+
+    data = np.zeros((91, 109, 91))
+    data[mni] = np.random.randn(mni.sum()) * 10
+    data = gaussian_filter(data, 2)
+    nib.save(nib.Nifti1Image(data, affine=affine), '/home/lukas/test')
+    extract_roi_info(data, stat_threshold=1, stat_name='test')
