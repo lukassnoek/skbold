@@ -16,8 +16,6 @@ ReadTheDocs_.
 To do:
 - extend crossvalsplitter to create 3 groups (train, cv, test)
 """
-import skbold
-import os.path as op
 from .sort_numbered_list import sort_numbered_list
 from .crossval_splitter import CrossvalSplitter
 from .parse_roi_labels import parse_roi_labels

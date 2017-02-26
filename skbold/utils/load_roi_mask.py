@@ -16,10 +16,9 @@ from .roi_globals import available_atlases, other_rois
 roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs')
 
 
-def load_roi_mask(roi_name, atlas_name=None, resolution='2mm',
-                  lateralized=False, which_hemifield=None, threshold=0,
-                  maxprob=False, yeo_conservative=False):
-
+def load_roi_mask(roi_name, atlas_name='HarvardOxford-Cortical',
+                  resolution='2mm', lateralized=False, which_hemifield=None,
+                  threshold=0, maxprob=False, yeo_conservative=False):
     """ Loads a mask (from an atlas).
 
     Parameters
