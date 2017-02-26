@@ -659,7 +659,7 @@ class MvpBetween(Mvp):
 
         nimgs = []
         for i, fid in enumerate(fids):
-            pos_idx = np.where(i == fids)[0]
+            pos_idx = np.where(i == fids)[0][0]
             s = self.data_shape[pos_idx]
             to_write = np.zeros((np.prod(s), self.X.shape[0]))
             X_to_write = self.X[:, self.featureset_id == fid]

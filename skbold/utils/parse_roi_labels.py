@@ -64,7 +64,7 @@ def parse_roi_labels(atlas_type='Talairach', lateralized=False, debug=False):
     else:
         xml = op.join(roidata_root, atlas_type, atlas_type + '.xml')
 
-    with open(xml, 'rb') as fin:
+    with open(xml, 'r') as fin:
         doc = fin.readlines()
 
     if atlas_type == 'Talairach':
