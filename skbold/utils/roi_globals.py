@@ -6,7 +6,7 @@ roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs')
 available_atlases = ['HarvardOxford-Cortical',
                      'HarvardOxford-Subcortical',
                      'MNI', 'JHU-labels', 'JHU-tracts',
-                     #'Talairach',
+                     # 'Talairach',
                      'Yeo2011']
 
 other_rois = {'GrayMatter_prob': op.join(roi_dir, 'other',

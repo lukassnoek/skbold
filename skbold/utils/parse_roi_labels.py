@@ -46,7 +46,8 @@ def parse_roi_labels(atlas_type='Talairach', lateralized=False, debug=False):
         return info_dict
 
     if lateralized and atlas_type == 'HarvardOxford-Cortical':
-        xml = op.join(roidata_root, atlas_type, atlas_type + '-Lateralized.xml')
+        xml = op.join(roidata_root, atlas_type,
+                      atlas_type + '-Lateralized.xml')
     elif not lateralized and atlas_type == 'HarvardOxford-Subcortical':
         info_dict = {'Cerebral White Matter': (0, (0, 0, 0)),
                      'Cerebral Cortex': (1, (0, 0, 0)),

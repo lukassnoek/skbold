@@ -4,14 +4,15 @@ from skbold.utils import load_roi_mask, parse_roi_labels
 
 
 @pytest.mark.parametrize("atlas_name", available_atlases)
-@pytest.mark.parametrize("resolution", ['2mm'])#,'1mm'])
+@pytest.mark.parametrize("resolution", ['2mm'])  # Testing 1mm takes too long
 @pytest.mark.parametrize("lateralized", [False, True])
 @pytest.mark.parametrize("threshold", [0, 25])
 @pytest.mark.parametrize("maxprob", [True, False])
 def test_load_roi_mask_from_atlas(atlas_name, resolution, lateralized,
                                   threshold, maxprob):
 
-    info_dict = parse_roi_labels(atlas_type=atlas_name, lateralized=lateralized)
+    info_dict = parse_roi_labels(atlas_type=atlas_name,
+                                 lateralized=lateralized)
     rois = info_dict.keys()
 
     for roi in rois:

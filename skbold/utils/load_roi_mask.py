@@ -59,9 +59,9 @@ def load_roi_mask(roi_name, atlas_name=None, resolution='2mm',
 
         if atlas_name == 'HarvardOxford-All':
             roi_name = sorted(parse_roi_labels('HarvardOxford-Cortical',
-                                               lateralized=lateralized).keys())
+                                               lateralized).keys())
             roi_name2 = sorted(parse_roi_labels('HarvardOxford-Subcortical',
-                                               lateralized=lateralized).keys())
+                                                lateralized).keys())
             roi_name.extend(roi_name2)
         else:
             roi_name = sorted(parse_roi_labels(atlas_name,
@@ -103,11 +103,12 @@ def load_roi_mask(roi_name, atlas_name=None, resolution='2mm',
                          (lat_str, cons_str, resolution)))
 
     # Another hack to get the lateralized atlas if queried
+    JHU_atlas = 'JHU' in atlas_name
     if lateralized:
-        if 'JHU' in atlas_name and roi_name.split(' ')[-1] not in ['L', 'R']:
+        if JHU_atlas and roi_name.split(' ')[-1] not in ['L', 'R']:
             roi_name = roi_name + ' L' if which_hemifield == 'left' else ' R'
 
-        elif 'JHU' not in atlas_name and roi_name.split(' ')[0] not in ['Left', 'Right']:
+        elif not JHU_atlas and roi_name.split(' ')[0] not in ['Left', 'Right']:
             roi_name = '%s %s' % (which_hemifield[0].upper() +
                                   which_hemifield[1:].lower(), roi_name)
 
@@ -120,8 +121,9 @@ def load_roi_mask(roi_name, atlas_name=None, resolution='2mm',
     else:
         atlas = atlas[0]
 
-    if not 'prob' in op.basename(atlas) and maxprob:
-        print("Setting maxprob to false because it's not a probabilistic atlas.")
+    if 'prob' not in op.basename(atlas) and maxprob:
+        print("Setting maxprob to false because it's not "
+              "a probabilistic atlas.")
         maxprob = False
 
     atlas_img = nib.load(atlas, mmap=False)
@@ -129,7 +131,7 @@ def load_roi_mask(roi_name, atlas_name=None, resolution='2mm',
                                  debug=False)
     try:
         idx = info_dict[roi_name][0]
-    except KeyError: # Hack to check for non-lateralized masks in atlas
+    except KeyError:  # Hack to check for non-lateralized masks in atlas
 
         if roi_name.split(' ')[0] in ['Left', 'Right']:
             idx = info_dict[roi_name.split(' ', 1)[1]][0]
