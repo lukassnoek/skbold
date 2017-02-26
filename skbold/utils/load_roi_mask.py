@@ -28,14 +28,16 @@ def load_roi_mask(roi_name, atlas_name=None, resolution='2mm',
         Name of the ROI (as specified in the FSL XML-files)
     atlas_name : str
         Name of the atlas. Choose from: 'HarvardOxford-Cortical',
-        'HarvardOxford-Subcortical', 'HarvardOxford-All',
-        'MNI', 'JHU-labels', 'JHU-tracts', 'Talairach', 'Yeo2011'.
+        'HarvardOxford-Subcortical', 'MNI', 'JHU-labels', 'JHU-tracts',
+        'Talairach', 'Yeo2011'.
     resolution : str
         Resolution of the mask/atlas ('1mm' or '2mm')
     lateralized : bool
         Whether to use lateralized masks (only available for Harvard-
         Oxford atlases). If this variable is specified, you have to specify
         which_hemifield too.
+    which_hemifield : str
+        If lateralized is True, then which hemifield should be used?
     threshold : int
         Threshold for probabilistic masks (everything below this threshold is
         set to zero before creating the mask).
@@ -48,6 +50,10 @@ def load_roi_mask(roi_name, atlas_name=None, resolution='2mm',
         If Yeo2011 atlas is picked, whether the conservative or liberal atlas
         should be used.
 
+    Returns
+    -------
+    mask : (list of) numpy-array(s)
+        Boolean numpy array(s) indicating the ROI-mask(s).
     """
 
     if 'Yeo' in atlas_name:
@@ -99,6 +105,7 @@ def load_roi_mask(roi_name, atlas_name=None, resolution='2mm',
     if 'Yeo' in atlas_name:
         cons_str = 'conservative' if yeo_conservative else 'liberal'
 
+    # Try to find the atlas with wildcards
     atlas = glob(op.join(roi_dir, atlas_name, '*%s*%s*%s.nii.gz' %
                          (lat_str, cons_str, resolution)))
 
@@ -129,10 +136,11 @@ def load_roi_mask(roi_name, atlas_name=None, resolution='2mm',
     atlas_img = nib.load(atlas, mmap=False)
     info_dict = parse_roi_labels(atlas_name, lateralized=lateralized,
                                  debug=False)
+
+    # Trying to find the index corresponding to the roi-name
     try:
         idx = info_dict[roi_name][0]
     except KeyError:  # Hack to check for non-lateralized masks in atlas
-
         if roi_name.split(' ')[0] in ['Left', 'Right']:
             idx = info_dict[roi_name.split(' ', 1)[1]][0]
         elif roi_name[-1] in ['L', 'R']:
