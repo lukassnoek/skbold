@@ -40,9 +40,10 @@ extensions = [
 
 # Note to self: this renders attributes better (but calls it 'variables'...)
 napoleon_use_ivar = True
+napoleon_include_init_with_doc = True
 
-# ensures that __init__ is documented!
-autoclass_content = 'both'
+# ensures that __init__ is documented! >> is covered by options napoleon_include_init_with_doc?
+#autoclass_content = 'both'
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
