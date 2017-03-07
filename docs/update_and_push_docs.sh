@@ -33,7 +33,7 @@ else
         git checkout --orphan gh-pages
     fi
 
-    if [ `git symbolic-ref HEAD | sed 's!refs\/heads\/!!'` -ne "gh-pages" ]; then
+    if [ `git symbolic-ref HEAD | sed 's!refs\/heads\/!!'` -ne gh-pages ]; then
 	echo 'Could not switch to gh-pages!'
     fi
 
