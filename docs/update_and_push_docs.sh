@@ -28,10 +28,14 @@ else
 
     gh_pages=`git ls-remote --heads git@github.com:lukassnoek/skbold.git gh-pages | wc -l`
 
-    if $gh_pages; then
+    if [ $gh_pages -eq 1 ]; then
         git checkout gh-pages
     else
         git checkout --orphan gh-pages
+    fi
+
+    if [ `git symbolic-ref HEAD | sed 's!refs\/heads\/!!'` -ne "gh-pages" ]; then
+	echo 'Could not switch to gh-pages!'
     fi
 
     git rm -rf .
