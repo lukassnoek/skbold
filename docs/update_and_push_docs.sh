@@ -15,12 +15,11 @@ if [ $dest == 'rtd' ]; then
 else
     # Thanks to http://prjemian.github.io/gh-pages.html
     echo "Assuming serving docs from gh-pages; make docs for branch '$cbranch'"
-    cd docs
     make clean
     make html
     cd _build/html
     tar czf /tmp/html.tgz .
-    cd ../$rootdir # go back to root dir
+    cd ..
 
     if [ `pwd` == $HOME ]; then
         echo 'We are in home! Exit!'
@@ -42,3 +41,5 @@ else
     git commit -m "Updating docs for $cbranch and pushing to origin & gh-pages branch"
     git push origin gh-pages
 fi
+
+git checkout $cbranch
