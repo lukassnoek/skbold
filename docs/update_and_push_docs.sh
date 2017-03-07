@@ -28,7 +28,7 @@ else
 
     gh_pages=`git ls-remote --heads git@github.com:lukassnoek/skbold.git gh-pages | wc -l`
 
-    if gh_pages; then
+    if $gh_pages; then
         git checkout gh-pages
     else
         git checkout --orphan gh-pages
