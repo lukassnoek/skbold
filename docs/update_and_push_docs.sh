@@ -26,16 +26,12 @@ else
         exit
     fi
 
-    gh_pages=`git rev-parse --verify gh-pages`
-    echo $gh_pages
-    if [ $gh_pages == 0 ]; then
-        git checkout gh-pages
-    else
-        git checkout --orphan gh-pages
-    fi
+    git branch -D gh-pages
+    git checkout --orphan gh-pages
 
     if [ `git symbolic-ref HEAD | sed 's!refs\/heads\/!!'` -ne "gh-pages" ]; then
 	echo 'Could not switch to gh-pages!'
+        exit
     fi
 
     git rm -rf .
