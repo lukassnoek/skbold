@@ -38,6 +38,7 @@ else
     git rm -rf .
     rm -rf docs/ skbold*/ img/ bin/ LICENSE *.in *.rst *.txt *.py
     tar xzf /tmp/html.tgz
+    touch .nojekyll
     git add .
     git commit -m "Updating docs for $cbranch and pushing to origin & gh-pages branch"
     git push origin gh-pages
