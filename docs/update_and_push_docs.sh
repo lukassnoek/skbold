@@ -27,6 +27,7 @@ else
     fi
 
     git branch -D gh-pages
+    git push origin --delete gh-pages
     git checkout --orphan gh-pages
 
     if [ `git symbolic-ref HEAD | sed 's!refs\/heads\/!!'` != "gh-pages" ]; then
