@@ -26,9 +26,8 @@ else
         exit
     fi
 
-    gh_pages=`git ls-remote --heads git@github.com:lukassnoek/skbold.git gh-pages | wc -l`
-
-    if [ $gh_pages -eq 1 ]; then
+    gh_pages=`git show-ref refs/heads/gh-pages`
+    if [ -n "$gh_pages" ]; then
         git checkout gh-pages
     else
         git checkout --orphan gh-pages
