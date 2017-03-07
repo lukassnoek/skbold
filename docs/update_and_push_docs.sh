@@ -26,8 +26,9 @@ else
         exit
     fi
 
-    gh_pages=`git show-ref refs/heads/gh-pages`
-    if [ -n "$gh_pages" ]; then
+    gh_pages=`git rev-parse --verify gh-pages`
+    echo $gh_pages
+    if [ $gh_pages == 0 ]; then
         git checkout gh-pages
     else
         git checkout --orphan gh-pages
