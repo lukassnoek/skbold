@@ -19,7 +19,7 @@ else
     make html
     cd _build/html
     tar czf /tmp/html.tgz .
-    cd ..
+    cd ../../..
 
     if [ `pwd` == $HOME ]; then
         echo 'We are in home! Exit!'
