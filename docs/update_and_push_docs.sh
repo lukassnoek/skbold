@@ -2,6 +2,7 @@
 
 dest=$1
 cbranch=`git symbolic-ref HEAD | sed 's!refs\/heads\/!!'`
+rootdir=`pwd`
 
 if [ $dest == 'rtd' ]; then
     echo "Updating docs for branch '$cbranch' and pushing to origin & ReadTheDocs"
@@ -17,9 +18,14 @@ else
     cd docs
     make clean
     make html
-    cd build/html
+    cd _build/html
     tar czf /tmp/html.tgz .
-    cd ../../.. # go back to root dir
+    cd ../$rootdir # go back to root dir
+
+    if [ `pwd` == $HOME ]; then
+        echo 'We are in home! Exit!'
+        exit
+    fi
 
     gh_pages=`git ls-remote --heads git@github.com:lukassnoek/skbold.git gh-pages | wc -l`
 
@@ -30,7 +36,7 @@ else
     fi
 
     git rm -rf .
-    find . -path ./.git -prune -o -exec rm -rf {} \; 2> /dev/null
+    rm -rf docs/ skbold*/ img/ bin/ LICENSE *.in *.rst *.txt *.py
     tar xzf /tmp/html.tgz
     git add .
     git commit -m "Updating docs for $cbranch and pushing to origin & gh-pages branch"
