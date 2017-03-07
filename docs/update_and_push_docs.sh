@@ -4,7 +4,7 @@ dest=$1
 cbranch=`git symbolic-ref HEAD | sed 's!refs\/heads\/!!'`
 
 if [ $dest == 'rtd' ]; then
-    echo 'Updating docs for branch $cbranch and pushing to origin & ReadTheDocs'
+    echo "Updating docs for branch '$cbranch' and pushing to origin & ReadTheDocs"
     make clean
     make html
     git add .
@@ -13,7 +13,7 @@ if [ $dest == 'rtd' ]; then
 
 else
     # Thanks to http://prjemian.github.io/gh-pages.html
-    echo 'Assuming serving docs from gh-pages; make docs for branch $cbranch'
+    echo "Assuming serving docs from gh-pages; make docs for branch '$cbranch'"
     cd docs
     make clean
     make html
