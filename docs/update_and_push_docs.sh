@@ -30,7 +30,7 @@ else
     fi
 
     git rm -rf .
-    /bin/rm -rf docs
+    find . -path ./.git -prune -o -exec rm -rf {} \; 2> /dev/null
     tar xzf /tmp/html.tgz
     git add .
     git commit -m "Updating docs for $cbranch and pushing to origin & gh-pages branch"
