@@ -22,7 +22,7 @@ else
     cd ../../..
 
     if [ `pwd` == $HOME ]; then
-        echo 'We are in home! Exit!'
+        echo 'We are in your home-dir! Make sure you run this script from the docs directory!'
         exit
     fi
 
