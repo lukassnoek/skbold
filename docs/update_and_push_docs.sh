@@ -4,6 +4,15 @@ dest=$1
 cbranch=`git symbolic-ref HEAD | sed 's!refs\/heads\/!!'`
 rootdir=`pwd`
 
+read -p "Have you committed all changes on the '$cbranch' branch? Because if not, these will be lost. Press [n] to cancel:" -n 1 -r
+echo    # (optional) move to a new line
+
+if [[ $REPLY =~ ^[Nn]$ ]]
+then
+    exit
+fi
+
+
 if [ $dest == 'rtd' ]; then
     echo "Updating docs for branch '$cbranch' and pushing to origin & ReadTheDocs"
     make clean
