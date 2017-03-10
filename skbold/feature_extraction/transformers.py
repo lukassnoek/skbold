@@ -535,6 +535,7 @@ class SelectFeatureset(BaseEstimator, TransformerMixin):
 class IncrementalFeatureCombiner(BaseEstimator, TransformerMixin):
     """
     Indexes a set of features with a number of (sorted) features.
+
     Parameters
     ----------
     scores : ndarray
@@ -545,6 +546,7 @@ class IncrementalFeatureCombiner(BaseEstimator, TransformerMixin):
         If int, it refers the absolute number of features included, sorted
         from high to low (w.r.t. scores). If float, it selects a proportion
         of features.
+
     """
 
     def __init__(self, scores, cutoff):
@@ -555,6 +557,7 @@ class IncrementalFeatureCombiner(BaseEstimator, TransformerMixin):
 
     def fit(self, X, y=None):
         """ Fits IncrementalFeatureCombiner transformer.
+
         Parameters
         ----------
         X : ndarray
@@ -583,6 +586,7 @@ class IncrementalFeatureCombiner(BaseEstimator, TransformerMixin):
 
     def transform(self, X, y=None):
         """ Transforms a pattern (X) given the indices calculated during fit().
+
         Parameters
         ----------
         X : ndarray
