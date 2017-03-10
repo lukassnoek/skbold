@@ -221,7 +221,7 @@ def extract_roi_info(statfile, stat_name=None, roi_type='unilateral',
                     if k > cluster_list[-1]['k region']:
                         to_append['Region'] = cluster_list[-1]['Region']
                         to_append['k region'] = cluster_list[-1]['k region']
-                        to_append['max region'] = cluster_list[-1]['max region'],
+                        to_append['max region'] = cluster_list[-1]['max region']
                         cluster_list[-1]['Region'] = mask_name
                         cluster_list[-1]['k region'] = k
                         cluster_list[-1]['max region'] = mx
