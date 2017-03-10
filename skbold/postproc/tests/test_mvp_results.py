@@ -9,7 +9,7 @@ from sklearn.cross_validation import StratifiedKFold
 from sklearn.svm import SVC
 
 dpath = op.join(testdata_path, 'mock_subjects', 'sub*', 'run1.feat', 'stats')
-bmask = op.join(roidata_path, 'GrayMatter.nii.gz')
+bmask = op.join(roidata_path, 'other', 'GrayMatter_prob.nii.gz')
 source = dict()
 source['Contrast1'] = {'path': op.join(testdata_path, 'mock_subjects',
                                        'sub*', 'run1.feat', 'stats',

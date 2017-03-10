@@ -174,7 +174,7 @@ class MvpResults(object):
 
         for i in fids:
 
-            pos_idx = np.where(i == fids)[0]
+            pos_idx = np.where(i == fids)[0][0]
             img = np.zeros(self.data_shape[pos_idx]).ravel()
             subset = values[self.featureset_id == i]
 
@@ -190,7 +190,7 @@ class MvpResults(object):
                     img = np.zeros(self.data_shape[pos_idx]).ravel()
 
             else:
-                pos_idx = np.where(i == fids)[0]
+                pos_idx = np.where(i == fids)[0][0]
                 img[self.voxel_idx[self.featureset_id == i]] = subset
                 img = nib.Nifti1Image(img.reshape(self.data_shape[pos_idx]),
                                       affine=self.affine[pos_idx])

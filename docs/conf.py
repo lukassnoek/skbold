@@ -34,14 +34,16 @@ extensions = [
     'sphinx.ext.doctest',
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
-    'sphinx.ext.napoleon'
+    'sphinx.ext.napoleon',
+    'sphinx.ext.todo'
 ]
 
 # Note to self: this renders attributes better (but calls it 'variables'...)
 napoleon_use_ivar = True
+napoleon_include_init_with_doc = True
 
-# ensures that __init__ is documented!
-autoclass_content = 'both'
+# ensures that __init__ is documented! >> is covered by options napoleon_include_init_with_doc?
+#autoclass_content = 'both'
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -87,7 +89,10 @@ language = None
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['_build', 'source/skbold.rst']
+exclude_patterns = ['_build']
+
+# This suppresses warnings from badges (i.e. nonlocal images)
+suppress_warnings = ['image.nonlocal_uri']
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -153,7 +158,7 @@ html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+# html_static_path = ['_static'] # uncommented for sphinx warning
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied

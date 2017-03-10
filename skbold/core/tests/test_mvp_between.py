@@ -12,7 +12,7 @@ _ = [os.system(cmd % (testdata_path, testdata_path, i+1)) for i in range(9)
                              'sub00%i' % (i + 1), 'run1.feat'))]
 
 dpath = op.join(testdata_path, 'mock_subjects', 'sub*', 'run1.feat', 'stats')
-bmask = op.join(roidata_path, 'GrayMatter.nii.gz')
+bmask = op.join(roidata_path, 'other', 'GrayMatter_prob.nii.gz')
 slist = ['sub001', 'sub002', 'sub003', 'sub004']
 
 
@@ -34,7 +34,7 @@ def test_mvp_between_create(source, mask, subject_list):
 
 @pytest.fixture
 def mvp1c():
-    mask = op.join(roidata_path, 'GrayMatter.nii.gz')
+    mask = op.join(roidata_path, 'other', 'GrayMatter_prob.nii.gz')
 
     source = dict()
     source['Contrast1'] = {'path': op.join(testdata_path, 'mock_subjects',
@@ -48,7 +48,7 @@ def mvp1c():
 
 @pytest.fixture
 def mvp2c():
-    mask = op.join(roidata_path, 'GrayMatter.nii.gz')
+    mask = op.join(roidata_path, 'other', 'GrayMatter_prob.nii.gz')
 
     source = dict()
     source['Contrast1'] = {'path': op.join(testdata_path, 'mock_subjects',
@@ -138,7 +138,7 @@ def test_mvp_between_update_sample(mvp1c):
     idx = np.array([True, True, True, False, True, True, False])
     mvp1c.update_sample(idx)
     assert(len(mvp1c.y) == 5)
-    assert(len(mvp1c.y) == mvp1c.X.shape[0], len(mvp1c.common_subjects))
+    assert(len(mvp1c.y) == mvp1c.X.shape[0] == len(mvp1c.common_subjects))
     assert(mvp1c.common_subjects == ['sub001', 'sub002', 'sub004',
                                      'sub006', 'sub007'])
 

@@ -154,7 +154,7 @@ class Mvp(object):
                 i = it
 
             fids = np.unique(self.featureset_id)
-            posidx = np.where(i == fids)[0]
+            posidx = np.where(i == fids)[0][0]
             tmp = np.zeros(self.data_shape[posidx]).ravel()
             fidx = self.featureset_id == i
             tmp[self.voxel_idx[fidx]] = 1
