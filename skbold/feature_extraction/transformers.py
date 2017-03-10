@@ -152,7 +152,17 @@ class ClusterThreshold(BaseEstimator, TransformerMixin):
         self.min_score = min_score
         self.selector = selector
         self.min_cluster_size = min_cluster_size
-        self.mask_shape = mvp.mask_shape
+
+        if hasattr(mvp, 'common_mask'):
+
+            if mvp.common_mask is not None:
+                mask_shape = mvp.common_mask['shape']
+            else:
+                mask_shape = mvp.data_shape
+        else:
+            mask_shape = mvp.data_shape
+
+        self.mask_shape = mask_shape
         self.mask_idx = mvp.voxel_idx
         self.scores_ = None
         self.idx_ = None

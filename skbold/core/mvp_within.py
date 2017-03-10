@@ -97,7 +97,6 @@ class MvpWithin(Mvp):
         self.remove_contrast = remove_contrast
         self.remove_idx = None
         self.directory = None
-        self.voxel_idx = None
         self.y = []
         self.contrast_labels = []
         self.X = []
@@ -145,6 +144,11 @@ class MvpWithin(Mvp):
             msg = "The feat-directory '%s' doesn't seem to exist." % src
             raise ValueError(msg)
 
+        reg_dir = op.join(src, 'reg')
+        if not op.isdir(reg_dir):
+            print("WARNING: no reg-dir found in '%s'; cannot perform any "
+                  "mni-to-epi (or vice versa) transformations" % src)
+
         if self.read_labels:
             design = op.join(src, 'design.con')
             contrast_labels_current = self._extract_labels(design_file=design)
@@ -152,13 +156,13 @@ class MvpWithin(Mvp):
 
         if self.common_mask is not None:
 
-            if self.ref_space == 'epi':
-                reg_dir = op.join(src, 'reg')
-                self.common_mask = convert2epi(self.common_mask, reg_dir,
-                                               reg_dir)
+            already_epi_mask = '_epi.nii.gz' in self.common_mask['path']
+            if self.ref_space == 'epi' and not already_epi_mask:
 
-            if self.voxel_idx is None:
-                self._update_mask_info(self.common_mask)
+                new_mask = convert2epi(self.common_mask['path'],
+                                       reg_dir=reg_dir, out_dir=reg_dir)
+
+                self._update_mask_info(new_mask, self.common_mask['threshold'])
 
         if self.ref_space == 'epi':
             stat_dir = op.join(src, 'stats')
@@ -199,7 +203,7 @@ class MvpWithin(Mvp):
             tmp = nib.load(copes[0])
             self.affine = tmp.affine
             self.nifti_header = tmp.header
-            self.mask_shape = tmp.shape
+            # maybe a call to _update_mask_info here?
             self.voxel_idx = np.arange(np.prod(tmp.shape))
 
         # Pre-allocate

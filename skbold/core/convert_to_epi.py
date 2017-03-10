@@ -71,7 +71,7 @@ def convert2epi(file2transform, reg_dir, out_dir=None,
         matrix_file = op.join(reg_dir, 'standard2example_func.mat')
         warp_file = op.join(reg_dir, 'standard2example_func_warp.nii.gz')
         if op.isfile(warp_file):
-            cmd = 'applywarp -i %s -r %s -o %s -w %s -interp %s' % \
+            cmd = 'applywarp -i %s -r %s -o %s -w %s --interp=%s' % \
                   (f, ref_file, out_file, warp_file, interpolation)
         else:
             cmd = ('flirt -in %s -ref %s -out %s -applyxfm -init %s '

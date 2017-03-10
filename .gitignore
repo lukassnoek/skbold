@@ -66,3 +66,5 @@ target/
 skbold/data/test_data/*/epi_masks
 skbold/data/test_data/epi_masks
 skbold/data/test_data/mock_subjects/sub*/run1.feat
+skbold/data/test_data/run*.feat/reg_standard
+skbold/data/test_data/run*.feat/reg/*_epi.nii.gz

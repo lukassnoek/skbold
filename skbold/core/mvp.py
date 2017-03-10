@@ -70,15 +70,17 @@ class Mvp(object):
 
         if mask is None:
             self.common_mask = None
+            self.voxel_idx = None
         else:
             maskl = nib.load(mask)
             self.common_mask = {'path': mask, 'threshold': mask_thres,
                                 'idx': (maskl.get_data() > mask_thres).ravel(),
                                 'shape': maskl.shape, 'affine': maskl.affine}
+            self.voxel_idx = np.arange(np.prod(self.common_mask['shape']))
+            self.voxel_idx = self.voxel_idx[self.common_mask['idx']]
 
         self.nifti_header = None
         self.affine = None
-        self.voxel_idx = None
 
         self.X = X
         self.y = y
@@ -166,13 +168,16 @@ class Mvp(object):
         self.featureset_id = self.featureset_id[indices]
         self.voxel_idx = self.voxel_idx[indices]
 
-    def _update_mask_info(self, mask):
-        # Only for internal use
-        # Is still still necessary?
-        mask_vol = nib.load(mask)
-        mask_idx = mask_vol.get_data() > self.mask_threshold
-        self.affine = mask_vol.affine
-        self.nifti_header = mask_vol.header
-        self.mask_shape = mask_vol.shape
-        self.voxel_idx = np.arange(np.prod(self.mask_shape))
-        self.voxel_idx = self.voxel_idx[mask_idx.ravel()]
+    def _update_mask_info(self, mask, threshold=None):
+
+        thr = 0 if threshold is None else threshold
+        maskl = nib.load(mask)
+        self.common_mask = {'path': mask, 'threshold': thr,
+                            'idx': (maskl.get_data() > thr).ravel(),
+                            'shape': maskl.shape, 'affine': maskl.affine}
+
+        self.voxel_idx = np.arange(np.prod(self.common_mask['shape']))
+        self.voxel_idx = self.voxel_idx[self.common_mask['idx']]
+
+        self.affine = maskl.affine
+        self.nifti_header = maskl.header
