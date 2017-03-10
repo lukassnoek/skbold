@@ -37,6 +37,5 @@ setup(
     platforms='Linux',
     packages=find_packages(),
     install_requires=REQUIREMENTS,
-    scripts=['bin/check_mc_output'],
     include_package_data=True,
     zip_safe=False)
