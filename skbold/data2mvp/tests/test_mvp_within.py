@@ -1,10 +1,15 @@
-import os.path as op
 from skbold.data2mvp import MvpWithin
 from skbold import testdata_path
 import os
+import os.path as op
+import pytest
 
+gm_mask = op.join(op.dirname(op.dirname(op.dirname(__file__))), 'data', 'ROIs',
+                  'GrayMatter.nii.gz')
 
-def test_fsl2mvp_within():
+@pytest.mark.parametrize('ref_space', ['mni', 'epi'])
+@pytest.mark.parametrize('mask', [None, gm_mask])
+def test_fsl2mvp_within(ref_space, mask):
 
     testfeats = [op.join(testdata_path, 'run1.feat'),
                  op.join(testdata_path, 'run2.feat')]
@@ -15,8 +20,8 @@ def test_fsl2mvp_within():
 
     mvp_within = MvpWithin(source=testfeats, read_labels=True,
                            remove_contrast=[], invert_selection=None,
-                           ref_space='epi', beta2tstat=True,
-                           remove_zeros=False, mask=None)
+                           ref_space=ref_space, beta2tstat=True,
+                           remove_zeros=False, mask=mask)
 
     mvp_within.create()
     assert len(mvp_within.contrast_labels) == 2 * len(true_labels)

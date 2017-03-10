@@ -95,7 +95,6 @@ class MvpWithin(Mvp):
         self.remove_contrast = remove_contrast
         self.remove_idx = None
         self.directory = None
-        self.voxel_idx = None
         self.y = []
         self.contrast_labels = []
         self.X = []
@@ -125,9 +124,13 @@ class MvpWithin(Mvp):
             else:
                 msg = "Loading 'within-data' from other sources than " \
                       "FSL-feat directories is not yet implemented!"
-                print(msg)
+                raise ValueError(msg)
 
-        self.X = np.concatenate(self.X, axis=0)
+        # If only one featureset, just index; otherwise, concatenate
+        if len(self.X) == 1:
+            self.X = self.X[0]
+        else:
+            self.X = np.concatenate(self.X, axis=0)
 
         if self.read_labels:
             self.y = LabelEncoder().fit_transform(self.contrast_labels)
@@ -143,6 +146,11 @@ class MvpWithin(Mvp):
             msg = "The feat-directory '%s' doesn't seem to exist." % src
             raise ValueError(msg)
 
+        reg_dir = op.join(src, 'reg')
+        if not op.isdir(reg_dir):
+            print("WARNING: no reg-dir found in '%s'; cannot perform any "
+                  "mni-to-epi (or vice versa) transformations" % src)
+
         if self.read_labels:
             design = op.join(src, 'design.con')
             contrast_labels_current = self._extract_labels(design_file=design)
@@ -150,13 +158,11 @@ class MvpWithin(Mvp):
 
         if self.common_mask is not None:
 
-            if self.ref_space == 'epi':
-                reg_dir = op.join(src, 'reg')
-                self.common_mask = convert2epi(self.common_mask, reg_dir,
-                                               reg_dir)
-
-            if self.voxel_idx is None:
-                self._update_mask_info(self.common_mask)
+            # If ref_space is 'epi', then transform the mask to epi-space
+            if self.ref_space == 'epi' and '_epi.nii.gz' not in op.basename(self.common_mask['path']):
+                new_mask = convert2epi(self.common_mask['path'], reg_dir,
+                                       reg_dir)
+                self._update_mask_info(new_mask, self.common_mask['threshold'])
 
         if self.ref_space == 'epi':
             stat_dir = op.join(src, 'stats')
