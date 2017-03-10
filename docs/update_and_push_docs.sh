@@ -19,7 +19,7 @@ if [ $dest == 'rtd' ]; then
     make html
     git add .
     git commit -m "Update docs"
-    git push
+    git push origin $cbranch
 
 else
     # Thanks to http://prjemian.github.io/gh-pages.html
