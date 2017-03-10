@@ -45,8 +45,6 @@ able to easily load data from FSL_-FEAT output
 directories. As the ``Mvp`` object is available in two 'options', they are
 explained in more detail below.
 
-.. note:: This is a test.
-
 Mvp-objects
 -----------
 At the core, an ``Mvp``-object is simply a collection of data - a 2D array

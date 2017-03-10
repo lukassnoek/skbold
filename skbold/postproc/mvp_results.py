@@ -47,9 +47,9 @@ class MvpResults(object):
      Front. Neurosci., http://dx.doi.org/10.3389/fnins.2014.00066.
 
     .. [2] Haufe, S., Meineck, F., Gorger, K., Dahne, S., Haynes, J-D.,
-    Blankertz, B., and Biessmann, F. et al. (2014). On the interpretation of
-    weight vectors of linear models in multivariate neuroimaging. Neuroimage,
-    87, 96-110.
+      Blankertz, B., and Biessmann, F. et al. (2014). On the interpretation of
+      weight vectors of linear models in multivariate neuroimaging. Neuroimage,
+      87, 96-110.
     """
 
     def __init__(self, mvp, n_iter, out_path=None, feature_scoring='',
