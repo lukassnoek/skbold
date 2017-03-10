@@ -1,6 +1,6 @@
 import pytest
-from skbold.utils.roi_globals import available_atlases
-from skbold.utils import parse_roi_labels
+from ..roi_globals import available_atlases
+from ...utils import parse_roi_labels
 
 
 @pytest.mark.parametrize("atlas", available_atlases)

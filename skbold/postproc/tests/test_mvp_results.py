@@ -1,12 +1,14 @@
+from __future__ import absolute_import
 import os.path as op
-from skbold.core import MvpBetween
-from skbold import testdata_path, roidata_path
+from ...core import MvpBetween
+from ... import testdata_path, roidata_path
 import os
-import pytest
-import numpy as np
-from skbold.postproc import MvpResultsClassification
-from sklearn.cross_validation import StratifiedKFold
+from ...postproc import MvpResultsClassification
+from sklearn.model_selection import StratifiedKFold
+from sklearn.feature_selection import f_classif, SelectKBest
 from sklearn.svm import SVC
+from sklearn.pipeline import Pipeline
+import pytest
 
 dpath = op.join(testdata_path, 'mock_subjects', 'sub*', 'run1.feat', 'stats')
 bmask = op.join(roidata_path, 'other', 'GrayMatter_prob.nii.gz')
@@ -21,19 +23,24 @@ fpath = op.join(testdata_path, 'sample_behav.tsv')
 mvp.add_y(fpath, col_name='var_categorical', index_col=0, remove=999)
 
 
-def test_mvp_results_init():
+@pytest.mark.parametrize("method", ['fwm', 'forward', 'ufs'])
+def test_mvp_results(method):
 
     clf = SVC(kernel='linear')
-    folds = StratifiedKFold(mvp.y, n_folds=2)
-    mvpr = MvpResultsClassification(mvp=mvp, n_iter=2, feature_scoring='fwm',
-                                    out_path=op.join(testdata_path))
+    ufs = SelectKBest(score_func=f_classif, k=100)
+    pipe = Pipeline([('ufs', ufs), ('clf', clf)])
 
-    for train_idx, test_idx in folds:
+    folds = StratifiedKFold(n_splits=2)
+    mvpr = MvpResultsClassification(mvp=mvp, n_iter=2,
+                                    feature_scoring=method,
+                                    out_path=testdata_path)
+
+    for train_idx, test_idx in folds.split(mvp.X, mvp.y):
         train_X, test_X = mvp.X[train_idx, :], mvp.X[test_idx, :]
         train_y, test_y = mvp.y[train_idx], mvp.y[test_idx]
-        clf.fit(train_X, train_y)
-        pred = clf.predict(test_X)
-        mvpr.update(test_idx, pred, pipeline=clf)
+        pipe.fit(train_X, train_y)
+        pred = pipe.predict(test_X)
+        mvpr.update(test_idx, pred, pipeline=pipe)
 
     mvpr.compute_scores()
     mvpr.write(feature_viz=True)

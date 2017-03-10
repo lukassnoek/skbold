@@ -1,6 +1,6 @@
 import pytest
-from skbold.utils.roi_globals import available_atlases, other_rois
-from skbold.utils import load_roi_mask, parse_roi_labels
+from ..roi_globals import available_atlases, other_rois
+from ...utils import load_roi_mask, parse_roi_labels
 
 
 @pytest.mark.parametrize("atlas_name", available_atlases)
@@ -19,6 +19,8 @@ def test_load_roi_mask_from_atlas(atlas_name, resolution, lateralized,
         mask = load_roi_mask(roi, atlas_name=atlas_name, resolution=resolution,
                              lateralized=lateralized, which_hemifield='left',
                              threshold=threshold, maxprob=maxprob)
+        assert(mask.ndim == 3)
+        assert(mask.sum() > 0)
 
 
 @pytest.mark.parametrize("roi_name", other_rois)
