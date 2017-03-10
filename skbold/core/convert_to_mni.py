@@ -13,7 +13,7 @@ import os.path as op
 
 def convert2mni(file2transform, reg_dir, out_dir=None,
                 interpolation='trilinear', suffix=None,
-                overwrite=False):
+                overwrite=False, apply_warp=True):
     """
     Transforms a nifti to mni152 (2mm) format.
     Assuming that reg_dir is a directory with transformation-files (warps)
@@ -36,7 +36,8 @@ def convert2mni(file2transform, reg_dir, out_dir=None,
         file2transform).
     overwrite : bool
         Whether to overwrite already existing transformed file(s)
-
+    apply_warp : bool
+        Whether to use the non-linear warp transform (if available).
     Returns
     -------
     out_all : list
@@ -71,8 +72,8 @@ def convert2mni(file2transform, reg_dir, out_dir=None,
         matrix_file = op.join(reg_dir, 'example_func2standard.mat')
         warp_file = op.join(reg_dir, 'example_func2standard_warp.nii.gz')
 
-        if op.isfile(warp_file):
-            cmd = 'applywarp -i %s -r %s -o %s -w %s -interp %s' % \
+        if op.isfile(warp_file) and apply_warp:
+            cmd = 'applywarp -i %s -r %s -o %s -w %s --interp=%s' % \
                   (f, ref_file, out_file, warp_file, interpolation)
         else:
             cmd = ('flirt -in %s -ref %s -out %s -applyxfm -init %s '
