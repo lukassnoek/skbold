@@ -178,6 +178,5 @@ class Mvp(object):
 
         self.voxel_idx = np.arange(np.prod(self.common_mask['shape']))
         self.voxel_idx = self.voxel_idx[self.common_mask['idx']]
-
         self.affine = maskl.affine
         self.nifti_header = maskl.header

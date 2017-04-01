@@ -126,9 +126,13 @@ class MvpWithin(Mvp):
             else:
                 msg = "Loading 'within-data' from other sources than " \
                       "FSL-feat directories is not yet implemented!"
-                print(msg)
+                raise ValueError(msg)
 
-        self.X = np.concatenate(self.X, axis=0)
+        # If only one featureset, just index; otherwise, concatenate
+        if len(self.X) == 1:
+            self.X = self.X[0]
+        else:
+            self.X = np.concatenate(self.X, axis=0)
 
         if self.read_labels:
             self.y = LabelEncoder().fit_transform(self.contrast_labels)
