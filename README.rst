@@ -130,7 +130,7 @@ meta-data associated with it, as shown below.
 
 .. code:: python
 
-   from skbold.data2mvp import MvpWithin
+   from skbold.core import MvpWithin
 
    feat_dir = '~/project/sub001.feat'
    mask_file = '~/GrayMatterMask.nii.gz' # mask all non-gray matter!
@@ -162,21 +162,26 @@ Now, we have an Mvp-object on which machine learning pipeline can be applied:
    from skbold.utils import MvpResultsClassification
 
    mvp = joblib.load('~/mvp_sub001.jl')
-   roiindex = RoiIndexer(mvp=mvp, mask='Amygdala'
-   ('roiindex', RoiIndexer(mvp=mvp, mask='~/amygdala_mask.nii.gz')),
+   roiindex = RoiIndexer(mvp=mvp, mask='Amygdala', atlas_name='HarvardOxford-Subcortical',
+                         lateralized=False)  # loads in bilateral mask
 
+   # Extract amygdala patterns from whole-brain
+   mvp.X = roiindex.fit().transform(mvp.X)
 
+   # Define pipeline
    pipe = Pipeline([
        ('scaler', StandardScaler()),
-       ('anova', SelectKBest(f_classif, k=100)),
+       ('anova', SelectAboveCutoff(fisher_criterion_score, cutoff=5)),
        ('svm', SVC(kernel='linear'))
    ])
 
    cv = StratifiedKFold(y=mvp.y, n_folds=5)
 
-   # Initialization of MvpResults; 'coef' indicates keeping track of weights!
+   # Initialization of MvpResults; 'forward' indicates that it keeps track of
+   # the forward model corresponding to the weights of the backward model
+   # (see Haufe et al., 2014, Neuroimage)
    mvp_results = MvpResultsClassification(mvp=mvp, n_iter=len(cv),
-                                          out_path='~/', feature_scoring='coef')
+                                          out_path='~/', feature_scoring='forward')
 
    for train_idx, test_idx in cv:
 
@@ -226,7 +231,7 @@ Now, to initialize the MvpBetween object, we need some more info:
 
 .. code:: python
 
-   from skbold.data2mvp import MvpBetween
+   from skbold.core import MvpBetween
 
    subject_idf='sub-0??' # this is needed to extract the subject names to
                          # cross-reference across data-sources
