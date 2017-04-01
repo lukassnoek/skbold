@@ -64,7 +64,7 @@ def test_pca_filter():
 @pytest.mark.transformer
 def test_roi_indexer():
 
-    for roi in [r for r in other_rois if not '1mm' in r]:
+    for roi in [r for r in other_rois if '1mm' not in r]:
         transf = RoiIndexer(mvp=mvp_within, mask=roi, mask_threshold=0,
                             reg_dir=reg_dir)
         transf.fit(mvp_within.X, mvp_within.y)

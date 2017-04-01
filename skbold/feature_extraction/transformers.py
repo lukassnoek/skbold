@@ -441,7 +441,8 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
 
             if not isinstance(self.mask, (str, unicode)):
                 fn = op.join(self.reg_dir, maskname + '.nii.gz')
-                img = nib.Nifti1Image(self.mask.astype(int), affine=self.affine)
+                img = nib.Nifti1Image(self.mask.astype(int),
+                                      affine=self.affine)
                 nib.save(img, fn)
                 self.mask = fn
 
