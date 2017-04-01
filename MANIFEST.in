@@ -1,10 +1,16 @@
 include README.rst
-include skbold/data/ROIs/*.nii.gz
-include skbold/data/ROIs/yeo/*
-include skbold/data/ROIs/harvard_oxford/bilateral/*.nii.gz
-include skbold/data/ROIs/harvard_oxford/unilateral/*.nii.gz
-include skbold/data/test_data/*/design.con
-include skbold/data/test_data/*/*/*
-include skbold/data/test_data/mvp_data/*
 include img/*
+include skbold/data/*
+include skbold/data/ROIs/*.nii.gz
+include skbold/data/ROIs/*/*.nii.gz
+include skbold/data/ROIs/*/*.xml
+include skbold/data/ROIs/*/*.hdr
+include skbold/data/ROIs/*/*.img
+
+include skbold/data/test_data/sample_behav.tsv
+include skbold/data/test_data/mock_subjects/sub*/*
+include skbold/data/test_data/preprocessed/sub_001/mytask/*
+include skbold/data/test_data/run*.feat/design.con
+include skbold/data/test_data/run*.feat/*/*
+
 

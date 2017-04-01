@@ -1,13 +1,12 @@
 language: python
 python:
   - "2.7"
+  - "3.5"
 
 branches:
   only:
     - master
-
-env:
-  - TOXENV=py27
+    - develop
 
 before_install:
   - sudo apt-get update
@@ -17,7 +16,7 @@ before_install:
   - export FSLOUTPUTTYPE=NIFTI_GZ
   # We do this conditionally because it saves us some downloading if the
   # version is the same.
-  - wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
+  - if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh; else wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh; fi
   - bash miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
   - hash -r
@@ -26,15 +25,16 @@ before_install:
   # Useful for debugging any issues with conda
   - conda info -a
   - conda config --add channels conda-forge
-  - conda install --yes python=$TRAVIS_PYTHON_VERSION pip scipy numpy pandas scikit-learn joblib nipype h5py seaborn
-  - pip install nibabel nilearn pytest pytest-cov coveralls pytest-pep8 configparser
+  - conda install --yes python=$TRAVIS_PYTHON_VERSION pip scipy numpy pandas scikit-learn
+  - pip install nibabel nilearn pytest pytest-cov coveralls pytest-pep8 future
 
 install:
   # Replace dep1 dep2 ... with your dependencies
+  - echo $PWD/skbold/data/test_data/mock_subjects/sub00* | xargs -n 1 cp -rs $PWD/skbold/data/test_data/run1.feat
   - python setup.py install
 
 script:
-  - py.test -v --cov skbold --cov-report term-missing skbold
+  - py.test -v --pep8 --cov skbold --cov-report term-missing skbold
 
 after_success:
     - coveralls

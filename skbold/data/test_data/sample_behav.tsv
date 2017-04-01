@@ -1,0 +1,14 @@
+	var_categorical	var_continuous	var_multinomial	confound_categorical	confound_continuous	group
+sub001	1	23.123	2	0		train
+sub002	1	24.129	2	0	819.32	train
+sub003		20.001	2	1	381.33	train
+sub004	0	19.583	2	1	921.939	train
+sub005	0	9.209	2		201.193	train
+sub006	0	58.284	1	0	403.201	train
+sub007	0	132.123	1	1	683.863	
+sub008	999	492.593	1	1	290.193	test
+sub009	1	394.288	1	0	993.201	test
+sub010	1	918.13	3	0	381.382	test
+sub011	1	382.111	3	1	998.281	test
+sub012	0	399.11	3	0	888.133	test
+sub013	1	393.99	3	0	133.281	test

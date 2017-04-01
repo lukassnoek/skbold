@@ -4,14 +4,13 @@
 # Contact: lukassnoek@gmail.com
 # License: 3 clause BSD
 
-from __future__ import division, print_function
-
+from __future__ import division, print_function, absolute_import
+from builtins import range
 import os
 import os.path as op
 import pandas as pd
 import numpy as np
 from glob import glob
-from nipype.interfaces.base import Bunch
 
 
 class PresentationLogfileCrawler(object):
@@ -204,12 +203,14 @@ class PresentationLogfileCrawler(object):
             if self.write_bfsl:
                 self._write_bfsl(i)
 
-        subject_info = Bunch(conditions=self.con_names,
-                             onsets=trial_onsets,
-                             durations=trial_durations,
-                             amplitudes=None,
-                             regressor_names=self.con_names,
-                             regressors=None)
+        subject_info = {'conditions': self.con_names,
+                        'onsets': trial_onsets,
+                        'durations': trial_durations,
+                        'amplitudes': None,
+                        'regressor_names': self.con_names,
+                        'regressors': None}
+
+        # For nipype: convert subject-info to Bunch instance.
 
         return subject_info
 

@@ -51,8 +51,8 @@ help:
 .PHONY: clean
 
 view:
-	google-chrome $(BUILDDIR)/html/index.html
-
+	firefox $(BUILDDIR)/html/index.html
+  
 clean:
 	rm -rf $(BUILDDIR)/*
 

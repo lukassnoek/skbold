@@ -8,7 +8,8 @@
 # Contact: lukassnoek@gmail.com
 # License: 3 clause BSD
 
-from __future__ import division, print_function
+from __future__ import division, print_function, absolute_import
+from builtins import range
 import numpy as np
 import nibabel as nib
 from glob import glob
@@ -220,7 +221,8 @@ def extract_roi_info(statfile, stat_name=None, roi_type='unilateral',
                     if k > cluster_list[-1]['k region']:
                         to_append['Region'] = cluster_list[-1]['Region']
                         to_append['k region'] = cluster_list[-1]['k region']
-                        to_append['max region'] = cluster_list[-1]['max region'],
+                        maxr = cluster_list[-1]['max region']
+                        to_append['max region'] = maxr
                         cluster_list[-1]['Region'] = mask_name
                         cluster_list[-1]['k region'] = k
                         cluster_list[-1]['max region'] = mx
@@ -294,27 +296,3 @@ def extract_roi_info(statfile, stat_name=None, roi_type='unilateral',
     df.to_csv(filename, index=False, header=True, sep='\t')
 
     return df
-
-
-if __name__ == '__main__':
-
-    from scipy.ndimage import gaussian_filter
-
-    data = np.random.rand(91, 109, 91)
-    data = gaussian_filter(data, 2)
-    print(data.max())
-    import nibabel as nib
-    import nipype.interfaces.fsl as fsl
-    from skbold import roidata_path
-    import os.path as op
-
-    mni = op.join(roidata_path, 'GrayMatter.nii.gz')
-    #mni = fsl.Info.standard_image('MNI152_T1_2mm.nii.gz')
-    affine = nib.load(mni).affine
-    mni = nib.load(mni).get_data() > 0
-
-    data = np.zeros((91, 109, 91))
-    data[mni] = np.random.randn(mni.sum()) * 10
-    data = gaussian_filter(data, 2)
-    nib.save(nib.Nifti1Image(data, affine=affine), '/home/lukas/test')
-    extract_roi_info(data, stat_threshold=1, stat_name='test')

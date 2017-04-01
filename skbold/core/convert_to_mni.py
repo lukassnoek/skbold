@@ -5,13 +5,15 @@
 # Contact: lukassnoek@gmail.com
 # License: 3 clause BSD
 
+from __future__ import division, print_function, absolute_import
+import subprocess
 import os
 import os.path as op
-from nipype.interfaces import fsl
 
 
 def convert2mni(file2transform, reg_dir, out_dir=None,
-                interpolation='trilinear', suffix=None):
+                interpolation='trilinear', suffix=None,
+                overwrite=False, apply_warp=True):
     """
     Transforms a nifti to mni152 (2mm) format.
     Assuming that reg_dir is a directory with transformation-files (warps)
@@ -29,7 +31,13 @@ def convert2mni(file2transform, reg_dir, out_dir=None,
         the to-be transformed file.
     interpolation : str
         Interpolation used by flirt. Default is 'trilinear'.
-
+    suffix : str
+        What to append to name when converted (default : basename
+        file2transform).
+    overwrite : bool
+        Whether to overwrite already existing transformed file(s)
+    apply_warp : bool
+        Whether to use the non-linear warp transform (if available).
     Returns
     -------
     out_all : list
@@ -52,28 +60,27 @@ def convert2mni(file2transform, reg_dir, out_dir=None,
 
         out_file = op.join(out_dir, out_name)
 
-        if op.exists(out_file):
+        if op.exists(out_file) and not overwrite:
             out_all.append(out_file)
             continue
 
         if not op.isdir(out_dir):
             os.makedirs(out_dir)
 
-        out_matrix_file = op.join(op.dirname(out_file), 'tmp_flirt')
+        # out_matrix_file = op.join(op.dirname(out_file), 'tmp_flirt')
         ref_file = op.join(reg_dir, 'standard.nii.gz')
         matrix_file = op.join(reg_dir, 'example_func2standard.mat')
-        apply_xfm = fsl.ApplyXfm()
-        apply_xfm.inputs.in_file = f
-        apply_xfm.inputs.reference = ref_file
-        apply_xfm.inputs.in_matrix_file = matrix_file
-        apply_xfm.inputs.out_matrix_file = out_matrix_file
-        apply_xfm.interp = interpolation
-        apply_xfm.inputs.out_file = out_file
-        apply_xfm.inputs.apply_xfm = True
-        apply_xfm.run()
+        warp_file = op.join(reg_dir, 'example_func2standard_warp.nii.gz')
 
-        if op.exists(out_matrix_file):
-            os.remove(out_matrix_file)
+        if op.isfile(warp_file) and apply_warp:
+            cmd = 'applywarp -i %s -r %s -o %s -w %s --interp=%s' % \
+                  (f, ref_file, out_file, warp_file, interpolation)
+        else:
+            cmd = ('flirt -in %s -ref %s -out %s -applyxfm -init %s '
+                   '-interp %s' % (f, ref_file, out_file, matrix_file,
+                                   interpolation))
+
+        status = subprocess.call(cmd, shell=True)
 
         out_all.append(out_file)
         out_name = None

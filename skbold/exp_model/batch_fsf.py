@@ -1,3 +1,6 @@
+from __future__ import division, print_function, absolute_import
+from builtins import range
+from io import open
 import os
 import numpy as np
 import os.path as op
@@ -5,6 +8,7 @@ from glob import glob
 import nibabel as nib
 import multiprocessing
 import warnings
+import skbold
 
 
 class FsfCrawler(object):
@@ -15,7 +19,8 @@ class FsfCrawler(object):
     Parameters
     ----------
     template : str
-        Absolute path to template fsf-file.
+        Absolute path to template fsf-file. Default is 'mvpa', which models
+        each bfsl-file as a separate regressor (and contrast against baseline).
     preproc_dir : str
         Absolute path to directory with preprocessed files.
     run_idf : str
@@ -26,12 +31,21 @@ class FsfCrawler(object):
         Identifier for subject-directories.
     func_idf : str
         Identifier for which functional should be use.
+    prewhiten : bool
+        Whether the data should be prewhitened in model fitting
+    derivs : bool
+        Whether to model derivatives of original regressors
+    mat_suffix : str
+        Identifier (suffix) for design.mat and batch.fsf file (such that it
+        does not overwrite older files).
     n_cores : int
         How many CPU cores should be used for the batch-analysis.
     """
 
-    def __init__(self, template, preproc_dir, run_idf, output_dir=None,
-                 subject_idf='sub', func_idf='func', n_cores=1):
+    def __init__(self, preproc_dir, run_idf, template='mvpa',
+                 output_dir=None, subject_idf='sub',
+                 func_idf='func', prewhiten=True, derivs=False,
+                 mat_suffix=None, n_cores=1):
 
         self.template = template
         self.preproc_dir = preproc_dir
@@ -46,9 +60,11 @@ class FsfCrawler(object):
         self.run_idf = run_idf
         self.func_idf = func_idf
         self.subject_idf = subject_idf
+        self.prewhiten = prewhiten
+        self.derivs = derivs
 
-        if n_cores == -1:
-            n_cores = multiprocessing.cpu_count() - 1
+        if n_cores < 0:
+            n_cores = multiprocessing.cpu_count() - n_cores
 
         self.n_cores = n_cores
         self.clean_fsf = None
@@ -56,15 +72,26 @@ class FsfCrawler(object):
         self.sub_dirs = None
         self.run_paths = None
 
+        if mat_suffix is None:
+            mat_suffix = ''
+        self.mat_suffix = '_' + mat_suffix
+
     def crawl(self):
         """ Crawls subject-directories and spits out subject-specific fsf. """
         self._read_fsf()
-        run_paths = op.join(self.preproc_dir, '%s*' % self.subject_idf,
+
+        run_paths = op.join(self.preproc_dir, '*%s*' % self.subject_idf,
                             '*%s*' % self.run_idf)
         self.sub_dirs = sorted(glob(run_paths))
+
+        if not self.sub_dirs:
+            msg = "Could not find any subdirs with command: %s" % run_paths
+            raise ValueError(msg)
+
         fsf_paths = [self._write_fsf(sub) for sub in self.sub_dirs]
 
-        shell_script = op.join(op.dirname(self.template), 'batch_fsf.sh')
+        shell_script = op.join(op.dirname(self.output_dir), 'batch_fsf%s.sh' %
+                               self.mat_suffix)
         with open(shell_script, 'wb') as fout:
 
             for i, fsf in enumerate(fsf_paths):
@@ -75,7 +102,16 @@ class FsfCrawler(object):
 
     def _read_fsf(self):
         """ Reads in template-fsf and does some cleaning. """
-        with open(self.template, 'rb') as f:
+
+        if self.template == 'mvpa':
+            template = op.join(op.dirname(op.dirname(
+                               op.abspath(__file__))), 'data',
+                               'Feat_single_trial_template.fsf')
+
+        else:
+            template = self.template
+
+        with open(template, 'rb') as f:
             template = f.readlines()
 
         template = [txt.replace('\n', '') for txt in template if txt != '\n']
@@ -85,7 +121,7 @@ class FsfCrawler(object):
 
     def _write_fsf(self, sub_dir):
         """ Creates and writes out subject-specific fsf. """
-        func_file = glob(op.join(sub_dir, '*%s*.nii.gz' % self.func_idf))
+        func_file = glob(op.join(sub_dir, '*%s*nii.gz' % self.func_idf))
 
         if len(func_file) == 0:
             msg = "Found no func-file for sub %s" % sub_dir
@@ -102,13 +138,25 @@ class FsfCrawler(object):
             os.makedirs(out_dir)
 
         feat_dir = op.join(out_dir, '%s.feat' % self.run_idf)
+
         hdr = nib.load(func_file).header
 
         arg_dict = {'tr': hdr['pixdim'][4],
                     'npts': hdr['dim'][4],
-                    'custom': glob(op.join(sub_dir, '*.bfsl')),
+                    'custom': sorted(glob(op.join(sub_dir, '*.bfsl'))),
                     'feat_files': "\"%s\"" % func_file,
-                    'outputdir': "\"%s\"" % feat_dir}
+                    'outputdir': "\"%s\"" % feat_dir,
+                    'prewhiten_yn': str(int(self.prewhiten)),
+                    'totalVoxels': np.prod(hdr['dim'][1:5])}
+
+        if self.template == 'mvpa':
+            arg_dict['ncon_orig'] = str(len(arg_dict['custom']))
+            arg_dict['ncon_real'] = str(len(arg_dict['custom']))
+            arg_dict['nftests_orig'] = '1'
+            arg_dict['nftests_real'] = '1'
+            arg_dict['evs_orig'] = str(len(arg_dict['custom']))
+            arg_dict['evs_real'] = str(len(arg_dict['custom']))
+            arg_dict.pop('custom')
 
         fsf_out = []
         # Loop over lines in cleaned template-fsf
@@ -123,27 +171,82 @@ class FsfCrawler(object):
                     parts[-1] = values
                 elif len(values) > 1:
                     ev = line.split(os.sep)[-1].replace("\"", '')
-                    bfsls = glob(op.join(sub_dir, '*.bfsl'))
+                    bfsls = sorted(glob(op.join(sub_dir, '*.bfsl')))
                     to_set = [bfsl for bfsl in bfsls if ev in bfsl]
 
                     if len(to_set) == 1:
                         parts[-1] = "\"%s\"" % to_set[0]
 
                 parts = [str(p) for p in parts]
+
                 fsf_out.append(" ".join(parts))
             else:
                 fsf_out.append(line)
 
-        with open(op.join(sub_dir, 'design.fsf'), 'wb') as fsfout:
+        if self.template == 'mvpa':
+            fsf_out = self._append_single_trial_info(
+                sorted(glob(op.join(sub_dir, '*.bfsl'))), fsf_out)
+
+        to_write = op.join(sub_dir, 'design%s.fsf' % self.mat_suffix)
+        with open(to_write, 'wb') as fsfout:
             print("Writing fsf to %s" % sub_dir)
             fsfout.write("\n".join(fsf_out))
 
-        return op.join(sub_dir, 'design.fsf')
+        return to_write
+
+    def _append_single_trial_info(self, bfsls, fsf_out):
+        """ Does some specific 'single-trial' (mvpa) stuff. """
+        n_evs = len(bfsls)
+
+        for i, bfsl in enumerate(bfsls):
+
+            basename = op.basename(bfsl).split('.')[0]
+            fsf_out.append('set fmri(evtitle%i) \"%s\"' % ((i + 1), basename))
+            fsf_out.append('set fmri(shape%i) 3' % (i + 1))
+            fsf_out.append('set fmri(convolve%i) 3' % (i + 1))
+            fsf_out.append('set fmri(convolve_phase%i) 0' % (i + 1))
+            fsf_out.append('set fmri(tempfilt_yn%i) 0' % (i + 1))
+            fsf_out.append('set fmri(deriv_yn%i) %i' % ((i + 1), self.derivs))
+            fsf_out.append('set fmri(custom%i) %s' % ((i + 1), bfsl))
+
+            for x in range(n_evs + 1):
+                fsf_out.append('set fmri(ortho%i.%i) 0' % ((i + 1), x))
+
+            fsf_out.append('set fmri(conpic_real.%i) 0' % (i + 1))
+            fsf_out.append('set fmri(conname_real.%i) \"%s\"' % ((i + 1),
+                                                                 basename))
+            fsf_out.append('set fmri(conpic_orig.%i) 0' % (i + 1))
+            fsf_out.append('set fmri(conname_orig.%i) \"%s\"' % ((i + 1),
+                                                                 basename))
+
+            for x in range(n_evs):
+                to_set = "1" if (x + 1) == (i + 1) else "0"
+
+                fsf_out.append('set fmri(con_real%i.%i) %s' % (
+                    (i + 1), (x + 1), to_set))
+
+                fsf_out.append('set fmri(con_orig%i.%i) %s' % (
+                    (i + 1), (x + 1), to_set))
+
+            fsf_out.append('set fmri(ftest_real1.%i) 1' % (i + 1))
+            fsf_out.append('set fmri(ftest_orig1.%i) 1' % (i + 1))
+
+        for x in range(n_evs):
+
+            for y in range(n_evs):
+
+                if (x + 1) == (y + 1):
+                    continue
+
+                fsf_out.append('set fmri(conmask%i_%i) 0' % ((x + 1),
+                                                             (y + 1)))
+
+        return fsf_out
 
 
 class MelodicCrawler(object):
 
-    def __init__(self, template, preproc_dir, run_idf, output_dir=None,
+    def __init__(self, preproc_dir, run_idf, template=None, output_dir=None,
                  subject_idf='sub', func_idf='func', copy_reg=True,
                  copy_mc=True, varnorm=True, n_cores=1):
         """
@@ -273,6 +376,11 @@ class MelodicCrawler(object):
 
     def _read_fsf(self):
         """ Reads in template-fsf and does some cleaning. """
+
+        if self.template is None:
+            self.template = op.join(op.dirname(skbold.__file__), 'data',
+                                    'Melodic_template.fsf')
+
         with open(self.template, 'rb') as f:
             template = f.readlines()
 

@@ -5,3 +5,12 @@ skbold.postproc package
     :members:
     :undoc-members:
     :show-inheritance:
+
+Submodules
+----------
+
+.. toctree::
+
+   skbold.postproc.extract_roi_info
+   skbold.postproc.mvp_results
+

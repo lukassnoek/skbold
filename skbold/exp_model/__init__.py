@@ -22,7 +22,7 @@ Eprime_ .txt-file to a tsv-file format.
 from .parse_presentation_logfile import parse_presentation_logfile
 from .parse_presentation_logfile import PresentationLogfileCrawler
 from .convert_eprime import Eprime2tsv
-from batch_fsf import FsfCrawler
+from .batch_fsf import FsfCrawler, MelodicCrawler
 
 __all__ = ['parse_presentation_logfile', 'PresentationLogfileCrawler',
-           'Eprime2tsv', 'FsfCrawler']
+           'Eprime2tsv', 'FsfCrawler', 'MelodicCrawler']

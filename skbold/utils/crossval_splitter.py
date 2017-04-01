@@ -1,8 +1,15 @@
+from __future__ import division, print_function, absolute_import
+from builtins import range
 import pandas as pd
 import numpy as np
 import scipy.stats as stat
-import matplotlib.pyplot as plt
 import os.path as op
+
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    print('Matplotlib not installed; cannot plot!')
+
 
 class CrossvalSplitter(object):
 

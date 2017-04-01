@@ -11,12 +11,13 @@ Subpackages
 
 .. toctree::
 
-    skbold.classifiers
     skbold.core
-    skbold.data2mvp
+    skbold.estimators
     skbold.exp_model
+    skbold.feature_extraction
+    skbold.feature_selection
+    skbold.pipelines
     skbold.postproc
-    skbold.quality_control
-    skbold.transformers
+    skbold.preproc
     skbold.utils
 
