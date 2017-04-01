@@ -71,17 +71,18 @@ class AverageRegionTransformer(BaseEstimator, TransformerMixin):
 
     def __init__(self, atlas='HarvardOxford-All', mask_threshold=0, mvp=None,
                  reg_dir=None, orig_mask=None, data_shape=None, ref_space=None,
-                 **kwargs):
+                 affine=None, **kwargs):
 
         if mvp is None:
             self.orig_mask = orig_mask
             self.data_shape = data_shape
+            self.affine = affine
         else:
             self.orig_mask = mvp.voxel_idx
             self.data_shape = mvp.data_shape
             self.mask_threshold = mask_threshold
+            self.affine = mvp.affine
             ref_space = mvp.ref_space
-
 
         rois = load_roi_mask(roi_name='all', atlas_name=atlas,
                              threshold=mask_threshold, **kwargs)
@@ -95,7 +96,14 @@ class AverageRegionTransformer(BaseEstimator, TransformerMixin):
                 warn('You have to provide a reg_dir because otherwise '
                      'we cannot transform masks to epi space.')
 
-            self.mask_list = convert2epi(rois, reg_dir, reg_dir)
+            to_transform = []
+            for i, roi in enumerate(rois):
+                img = nib.Nifti1Image(roi.astype(int), affine=self.affine)
+                fn = op.join(reg_dir, 'roi_%i.nii.gz' % i)
+                nib.save(img, fn)
+                to_transform.append(fn)
+
+            self.mask_list = convert2epi(to_transform, reg_dir, reg_dir)
 
     def fit(self, X=None, y=None):
         """ Does nothing, but included to be used in sklearn's Pipeline. """
@@ -377,7 +385,7 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
 
     def __init__(self, mask, mask_threshold=0, mvp=None,
                  orig_mask=None, ref_space=None, reg_dir=None,
-                 data_shape=None, **kwargs):
+                 data_shape=None, affine=None, **kwargs):
 
         self.mvp = mvp
         self.mask = mask
@@ -389,10 +397,12 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
             self.orig_mask = orig_mask
             self.ref_space = ref_space
             self.data_shape = data_shape
+            self.affine = affine
         else:
             self.orig_mask = mvp.voxel_idx
             self.ref_space = mvp.ref_space
             self.data_shape = mvp.data_shape
+            self.affine = mvp.affine
 
         if reg_dir is None and ref_space == 'epi':
             warn('Your data is in EPI space, but your mask is probably'
@@ -418,8 +428,11 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
             maskname = self.mask
 
             # Remove spaces because otherwise fsl might crash
-            maskname = op.join(op.dirname(maskname),
-                               op.basename(maskname).replace(' ', '_'))
+            basename = op.basename(maskname).replace(' ', '_')
+            basename = basename.replace('(', '_')
+            basename = basename.replace(')', '_')
+
+            maskname = op.join(op.dirname(maskname), basename)
             self.mask = load_roi_mask(self.mask, threshold=self.mask_threshold,
                                       **self.load_roi_args)
 
@@ -427,17 +440,14 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
         if self.ref_space == 'epi':
 
             if not isinstance(self.mask, (str, unicode)):
-                mni_ref = nib.load(other_rois['MNI152_2mm'])
-                affine, header = mni_ref.affine, mni_ref.header
                 fn = op.join(self.reg_dir, maskname + '.nii.gz')
-                nib.save(nib.Nifti1Image(self.mask, affine=affine,
-                                         header=header), fn)
+                img = nib.Nifti1Image(self.mask.astype(int), affine=self.affine)
+                nib.save(img, fn)
                 self.mask = fn
 
             epi_name = op.basename(self.mask).split('.')[0]
             epi_exists = glob(op.join(self.reg_dir,
                                       '*%s_epi.nii.gz' % epi_name))
-
             if epi_exists:
                 self.mask = epi_exists[0]
             else:
