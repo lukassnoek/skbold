@@ -42,7 +42,7 @@ def convert2epi(file2transform, reg_dir, out_dir=None,
         Absolute path(s) to newly transformed file(s).
     """
 
-    if type(file2transform) == str:
+    if isinstance(file2transform, (str, unicode)):
         file2transform = [file2transform]
 
     out_all = []

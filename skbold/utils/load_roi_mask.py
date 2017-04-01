@@ -48,6 +48,9 @@ def load_roi_mask(roi_name, atlas_name='HarvardOxford-Cortical',
     yeo_conservative : bool
         If Yeo2011 atlas is picked, whether the conservative or liberal atlas
         should be used.
+    return_path : bool
+        Whether to return the path to the ROI/mask or the loaded corresponding
+        numpy array.
 
     Returns
     -------
@@ -89,6 +92,7 @@ def load_roi_mask(roi_name, atlas_name='HarvardOxford-Cortical',
 
     # If roi is just a simple ROI-file, then load it and return it
     if roi_name in other_rois.keys():
+
         roi = nib.load(other_rois[roi_name], mmap=False).get_data()
         mask = roi > threshold
         return mask

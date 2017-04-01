@@ -10,12 +10,15 @@ import skbold
 import numpy as np
 import nibabel as nib
 
+from ..utils.roi_globals import available_atlases, other_rois
+from ..utils.load_roi_mask import load_roi_mask, parse_roi_labels
 from ..core import convert2epi
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.feature_selection import f_classif
 from sklearn.decomposition import PCA
 from scipy.ndimage import label
 from glob import glob
+from warnings import warn
 
 roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs',
                   'harvard_oxford')
@@ -66,34 +69,37 @@ class AverageRegionTransformer(BaseEstimator, TransformerMixin):
         Minimum threshold for probabilistic masks (such as Harvard-Oxford)
     """
 
-    def __init__(self, mvp, mask_type='unilateral', mask_threshold=0):
+    def __init__(self, atlas='HarvardOxford-All', mask_threshold=0, mvp=None,
+                 reg_dir=None, orig_mask=None, data_shape=None, ref_space=None,
+                 **kwargs):
 
-        if mask_type is 'unilateral':
-            mask_dir = op.join(roi_dir, 'unilateral')
-            mask_list = glob(op.join(mask_dir, '*.nii.gz'))
-        elif mask_type is 'bilateral':
-            mask_dir = op.join(roi_dir, 'bilateral')
-            mask_list = glob(op.join(mask_dir, '*.nii.gz'))
+        if mvp is None:
+            self.orig_mask = orig_mask
+            self.data_shape = data_shape
+        else:
+            self.orig_mask = mvp.voxel_idx
+            self.data_shape = mvp.data_shape
+            self.mask_threshold = mask_threshold
+            ref_space = mvp.ref_space
 
-        # If patterns are in epi-space, transform mni-masks to
-        # subject specific epi-space if it doesn't exist already
-        if mvp.ref_space == 'epi':
-            epi_dir = op.join(op.dirname(mvp.directory), 'epi_masks',
-                              mask_type)
-            reg_dir = op.join(mvp.directory, 'reg')
-            print('Transforming mni-masks to epi (if necessary).')
-            self.mask_list = convert2epi(mask_list, reg_dir, epi_dir)
 
-        self.orig_mask = mvp.voxel_idx
-        self.orig_shape = mvp.mask_shape
-        self.orig_threshold = mvp.mask_threshold
-        self.mask_threshold = mask_threshold
+        rois = load_roi_mask(roi_name='all', atlas_name=atlas,
+                             threshold=mask_threshold, **kwargs)
 
-        _ = [os.remove(f) for f in
-             glob(op.join(os.getcwd(), '*flirt.mat'))]
+        # This is actually very inefficient, because it warps all ROIs
+        # separately, while it would be faster if just the atlas itself is
+        # warped first
+        if ref_space == 'epi':
+
+            if reg_dir is None:
+                warn('You have to provide a reg_dir because otherwise '
+                     'we cannot transform masks to epi space.')
+
+            self.mask_list = convert2epi(rois, reg_dir, reg_dir)
 
     def fit(self, X=None, y=None):
         """ Does nothing, but included to be used in sklearn's Pipeline. """
+
         return self
 
     def transform(self, X, y=None):
@@ -117,7 +123,7 @@ class AverageRegionTransformer(BaseEstimator, TransformerMixin):
         for i, mask in enumerate(self.mask_list):
 
             roi_idx = nib.load(mask).get_data() > self.mask_threshold
-            overlap = np.zeros(self.orig_shape).ravel()
+            overlap = np.zeros(self.data_shape).ravel()
             overlap[roi_idx.ravel()] += 1
             overlap[self.orig_mask] += 1
             region_av = np.mean(X[:, (overlap == 2)[self.orig_mask]], axis=1)
@@ -358,21 +364,41 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
     Parameters
     ----------
     mvp : mvp-object (see scikit_bold.core)
-        Mvp-object, necessary to extract some pattern metadata
+        Mvp-object, necessary to extract some pattern metadata. If no mvp
+        object has been supplied, you have to set which original mask has
+        been used (e.g. graymatter mask) and what the reference-space is
+        ('epi' or 'mni').
     mask : str
-        Absolute paths to nifti-images of brain masks in MNI152 space.
+        Absolute paths to nifti-images of brain masks in MNI152 space
     mask_threshold : Optional[int, float]
         Threshold to be applied on mask-indexing (given a probabilistic
         mask).
     """
 
-    def __init__(self, mvp, mask, mask_threshold=0):
+    def __init__(self, mask, mask_threshold=0, mvp=None,
+                 orig_mask=None, ref_space=None, reg_dir=None,
+                 data_shape=None, **kwargs):
 
         self.mvp = mvp
         self.mask = mask
         self.mask_threshold = mask_threshold
-        self.orig_mask = mvp.voxel_idx
-        self.ref_space = mvp.ref_space
+        self.reg_dir = reg_dir
+        self.load_roi_args = kwargs
+
+        if mvp is None:
+            self.orig_mask = orig_mask
+            self.ref_space = ref_space
+            self.data_shape = data_shape
+        else:
+            self.orig_mask = mvp.voxel_idx
+            self.ref_space = mvp.ref_space
+            self.data_shape = mvp.data_shape
+
+        if reg_dir is None and ref_space == 'epi':
+            warn('Your data is in EPI space, but your mask is probably'
+                 ' in MNI space, and you have not set the argument reg_dir. '
+                 ' this is probably going to cause an error.')
+
         self.idx_ = None
 
     def fit(self, X=None, y=None):
@@ -386,30 +412,41 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
             List or ndarray with floats corresponding to labels
         """
 
-        # Check if epi-mask already exists:
+        # If it's not an existing file, it's meant as a query for the internal
+        # atlases
+        if not op.isfile(self.mask):
+            maskname = self.mask
+
+            # Remove spaces because otherwise fsl might crash
+            maskname = op.join(op.dirname(maskname),
+                               op.basename(maskname).replace(' ', '_'))
+            self.mask = load_roi_mask(self.mask, threshold=self.mask_threshold,
+                                      **self.load_roi_args)
+
+        # Check if epi-transformed mask already exists:
         if self.ref_space == 'epi':
 
-            if op.basename(self.mask)[0:2] in ['L_', 'R_']:
-                laterality = 'unilateral'
-            else:
-                laterality = 'bilateral'
+            if not isinstance(self.mask, (str, unicode)):
+                mni_ref = nib.load(other_rois['MNI152_2mm'])
+                affine, header = mni_ref.affine, mni_ref.header
+                fn = op.join(self.reg_dir, maskname + '.nii.gz')
+                nib.save(nib.Nifti1Image(self.mask, affine=affine,
+                                         header=header), fn)
+                self.mask = fn
 
-            epi_dir = op.join(self.mvp.directory, 'epi_masks', laterality)
-
-            if not op.isdir(epi_dir):
-                os.makedirs(epi_dir)
-
-            epi_name = op.basename(self.mask)[:-7]
-            epi_exists = glob(op.join(epi_dir, '*%s*.nii.gz' % epi_name))
+            epi_name = op.basename(self.mask).split('.')[0]
+            epi_exists = glob(op.join(self.reg_dir,
+                                      '*%s_epi.nii.gz' % epi_name))
 
             if epi_exists:
                 self.mask = epi_exists[0]
             else:
-                reg_dir = op.join(self.mvp.directory, 'reg')
-                self.mask = convert2epi(self.mask, reg_dir, epi_dir)[0]
+
+                self.mask = convert2epi(self.mask, self.reg_dir,
+                                        self.reg_dir)
 
         roi_idx = nib.load(self.mask).get_data() > self.mask_threshold
-        overlap = np.zeros(self.mvp.mask_shape).ravel()
+        overlap = np.zeros(self.data_shape).ravel()
         overlap[roi_idx.ravel()] += 1
         overlap[self.orig_mask] += 1
         self.idx_ = (overlap == 2)[self.orig_mask]
