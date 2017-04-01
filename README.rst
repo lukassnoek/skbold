@@ -27,20 +27,19 @@ skbold - utilities and tools for machine learning on BOLD-fMRI data
 .. _Github: https://github.com/lukassnoek
 
 The Python package ``skbold`` offers a set of tools and utilities for
-machine learning and RSA-type analyses of functional MRI (BOLD-fMRI) data.
-Instead of (largely) reinventing the wheel, this package builds upon an existing
-machine learning framework in Python: scikit-learn_.
-Specifically, it offers a module with scikit-learn-style 'transformers' (with
-the corresponding scikit-learn API) and some (experimental) scikit-learn
-type estimators.
+machine learning (and soon also RSA-type) analyses of functional MRI
+(BOLD-fMRI) data. Instead of (largely) reinventing the wheel, this
+package builds upon an existing machine learning framework in Python:
+scikit-learn_. The modules of skbold are applicable in several 'stages' of
+typical pattern analyses, including data loading/organization, feature
+selection/extraction, model evaluation, and feature visualization.
 
-Next to these transformer- and estimator-functionalities, ``skbold`` offers
-a new data-structure, the ``Mvp`` (Multivoxel pattern), that allows for an
-efficient way to store and access data and metadata necessary for multivoxel
-analyses of fMRI data. A novel feature of this data-structure is that it is
-able to easily load data from FSL_-FEAT output
-directories. As the ``Mvp`` object is available in two 'options', they are
-explained in more detail below.
+An important feature of ``skbold`` is the data-structure ``Mvp``
+(Multivoxel pattern), that allows for an efficient way to store and access data
+and metadata necessary for multivoxel analyses of fMRI data.
+A novel feature of this data-structure is that it is able to easily load data
+from FSL_-FEAT output directories. As the ``Mvp`` object is available in two
+'options', they are explained in more detail below.
 
 Mvp-objects
 -----------
@@ -104,15 +103,15 @@ automatically calculates a set of model evaluation metrics (accuracy,
 precision, recall, etc.) and keeps track of which features are used and how
 'important' these features are (in terms of the value of their weights).
 
-Transformers: fMRI feature selection and extraction
+feature selection/extraction
 ---------------------------------------------------
-The ``transformers`` module in skbold contains a set of scikit-learn type
-transformers that can perform various types of feature selection and
-extraction specific to multivoxel fMRI-data. For example, the RoiIndexer-
-transformer takes a (partially masked) whole-brain pattern and indexes it with
-a specific region-of-interest defined in a nifti-file. The transformer API
-conforms to scikit-learn transformers, and as such, (almost all of them) can be
-used in scikit-learn pipelines.
+The ``feature_selection`` and ``feature_extraction`` modules in skbold contain
+a set of scikit-learn type transformers that can perform various types of
+feature selection and extraction specific to multivoxel fMRI-data.
+For example, the RoiIndexer-transformer takes a (partially masked) whole-brain
+pattern and indexes it with a specific region-of-interest defined in a
+nifti-file. The transformer API conforms to scikit-learn transformers, and as
+such, (almost all of them) can be used in scikit-learn pipelines.
 
 To get a better idea of the package's functionality - including the use of
 Mvp-objects, transformers, and MvpResults - a typical analysis workflow using
@@ -158,15 +157,17 @@ Now, we have an Mvp-object on which machine learning pipeline can be applied:
    from sklearn.svm import SVC
    from sklearn.pipeline import Pipeline
    from sklearn.cross_validation import StratifiedKFold
-   from sklearn.feature_selection import f_classif, SelectKBest
-   from skbold.transformers import RoiIndexer
+   from skbold.feature_selection import fisher_criterion_score, SelectAboveCutoff
+   from skbold.feature_extraction import RoiIndexer
    from skbold.utils import MvpResultsClassification
 
    mvp = joblib.load('~/mvp_sub001.jl')
+   roiindex = RoiIndexer(mvp=mvp, mask='Amygdala'
+   ('roiindex', RoiIndexer(mvp=mvp, mask='~/amygdala_mask.nii.gz')),
+
 
    pipe = Pipeline([
        ('scaler', StandardScaler()),
-       ('roiindex', RoiIndexer(mvp=mvp, mask='~/amygdala_mask.nii.gz')),
        ('anova', SelectKBest(f_classif, k=100)),
        ('svm', SVC(kernel='linear'))
    ])

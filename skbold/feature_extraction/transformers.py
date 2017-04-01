@@ -439,7 +439,7 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
         # Check if epi-transformed mask already exists:
         if self.ref_space == 'epi':
 
-            if not isinstance(self.mask, (str, unicode)):
+            if not isinstance(self.mask, str):
                 fn = op.join(self.reg_dir, maskname + '.nii.gz')
                 img = nib.Nifti1Image(self.mask.astype(int),
                                       affine=self.affine)
