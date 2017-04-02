@@ -214,15 +214,16 @@ class MvpBetween(Mvp):
                 self.voxel_idx[i] = self.voxel_idx[i][index]
                 self.featureset_id[i] = self.featureset_id[i][index]
 
-    def _read_behav_file(self, file_path, sep, index_col):
+    def _read_behav_file(self, file_path, sep, index_col, **kwargs):
+        """ Reads in a tabular file using pandas read_csv """
 
-        df = pd.read_csv(file_path, sep=sep, index_col=index_col)
+        df = pd.read_csv(file_path, sep=sep, index_col=index_col, **kwargs)
         df.index = [str(i) for i in df.index.tolist()]
         return df
 
     def calculate_confound_weighting(self, file_path, col_name, sep='\t',
                                      index_col=0, estimator=None,
-                                     nan_strategy='depends'):
+                                     nan_strategy='depends', **kwargs):
         """ Calculates inverse probability weighting for confounds.
 
         Note: should be moved to mvp-core
@@ -242,6 +243,8 @@ class MvpBetween(Mvp):
             Estimator used to calculate p(y=1 | confound-array)
         nan_strategy : str
             How to impute NaNs.
+        **kwargs
+            Arbitrary keyword arguments passed to pandas read_csv.
 
         Returns
         -------
@@ -263,7 +266,7 @@ class MvpBetween(Mvp):
             estimator = LogisticRegression()
 
         df = self._read_behav_file(file_path=file_path, sep=sep,
-                                   index_col=index_col)
+                                   index_col=index_col, **kwargs)
 
         df.index = check_zeropadding_and_sort(df.index.tolist())
         common_idx = df.index.isin(self.common_subjects)
@@ -286,7 +289,8 @@ class MvpBetween(Mvp):
         return self.ipw
 
     def regress_out_confounds(self, file_path, col_name, backend='numpy',
-                              sep='\t', index_col=0, nan_strategy='depends'):
+                              sep='\t', index_col=0, nan_strategy='depends',
+                              **kwargs):
         """ Regresses out a confounding variable from X.
 
         Parameters
@@ -306,9 +310,11 @@ class MvpBetween(Mvp):
             Which column to use as index (should correspond to subject-name).
         nan_strategy : str
             How to impute NaNs.
+        **kwargs
+            Arbitrary keyword arguments passed to pandas read_csv.
         """
         df = self._read_behav_file(file_path=file_path, sep=sep,
-                                   index_col=index_col)
+                                   index_col=index_col, **kwargs)
         df.index = check_zeropadding_and_sort(df.index.tolist())
         common_idx = df.index.isin(self.common_subjects)
         confound = df.loc[common_idx, col_name]
@@ -380,7 +386,7 @@ class MvpBetween(Mvp):
 
     def add_y(self, file_path, col_name, sep='\t', index_col=0,
               normalize=False, remove=None, ensure_balanced=False,
-              nan_strategy='remove'):
+              nan_strategy='remove', **kwargs):
         """ Sets ``y`` attribute to an outcome-variable (target).
 
         Parameters
@@ -405,11 +411,13 @@ class MvpBetween(Mvp):
             specific string, int, or float can be specified when you want to
             impute a specific value. Other options,
             see: sklearn.preprocessing.Imputer.
+        **kwargs
+            Arbitrary keyword arguments passed to pandas read_csv.
         """
 
         # Assumes index corresponds to self.common_subjects
         df = self._read_behav_file(file_path=file_path, sep=sep,
-                                   index_col=index_col)
+                                   index_col=index_col, **kwargs)
 
         df.index = check_zeropadding_and_sort(df.index.tolist())
         common_idx = df.index.isin(self.common_subjects)
@@ -526,7 +534,7 @@ class MvpBetween(Mvp):
                 pickle.dump(labb.binarize_params, w)
 
     def split(self, file_path, col_name, target, sep='\t', index_col=0,
-              nan_strategy='train'):
+              nan_strategy='train', **kwargs):
         """ Splits an MvpBetween object based on some external index.
 
         Parameters
@@ -544,11 +552,13 @@ class MvpBetween(Mvp):
             Which column to use as index (should correspond to subject-name).
         nan_strategy : str
             Which value to impute if the labeling is absent. Default: 'train'.
+        **kwargs
+            Arbitrary keyword arguments passed to pandas read_csv.
         """
 
         # Assumes index corresponds to self.common_subjects
         df = self._read_behav_file(file_path=file_path, sep=sep,
-                                   index_col=index_col)
+                                   index_col=index_col, **kwargs)
 
         common_idx = df.index.isin(self.common_subjects)
         behav = df.loc[common_idx, col_name]
@@ -597,9 +607,9 @@ class MvpBetween(Mvp):
             the masks applied when the mvp was created.
         estimator : sklearn estimator or pipeline
             Estimator to use in the classification process.
-        **kwargs : misc
-            Other arguments for initializing nilearn's searchlight object (see
-           nilearn.github.io/decoding/searchlight.html).
+        **kwargs
+            Other keyword arguments for initializing nilearn's searchlight
+            object (see nilearn.github.io/decoding/searchlight.html).
         """
 
         # to do: implement import searchlight here (so skbold does not
@@ -608,13 +618,13 @@ class MvpBetween(Mvp):
         # NOT YET TESTED
 
         # Import OLD version
-        from sklearn.cross_validation import StratifiedKFold
+        from sklearn.model_selection import StratifiedKFold
         from sklearn.svm import SVC
         from sklearn.pipeline import Pipeline
         from nilearn.decoding import SearchLight
 
         nimgs = self.write_4D(return_nimg=True)
-        cv = StratifiedKFold(self.y, n_folds=10)
+        cv = StratifiedKFold(self.y, n_folds=n_folds)
 
         if estimator is None:
             estimator = Pipeline([('scaler', StandardScaler()),
