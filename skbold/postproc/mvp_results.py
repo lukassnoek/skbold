@@ -290,12 +290,9 @@ class MvpResults(object):
 
         W = val
         X = self.X[:, idx]
-        A = np.cov(X.T).dot(W)
 
-        # Old calc
-        # X_cov = np.cov(X.T)
-        # --> s needs to be one-hot-encoded
-        # A = X_cov.dot(W).dot(np.linalg.pinv(np.cov(s)))
+        # Cov[x(n), y(n)]
+        A = np.cov(X.T).dot(W)
 
         return A
 

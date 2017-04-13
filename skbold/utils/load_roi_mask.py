@@ -12,13 +12,15 @@ import numpy as np
 from glob import glob
 from .parse_roi_labels import parse_roi_labels
 from .roi_globals import available_atlases, other_rois
+from ..core import convert2epi
 
 roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs')
 
 
 def load_roi_mask(roi_name, atlas_name='HarvardOxford-Cortical',
                   resolution='2mm', lateralized=False, which_hemifield=None,
-                  threshold=0, maxprob=False, yeo_conservative=False):
+                  threshold=0, maxprob=False, yeo_conservative=False,
+                  reg_dir=None, verbose=False):
     """ Loads a mask (from an atlas).
 
     Parameters
@@ -48,6 +50,9 @@ def load_roi_mask(roi_name, atlas_name='HarvardOxford-Cortical',
     yeo_conservative : bool
         If Yeo2011 atlas is picked, whether the conservative or liberal atlas
         should be used.
+    reg_dir : str
+        Absolute path to directory with registration info (in FSL format),
+        for if you want to automatically warp the mask to native (EPI) space!
 
     Returns
     -------
@@ -79,17 +84,20 @@ def load_roi_mask(roi_name, atlas_name='HarvardOxford-Cortical',
     if isinstance(roi_name, list):
 
         return [load_roi_mask(roi_n, atlas_name, resolution,
-                              lateralized, which_hemifield, threshold, maxprob)
+                              lateralized, which_hemifield, threshold, maxprob,
+                              yeo_conservative, reg_dir)
                 for roi_n in roi_name]
     else:
-        print('Trying to load mask: %s' % roi_name)
+        if verbose:
+            print('Trying to load mask: %s' % roi_name)
 
     # Check compatibility settings
     _check_cfg(roi_name, atlas_name, lateralized, which_hemifield)
 
     # If roi is just a simple ROI-file, then load it and return it
     if roi_name in other_rois.keys():
-        roi = nib.load(other_rois[roi_name], mmap=False).get_data()
+        roi = load_nifti_and_check_space(other_rois[roi_name], reg_dir=reg_dir,
+                                         return_array=True, mmap=False)
         mask = roi > threshold
         return mask
 
@@ -132,7 +140,9 @@ def load_roi_mask(roi_name, atlas_name='HarvardOxford-Cortical',
               "a probabilistic atlas.")
         maxprob = False
 
-    atlas_img = nib.load(atlas, mmap=False)
+    atlas_img = load_nifti_and_check_space(atlas, reg_dir=reg_dir,
+                                           return_array=False, mmap=False)
+
     info_dict = parse_roi_labels(atlas_name, lateralized=lateralized,
                                  debug=False)
 
@@ -144,6 +154,8 @@ def load_roi_mask(roi_name, atlas_name='HarvardOxford-Cortical',
             idx = info_dict[roi_name.split(' ', 1)[1]][0]
         elif roi_name[-1] in ['L', 'R']:
             idx = info_dict[roi_name[:-2]][0]
+        else:
+            raise KeyError('Mask %s does not exist!' % roi_name)
 
     if maxprob:
         atlas_loaded = atlas_img.get_data()
@@ -178,3 +190,23 @@ def _check_cfg(roi_name, atlas_name, lateralized, which_hemifield):
         msg = ("You specified a lateralized mask, but you haven't indicated "
                "which hemifield. Please set which_hemifield={'left', 'right}.")
         raise ValueError(msg)
+
+
+def load_nifti_and_check_space(nifti, reg_dir, return_array=True, **kwargs):
+
+    is_img_file = op.basename(nifti).split('.')[-1] == 'img'
+
+    if is_img_file:
+        print('Cannot transform img-type file, skipping ...')
+
+    if reg_dir is not None and not is_img_file:
+
+        nifti = convert2epi(nifti, reg_dir=reg_dir, out_dir=reg_dir,
+                            interpolation='nearestneighbour', suffix=None)
+
+    nifti_loaded = nib.load(nifti, **kwargs)
+
+    if return_array:
+        return nifti_loaded.get_data()
+    else:
+        return nifti_loaded
