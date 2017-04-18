@@ -3,7 +3,13 @@
 # License: 3 clause BSD
 
 """
-Description.
+The pipelines module contains some standard MVPA pipelines using
+the scikit-learn style Pipeline objects.
 """
 
-__all__ = []
+from .mvpa_pipelines import (create_ftest_kbest_svm, create_pca_svm,
+                             create_ftest_percentile_svm)
+
+
+__all__ = ['create_ftest_kbest_svm', 'create_ftest_percentile_svm',
+           'create_pca_svm']

@@ -53,6 +53,9 @@ def load_roi_mask(roi_name, atlas_name='HarvardOxford-Cortical',
     reg_dir : str
         Absolute path to directory with registration info (in FSL format),
         for if you want to automatically warp the mask to native (EPI) space!
+    return_path : bool
+        Whether to return the path to the ROI/mask or the loaded corresponding
+        numpy array.
 
     Returns
     -------

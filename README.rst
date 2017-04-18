@@ -11,9 +11,6 @@ skbold - utilities and tools for machine learning on BOLD-fMRI data
 .. image:: https://coveralls.io/repos/github/lukassnoek/skbold/badge.svg?branch=develop
     :target: https://coveralls.io/github/lukassnoek/skbold?branch=develop
 
-.. image:: https://img.shields.io/badge/code%20style-pep8-orange.svg
-    :target: https://www.python.org/dev/peps/pep-0008
-
 .. image:: https://img.shields.io/badge/python-2.7-blue.svg
     :target: https://www.python.org/download/releases/2.7
 
@@ -30,20 +27,19 @@ skbold - utilities and tools for machine learning on BOLD-fMRI data
 .. _Github: https://github.com/lukassnoek
 
 The Python package ``skbold`` offers a set of tools and utilities for
-machine learning and RSA-type analyses of functional MRI (BOLD-fMRI) data.
-Instead of (largely) reinventing the wheel, this package builds upon an existing
-machine learning framework in Python: scikit-learn_.
-Specifically, it offers a module with scikit-learn-style 'transformers' (with
-the corresponding scikit-learn API) and some (experimental) scikit-learn
-type estimators.
+machine learning (and soon also RSA-type) analyses of functional MRI
+(BOLD-fMRI) data. Instead of (largely) reinventing the wheel, this
+package builds upon an existing machine learning framework in Python:
+scikit-learn_. The modules of skbold are applicable in several 'stages' of
+typical pattern analyses, including data loading/organization, feature
+selection/extraction, model evaluation, and feature visualization.
 
-Next to these transformer- and estimator-functionalities, ``skbold`` offers
-a new data-structure, the ``Mvp`` (Multivoxel pattern), that allows for an
-efficient way to store and access data and metadata necessary for multivoxel
-analyses of fMRI data. A novel feature of this data-structure is that it is
-able to easily load data from FSL_-FEAT output
-directories. As the ``Mvp`` object is available in two 'options', they are
-explained in more detail below.
+An important feature of ``skbold`` is the data-structure ``Mvp``
+(Multivoxel pattern), that allows for an efficient way to store and access data
+and metadata necessary for multivoxel analyses of fMRI data.
+A novel feature of this data-structure is that it is able to easily load data
+from FSL_-FEAT output directories. As the ``Mvp`` object is available in two
+'options', they are explained in more detail below.
 
 Mvp-objects
 -----------
@@ -107,15 +103,15 @@ automatically calculates a set of model evaluation metrics (accuracy,
 precision, recall, etc.) and keeps track of which features are used and how
 'important' these features are (in terms of the value of their weights).
 
-Transformers: fMRI feature selection and extraction
+feature selection/extraction
 ---------------------------------------------------
-The ``transformers`` module in skbold contains a set of scikit-learn type
-transformers that can perform various types of feature selection and
-extraction specific to multivoxel fMRI-data. For example, the RoiIndexer-
-transformer takes a (partially masked) whole-brain pattern and indexes it with
-a specific region-of-interest defined in a nifti-file. The transformer API
-conforms to scikit-learn transformers, and as such, (almost all of them) can be
-used in scikit-learn pipelines.
+The ``feature_selection`` and ``feature_extraction`` modules in skbold contain
+a set of scikit-learn type transformers that can perform various types of
+feature selection and extraction specific to multivoxel fMRI-data.
+For example, the RoiIndexer-transformer takes a (partially masked) whole-brain
+pattern and indexes it with a specific region-of-interest defined in a
+nifti-file. The transformer API conforms to scikit-learn transformers, and as
+such, (almost all of them) can be used in scikit-learn pipelines.
 
 To get a better idea of the package's functionality - including the use of
 Mvp-objects, transformers, and MvpResults - a typical analysis workflow using
@@ -134,7 +130,7 @@ meta-data associated with it, as shown below.
 
 .. code:: python
 
-   from skbold.data2mvp import MvpWithin
+   from skbold.core import MvpWithin
 
    feat_dir = '~/project/sub001.feat'
    mask_file = '~/GrayMatterMask.nii.gz' # mask all non-gray matter!
@@ -161,24 +157,31 @@ Now, we have an Mvp-object on which machine learning pipeline can be applied:
    from sklearn.svm import SVC
    from sklearn.pipeline import Pipeline
    from sklearn.cross_validation import StratifiedKFold
-   from sklearn.feature_selection import f_classif, SelectKBest
-   from skbold.transformers import RoiIndexer
+   from skbold.feature_selection import fisher_criterion_score, SelectAboveCutoff
+   from skbold.feature_extraction import RoiIndexer
    from skbold.utils import MvpResultsClassification
 
    mvp = joblib.load('~/mvp_sub001.jl')
+   roiindex = RoiIndexer(mvp=mvp, mask='Amygdala', atlas_name='HarvardOxford-Subcortical',
+                         lateralized=False)  # loads in bilateral mask
 
+   # Extract amygdala patterns from whole-brain
+   mvp.X = roiindex.fit().transform(mvp.X)
+
+   # Define pipeline
    pipe = Pipeline([
        ('scaler', StandardScaler()),
-       ('roiindex', RoiIndexer(mvp=mvp, mask='~/amygdala_mask.nii.gz')),
-       ('anova', SelectKBest(f_classif, k=100)),
+       ('anova', SelectAboveCutoff(fisher_criterion_score, cutoff=5)),
        ('svm', SVC(kernel='linear'))
    ])
 
    cv = StratifiedKFold(y=mvp.y, n_folds=5)
 
-   # Initialization of MvpResults; 'coef' indicates keeping track of weights!
+   # Initialization of MvpResults; 'forward' indicates that it keeps track of
+   # the forward model corresponding to the weights of the backward model
+   # (see Haufe et al., 2014, Neuroimage)
    mvp_results = MvpResultsClassification(mvp=mvp, n_iter=len(cv),
-                                          out_path='~/', feature_scoring='coef')
+                                          out_path='~/', feature_scoring='forward')
 
    for train_idx, test_idx in cv:
 
@@ -228,7 +231,7 @@ Now, to initialize the MvpBetween object, we need some more info:
 
 .. code:: python
 
-   from skbold.data2mvp import MvpBetween
+   from skbold.core import MvpBetween
 
    subject_idf='sub-0??' # this is needed to extract the subject names to
                          # cross-reference across data-sources

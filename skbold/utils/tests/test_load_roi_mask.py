@@ -7,6 +7,9 @@ from ...utils import load_roi_mask, parse_roi_labels
 from ... import testdata_path
 
 reg_dir_test = op.join(testdata_path, 'run1.feat', 'reg')
+reg_files = ['example_func.nii.gz', 'example_func2standard.mat',
+             'example_func2standard.nii.gz', 'standard.nii.gz',
+             'standard2example_func.mat']
 
 
 @pytest.mark.parametrize("atlas_name", available_atlases)
@@ -33,9 +36,7 @@ def test_load_roi_mask_from_atlas(atlas_name, resolution, lateralized,
     masks = glob(op.join(reg_dir_test, '*nii.gz'))
     for mask in masks:
 
-        if op.basename(mask) not in ['example_func.nii.gz', 'example_func2standard.mat',
-                                     'example_func2standard.nii.gz', 'standard.nii.gz',
-                                     'standard2example_func.mat']:
+        if op.basename(mask) not in reg_files:
             os.remove(mask)
 
 
@@ -49,8 +50,5 @@ def test_load_roi_mask_from_other_rois(roi_name, threshold, reg_dir):
 
     for mask in masks:
 
-        if op.basename(mask) not in ['example_func.nii.gz', 'example_func2standard.mat',
-                                     'example_func2standard.nii.gz', 'standard.nii.gz',
-                                     'standard2example_func.mat']:
+        if op.basename(mask) not in reg_files:
             os.remove(mask)
-

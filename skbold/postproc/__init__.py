@@ -18,6 +18,11 @@ The postproc subpackage additionally contains the function
 other statistics) per ROI in a single statistical brain map and output a
 csv-file.
 
+The cluster_size_threshold function allows you to set voxels to zero which
+do not belong to a cluster of a given extent/size. This is NOT a
+statistical procedure (like GRF thresholding), but merely a tool for
+visualization purposes.
+
 References
 ----------
 .. [1] Stelzer, J., Buschmann, T., Lohmann, G., Margulies, D.S., Trampel,
@@ -34,6 +39,8 @@ weight vectors of linear models in multivariate neuroimaging. Neuroimage,
 from .extract_roi_info import extract_roi_info
 from .mvp_results import MvpResultsClassification, MvpResultsRegression
 from .mvp_results import MvpAverageResults
+from .cluster_size_threshold import cluster_size_threshold
 
 __all__ = ['extract_roi_info', 'MvpResultsClassification',
-           'MvpResultsRegression', 'MvpAverageResults']
+           'MvpResultsRegression', 'MvpAverageResults',
+           'cluster_size_threshold']

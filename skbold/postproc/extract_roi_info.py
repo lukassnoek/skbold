@@ -73,12 +73,15 @@ def extract_roi_info(statfile, stat_name=None, roi_type='unilateral',
         Dataframe corresponding to the written csv-file.
     """
 
-    data = nib.load(statfile).get_data()
+    if isinstance(statfile, (str, unicode)):
+        data = nib.load(statfile).get_data()
+    else:
+        data = statfile
 
     sign_mask = np.ones(shape=data.shape)
     sign_mask[data < 0] = -1
 
-    data = np.abs(data)
+    # data = np.abs(data)
 
     if stat_threshold:
         data[data < stat_threshold] = 0
@@ -89,9 +92,6 @@ def extract_roi_info(statfile, stat_name=None, roi_type='unilateral',
 
     if per_cluster:
 
-        col_names = ['Contrast', 'cluster', 'k cluster', 'max cluster',
-                     'x', 'y', 'z', 'Region', 'k region', 'max region']
-
         # Start clustering of data
         if cluster_engine == 'scipy':
             clustered, num_clust = label(data > 0)
@@ -99,7 +99,7 @@ def extract_roi_info(statfile, stat_name=None, roi_type='unilateral',
             n_clust = np.argmax(np.sort(counts)[::-1] < min_clust_size)
 
             if n_clust == 0:
-                print('No (sufficiently large) clusters for %s' % statfile)
+                print('No (sufficiently large) clusters!')
                 return 0
 
             # Sort and trim
@@ -109,7 +109,7 @@ def extract_roi_info(statfile, stat_name=None, roi_type='unilateral',
             # Not yet implemented
             pass
 
-        print('Analyzing %i clusters for %s' % (len(cluster_nrs), statfile))
+        print('Analyzing %i clusters for %s' % (len(cluster_nrs), stat_name))
 
         cluster_list = []
         # Looping over clusters
