@@ -15,6 +15,27 @@ from .roi_globals import available_atlases, other_rois
 from ..core import convert2epi
 
 roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs')
+lat_subcort_rois_to_skip = ['Brain-Stem', 'Cerebral Cortex',
+                            'Cerebral White Matter',
+                            'Lateral Ventricle',
+                            'Lateral Ventrical']  # sic
+
+
+def print_mask_options(atlas_name='HarvardOxford-Cortical'):
+    """ Prints the options for ROIs given a certain atlas.
+
+    Parameters
+    ----------
+    atlas_name : str
+        Name of the atlas. Availabel: 'HarvardOxford-Cortical',
+        'HarvardOxford-Subcortical', 'JHU-labels', 'JHU-tracts',
+        'Yeo2011', and 'Talairach' (experimental).
+    """
+    rois = sorted(parse_roi_labels(atlas_name).keys())
+    rois = [r for r in rois if r not in lat_subcort_rois_to_skip]
+
+    print('The hardvard oxford atlas contains the following ROIs:\n%s' %
+          '\n'.join(rois))
 
 
 def load_roi_mask(roi_name, atlas_name='HarvardOxford-Cortical',
@@ -61,6 +82,8 @@ def load_roi_mask(roi_name, atlas_name='HarvardOxford-Cortical',
     -------
     mask : (list of) numpy-array(s)
         Boolean numpy array(s) indicating the ROI-mask(s).
+    mask_names : (list of) str
+        Name of the mask corresponding to the numpy-array
     """
 
     if 'Yeo' in atlas_name:
@@ -71,11 +94,11 @@ def load_roi_mask(roi_name, atlas_name='HarvardOxford-Cortical',
         # ToDo: make a generator out of this to save memory?
 
         if atlas_name == 'HarvardOxford-All':
-            roi_name = sorted(parse_roi_labels('HarvardOxford-Cortical',
-                                               lateralized).keys())
+            roi_name1 = sorted(parse_roi_labels('HarvardOxford-Cortical',
+                                                lateralized).keys())
             roi_name2 = sorted(parse_roi_labels('HarvardOxford-Subcortical',
                                                 lateralized).keys())
-            roi_name.extend(roi_name2)
+            roi_name = roi_name1 + roi_name2
         else:
             roi_name = sorted(parse_roi_labels(atlas_name,
                                                lateralized=lateralized).keys())
@@ -83,13 +106,33 @@ def load_roi_mask(roi_name, atlas_name='HarvardOxford-Cortical',
         if 'JHU' in atlas_name:
             lateralized = False
 
+        # Just set something, otherwise it'll crash
+        which_hemifield = 'left'
+
     # First time of a (doubtful) use of a recursive function, yay!
     if isinstance(roi_name, list):
 
-        return [load_roi_mask(roi_n, atlas_name, resolution,
-                              lateralized, which_hemifield, threshold, maxprob,
-                              yeo_conservative, reg_dir)
-                for roi_n in roi_name]
+        to_return = []
+        for roi_n in roi_name:
+
+            if roi_n in parse_roi_labels('HarvardOxford-Cortical',
+                                         lateralized).keys():
+                atlas_name_tmp = 'HarvardOxford-Cortical'
+            elif roi_n in parse_roi_labels('HarvardOxford-Subcortical',
+                                           lateralized).keys():
+                atlas_name_tmp = 'HarvardOxford-Subcortical'
+            else:
+                atlas_name_tmp = atlas_name
+
+            to_return.append(load_roi_mask(roi_n, atlas_name_tmp, resolution,
+                             lateralized, which_hemifield, threshold, maxprob,
+                             yeo_conservative, reg_dir))
+
+        masks = [mask[0] for mask in to_return if mask[0] is not None]
+        mask_names = [mask[1] for mask in to_return if mask[1] is not None]
+
+        return masks, mask_names
+
     else:
         if verbose:
             print('Trying to load mask: %s' % roi_name)
@@ -102,7 +145,7 @@ def load_roi_mask(roi_name, atlas_name='HarvardOxford-Cortical',
         roi = load_nifti_and_check_space(other_rois[roi_name], reg_dir=reg_dir,
                                          return_array=True, mmap=False)
         mask = roi > threshold
-        return mask
+        return mask, roi_name
 
     # Stupid hack to find correct atlas file when filenames vary too much
     lat_str = ''
@@ -149,10 +192,18 @@ def load_roi_mask(roi_name, atlas_name='HarvardOxford-Cortical',
     info_dict = parse_roi_labels(atlas_name, lateralized=lateralized,
                                  debug=False)
 
+    if roi_name.split(" ")[0] in ['Left', 'Right']:
+        if " ".join(roi_name.split(' ')[1:]) in lat_subcort_rois_to_skip:
+            return None, None
+    else:
+        if roi_name in lat_subcort_rois_to_skip:
+            return None, None
+
     # Trying to find the index corresponding to the roi-name
     try:
         idx = info_dict[roi_name][0]
     except KeyError:  # Hack to check for non-lateralized masks in atlas
+
         if roi_name.split(' ')[0] in ['Left', 'Right']:
             idx = info_dict[roi_name.split(' ', 1)[1]][0]
         elif roi_name[-1] in ['L', 'R']:
@@ -173,7 +224,7 @@ def load_roi_mask(roi_name, atlas_name='HarvardOxford-Cortical',
             roi = np.asarray(atlas_img.dataobj[..., idx])
             mask = roi > threshold
 
-    return mask
+    return mask, roi_name
 
 
 def _check_cfg(roi_name, atlas_name, lateralized, which_hemifield):
@@ -189,7 +240,7 @@ def _check_cfg(roi_name, atlas_name, lateralized, which_hemifield):
                "Please choose from: %r" % available_atlases)
         raise ValueError(msg)
 
-    if lateralized and which_hemifield is None:
+    if lateralized and which_hemifield is None and roi_name != 'all':
         msg = ("You specified a lateralized mask, but you haven't indicated "
                "which hemifield. Please set which_hemifield={'left', 'right}.")
         raise ValueError(msg)

@@ -60,13 +60,19 @@ class AverageRegionTransformer(BaseEstimator, TransformerMixin):
 
     Parameters
     ----------
-    mask_type : List[str]
-        List with absolute paths to nifti-images of brain masks in
-        MNI152 (2mm) space.
+    atlas : str
+        Atlas to extract ROIs from. Available: 'HarvardOxford-Cortical',
+        'HarvardOxford-Subcortical', 'HarvardOxford-All' (combination of
+        cortical/subcortical), 'Talairach' (not tested), 'JHU-labels',
+        'JHU-tracts', 'Yeo2011'.
     mvp : Mvp-object (see core.mvp)
         Mvp object that provides some metadata about previous masks
     mask_threshold : int (default: 0)
         Minimum threshold for probabilistic masks (such as Harvard-Oxford)
+    reg_dir : str
+        Path to directory with registration info (warps/transforms).
+    **kwargs : key-word arguments
+        Other arguments that can be passed to `skbold.utils.load_roi_mask`.
     """
 
     def __init__(self, atlas='HarvardOxford-All', mask_threshold=0, mvp=None,
@@ -84,8 +90,10 @@ class AverageRegionTransformer(BaseEstimator, TransformerMixin):
             self.affine = mvp.affine
             ref_space = mvp.ref_space
 
-        rois = load_roi_mask(roi_name='all', atlas_name=atlas,
-                             threshold=mask_threshold, **kwargs)
+        rois, roi_names = load_roi_mask(roi_name='all', atlas_name=atlas,
+                                        threshold=mask_threshold, **kwargs)
+
+        self.roi_names = roi_names
 
         # This is actually very inefficient, because it warps all ROIs
         # separately, while it would be faster if just the atlas itself is
@@ -433,8 +441,10 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
             basename = basename.replace(')', '_')
 
             maskname = op.join(op.dirname(maskname), basename)
-            self.mask = load_roi_mask(self.mask, threshold=self.mask_threshold,
-                                      **self.load_roi_args)
+            self.mask, mask_name = load_roi_mask(self.mask,
+                                                 threshold=self.mask_threshold,
+                                                 **self.load_roi_args)
+            self.mask_name = mask_name
 
         # Check if epi-transformed mask already exists:
         if self.ref_space == 'epi':

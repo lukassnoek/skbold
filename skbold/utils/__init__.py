@@ -19,7 +19,7 @@ To do:
 from .sort_numbered_list import sort_numbered_list
 from .crossval_splitter import CrossvalSplitter
 from .parse_roi_labels import parse_roi_labels
-from .load_roi_mask import load_roi_mask
+from .load_roi_mask import load_roi_mask, print_mask_options
 
 __all__ = ['sort_numbered_list', 'CrossvalSplitter',
-           'parse_roi_labels']
+           'parse_roi_labels', 'print_mask_options']

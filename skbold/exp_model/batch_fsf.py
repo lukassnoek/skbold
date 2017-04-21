@@ -51,7 +51,7 @@ class FsfCrawler(object):
         self.preproc_dir = preproc_dir
 
         if output_dir is None:
-            output_dir = op.join(op.dirname(template), 'Firstlevels')
+            output_dir = op.join(op.dirname(preproc_dir), 'Firstlevels')
 
         if not op.isdir(output_dir):
             os.makedirs(output_dir)

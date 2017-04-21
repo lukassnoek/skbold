@@ -26,12 +26,16 @@ def test_load_roi_mask_from_atlas(atlas_name, resolution, lateralized,
     rois = info_dict.keys()
 
     for roi in rois:
-        mask = load_roi_mask(roi, atlas_name=atlas_name, resolution=resolution,
-                             lateralized=lateralized, which_hemifield='left',
-                             threshold=threshold, maxprob=maxprob,
-                             reg_dir=reg_dir)
-        assert(mask.ndim == 3)
-        assert(mask.sum() > 0)
+        mask, name = load_roi_mask(roi, atlas_name=atlas_name,
+                                   resolution=resolution,
+                                   lateralized=lateralized,
+                                   which_hemifield='left',
+                                   threshold=threshold, maxprob=maxprob,
+                                   reg_dir=reg_dir)
+
+        if mask is not None:
+            assert(mask.ndim == 3)
+            assert(mask.sum() > 0)
 
     masks = glob(op.join(reg_dir_test, '*nii.gz'))
     for mask in masks:
