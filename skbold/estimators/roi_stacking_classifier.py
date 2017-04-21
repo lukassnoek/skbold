@@ -23,10 +23,10 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.cross_validation import StratifiedKFold
+from sklearn.model_selection import StratifiedKFold
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import precision_score
-from sklearn.grid_search import GridSearchCV
+from sklearn.model_selection import GridSearchCV
 
 import warnings
 
@@ -343,7 +343,7 @@ def _fit_base_parallel(rsc, X, y, i):
     n_trials = X.shape[0]
     n_inner_cv = (y == 0).sum()
 
-    folds = StratifiedKFold(y, n_folds=n_inner_cv, shuffle=True,
+    folds = StratifiedKFold(y, n_splits=n_inner_cv, shuffle=True,
                             random_state=(i + 1))
 
     if rsc.proba:  # trials X masks X nr. classes (proba output)
@@ -354,7 +354,7 @@ def _fit_base_parallel(rsc, X, y, i):
     scores = np.zeros((n_inner_cv, n_masks, n_class))
 
     inner_pipes = []
-    for ii, fold in enumerate(folds):
+    for ii, fold in enumerate(folds.split(X, y)):
         train_idx, test_idx = fold
         X_train, y_train = X[train_idx, :], y[train_idx]
         X_test, y_test = X[test_idx, :], y[test_idx]

@@ -441,9 +441,14 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
             basename = basename.replace(')', '_')
 
             maskname = op.join(op.dirname(maskname), basename)
-            self.mask, mask_name = load_roi_mask(self.mask,
-                                                 threshold=self.mask_threshold,
-                                                 **self.load_roi_args)
+            mask, mask_name = load_roi_mask(self.mask,
+                                            threshold=self.mask_threshold,
+                                            **self.load_roi_args)
+
+            if self.mask is None:
+                raise ValueError("Could not find a mask for %s" % mask)
+
+            self.mask = mask
             self.mask_name = mask_name
 
         # Check if epi-transformed mask already exists:
