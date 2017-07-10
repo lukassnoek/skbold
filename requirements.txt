@@ -1,6 +1,6 @@
 scipy>=0.17
 numpy>=1.10
-scikit-learn>=0.17
+scikit-learn>=0.18
 pandas>=0.17
 nibabel>=2.0
 funcsigs

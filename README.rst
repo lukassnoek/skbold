@@ -156,7 +156,7 @@ Now, we have an Mvp-object on which machine learning pipeline can be applied:
    from sklearn.preprocessing import StandardScaler
    from sklearn.svm import SVC
    from sklearn.pipeline import Pipeline
-   from sklearn.cross_validation import StratifiedKFold
+   from sklearn.model_selection import StratifiedKFold
    from skbold.feature_selection import fisher_criterion_score, SelectAboveCutoff
    from skbold.feature_extraction import RoiIndexer
    from skbold.utils import MvpResultsClassification
@@ -175,7 +175,7 @@ Now, we have an Mvp-object on which machine learning pipeline can be applied:
        ('svm', SVC(kernel='linear'))
    ])
 
-   cv = StratifiedKFold(y=mvp.y, n_folds=5)
+   cv = StratifiedKFold(y=mvp.y, n_splits=5)
 
    # Initialization of MvpResults; 'forward' indicates that it keeps track of
    # the forward model corresponding to the weights of the backward model
@@ -183,7 +183,7 @@ Now, we have an Mvp-object on which machine learning pipeline can be applied:
    mvp_results = MvpResultsClassification(mvp=mvp, n_iter=len(cv),
                                           out_path='~/', feature_scoring='forward')
 
-   for train_idx, test_idx in cv:
+   for train_idx, test_idx in cv.split(mvp.X, mvp.y):
 
        train, test = mvp.X[train_idx, :], mvp.X[test_idx, :]
        train_y, test_y = mvp.y[train_idx], mvp.y[train_idx]
