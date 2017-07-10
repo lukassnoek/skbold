@@ -1,9 +1,9 @@
 CHANGELOG
 =========
 
-Version 0.4.0
+Version 0.3.1
 -------------
-
+- ENH: FsfCrawler now also works with (BIDS-style) tsv event-files
 
 
 Versions < 0.3.0
