@@ -248,7 +248,8 @@ class FsfCrawler(object):
                 info_event = df.iloc[i][['onset', 'duration', 'weight']]
                 name_event = df.iloc[i].trial_type
                 iters[name_event] += 1
-                fn = op.join(ev_files_dir, '%s_%i.txt' % (name_event, iters[name_event]))
+                fn = '%s_%i.txt' % (name_event, iters[name_event])
+                fn = op.join(ev_files_dir, fn)
                 np.savetxt(fn, np.array(info_event), delimiter=' ', fmt='%.3f')
                 ev_files.append(fn)
 
