@@ -11,7 +11,6 @@ available_atlases = ['HarvardOxford-Cortical',
 
 other_rois = {'GrayMatter_prob': op.join(roi_dir, 'other',
                                          'GrayMatter_prob.nii.gz'),
-              'MNI152_1mm': op.join(roi_dir, 'MNI152_1mm.nii.gz'),
               'MNI152_2mm': op.join(roi_dir, 'MNI152_2mm.nii.gz'),
               'VentricleMask': op.join(roi_dir, 'other',
                                        'VentricleMask.nii.gz'),
