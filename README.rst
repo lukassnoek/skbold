@@ -272,8 +272,8 @@ writes out a summarizing nifti file for each feature-set. Transformers also
 work the same for MvpBetween objects/data, with the exception of the
 cluster-threshold transformer.
 
-Installing skbold
------------------
+Installation & dependencies
+---------------------------
 
 Although the package is very much in development, it can be installed using *pip*::
 
@@ -284,24 +284,32 @@ most up to date version, use git::
 
 	$ pip install git+https://github.com/lukassnoek/skbold.git@master
 
-Or, alternatively, download the package as a zip-file from Github, unzip, and run::
+Skbold is largely Python-only (both Python2.7 and Python3) and is built
+around the "PyData" stack, including:
 
-	$ python setup.py install
+* Numpy
+* Scipy
+* Pandas
+* Scikit-learn
+
+And it uses the awesome `nibabel <http://nipy.org/nibabel/>`_ package
+for reading/writing nifti-files. Also, skbold uses `FSL <https://fsl.fmrib.ox.ac.uk>`_
+(primarily the ``FLIRT`` and ``applywarp`` functions) to transform files from functional
+(native) to standard (here: MNI152 2mm) space. These FSL-calls are embedded in the
+``convert2epi`` and ``convert2mni`` functions, so avoid this functionality if
+you don't have a working FSL installation. 
 
 Documentation
 -------------
 For those reading this on Github, documentation can be found on readthedocs.org_!
 
-Credits
--------
-When I started writingthis package, I knew next to nothing about Python
-programming in general and packaging in specific. The mlxtend_ package has been
-a great 'template' and helped a great deal in structuring the current package.
-Also, Steven_ has contributed some very nice features as part of his internship.
-Lastly, Joost_ has beena major help in virtually every single phase of this
-package!
+Authos & credits
+----------------
+This package is being develop by `Lukas Snoek <lukas-snoek.com>`_ 
+from the University of Amsterdam with contributions from Steven_ and
+help from Joost_.
 
 License and contact
 -------------------
-The code is BSD (3-clause) licensed. You can find my contact details at my
+The code is BSD (3-clause) licensed. You can find my contact details on my
 Github_ profile page.

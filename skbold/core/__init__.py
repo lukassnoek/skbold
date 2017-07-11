@@ -42,11 +42,18 @@ Also, functional-to-standard (i.e. ``convert2mni``) and standard-to-functional
 they have caused circular import errors in the past.
 
 """
-
+import os
 from .mvp import Mvp
 from .convert_to_epi import convert2epi
 from .convert_to_mni import convert2mni
 from .mvp_between import MvpBetween
 from .mvp_within import MvpWithin
+
+try:
+    os.environ['FSLDIR']
+except KeyError:
+    print("Could not find FSL on this system (or FSLDIR is not set); "
+          "Transforming/warping files from EPI to MNI and vice versa "
+          "is not possible!")
 
 __all__ = ['Mvp', 'convert2epi', 'convert2mni', 'MvpBetween', 'MvpWithin']

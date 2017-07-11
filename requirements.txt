@@ -4,6 +4,5 @@ scikit-learn>=0.18
 pandas>=0.17
 nibabel>=2.0
 funcsigs
-nilearn
 configparser
 future
