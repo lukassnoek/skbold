@@ -117,19 +117,6 @@ def test_mvp_between_apply_binarization_params(mvp1c):
     os.remove(op.join(testdata_path, 'binarize_params.pkl'))
 
 
-@pytest.mark.parametrize("cols", ['confound_categorical',
-                                  ['confound_categorical',
-                                   'confound_continuous']])
-def test_mvp_between_calculate_confound_weighting(mvp1c, cols):
-
-    fpath = op.join(testdata_path, 'sample_behav.tsv')
-    mvp1c.add_y(fpath, col_name='var_categorical', index_col=0,
-                remove=999)
-    mvp1c.calculate_confound_weighting(fpath, cols)
-    assert((mvp1c.ipw > 1).all())
-    assert(len(mvp1c.ipw) == mvp1c.X.shape[0])
-
-
 def test_mvp_between_update_sample(mvp1c):
 
     fpath = op.join(testdata_path, 'sample_behav.tsv')
@@ -141,15 +128,3 @@ def test_mvp_between_update_sample(mvp1c):
     assert(len(mvp1c.y) == mvp1c.X.shape[0] == len(mvp1c.common_subjects))
     assert(mvp1c.common_subjects == ['sub001', 'sub002', 'sub004',
                                      'sub006', 'sub007'])
-
-"""
-@pytest.mark.parametrize("var", ['confound_categorical',
-                                 'confound_continuous',
-                                 ['confound_categorical',
-                                  'confound_continuous']])
-def test_mvp_between_regress_out_confounds(mvp1c, var):
-
-    fpath = op.join(testdata_path, 'sample_behav.tsv')
-    mvp1c.add_y(fpath, col_name='var_categorical', index_col=0, remove=999)
-    mvp1c.regress_out_confounds(fpath, var)
-"""

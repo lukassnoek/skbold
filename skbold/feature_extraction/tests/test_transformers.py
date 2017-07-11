@@ -17,7 +17,7 @@ testfeats = [op.join(testdata_path, 'run1.feat'),
 
 mvp_within = MvpWithin(source=testfeats, read_labels=True,
                        remove_contrast=[], invert_selection=False,
-                       ref_space='epi', beta2tstat=True, remove_zeros=False,
+                       ref_space='epi', statistic='cope', remove_zeros=False,
                        mask=None)
 
 mvp_within.create()
@@ -61,6 +61,7 @@ def test_pca_filter():
     transf.transform(mvp_within.X)
 
 
+@pytest.mark.roiindexer
 @pytest.mark.transformer
 def test_roi_indexer():
 
@@ -72,7 +73,10 @@ def test_roi_indexer():
 
     for atlas in available_atlases:
         rois = parse_roi_labels(atlas).keys()
-        roi = random.choice(list(rois))
+
+        roi = None
+        while roi is None:
+            roi = random.choice(list(rois))
 
         transf = RoiIndexer(mvp=mvp_within, mask=roi, mask_threshold=0,
                             reg_dir=reg_dir,

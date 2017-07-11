@@ -10,6 +10,7 @@ gm_mask = op.join(op.dirname(op.dirname(op.dirname(__file__))), 'data', 'ROIs',
                   'other', 'GrayMatter_prob.nii.gz')
 
 
+@pytest.mark.mvpwithin
 @pytest.mark.parametrize('ref_space', ['mni', 'epi'])
 @pytest.mark.parametrize('mask', [None, gm_mask])
 def test_mvp_within(ref_space, mask):
@@ -23,7 +24,7 @@ def test_mvp_within(ref_space, mask):
 
     mvp_within = MvpWithin(source=testfeats, read_labels=True,
                            remove_contrast=[], invert_selection=None,
-                           ref_space=ref_space, beta2tstat=True,
+                           ref_space=ref_space, statistic='cope',
                            remove_zeros=False, mask=mask)
 
     mvp_within.create()

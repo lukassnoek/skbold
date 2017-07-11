@@ -8,7 +8,7 @@ from glob import glob
 import nibabel as nib
 import multiprocessing
 import warnings
-import skbold
+import pandas as pd
 
 
 class FsfCrawler(object):
@@ -21,6 +21,9 @@ class FsfCrawler(object):
     template : str
         Absolute path to template fsf-file. Default is 'mvpa', which models
         each bfsl-file as a separate regressor (and contrast against baseline).
+    mvpa_type : str
+        Whether to estimate patterns per trial (mvpa_type='trial_wise') or
+        to estimate patterns per condition (or per run, mvpa_type='run_wise')
     preproc_dir : str
         Absolute path to directory with preprocessed files.
     run_idf : str
@@ -29,6 +32,10 @@ class FsfCrawler(object):
         Path to desired output dir of first-levels.
     subject_idf : str
         Identifier for subject-directories.
+    event_file_ext : str
+        Extension for event-file; if 'bfsl' (default, for legacy reasons),
+        then assumes single event-file per predictor. If 'tsv' (cf. BIDS),
+        then assumes a single tsv-file with all predictors.
     func_idf : str
         Identifier for which functional should be use.
     prewhiten : bool
@@ -38,17 +45,24 @@ class FsfCrawler(object):
     mat_suffix : str
         Identifier (suffix) for design.mat and batch.fsf file (such that it
         does not overwrite older files).
+    sort_by_onset : bool
+        Whether to sort predictors by onset (first trial = first predictor),
+        or, when False, sort by condition (all trials condition A, all trials
+        condition B, etc.).
     n_cores : int
         How many CPU cores should be used for the batch-analysis.
     """
 
     def __init__(self, preproc_dir, run_idf, template='mvpa',
+                 mvpa_type='trial_wise',
                  output_dir=None, subject_idf='sub',
-                 func_idf='func', prewhiten=True, derivs=False,
-                 mat_suffix=None, n_cores=1):
+                 event_file_ext='bfsl', func_idf='func',
+                 prewhiten=True, derivs=False, mat_suffix=None,
+                 sort_by_onset=False, n_cores=1):
 
         self.template = template
         self.preproc_dir = preproc_dir
+        self.mvpa_type = mvpa_type
 
         if output_dir is None:
             output_dir = op.join(op.dirname(preproc_dir), 'Firstlevels')
@@ -57,9 +71,15 @@ class FsfCrawler(object):
             os.makedirs(output_dir)
 
         self.output_dir = output_dir
-        self.run_idf = run_idf
+
+        if run_idf is None:
+            self.run_idf = ''
+        else:
+            self.run_idf = run_idf
+
         self.func_idf = func_idf
         self.subject_idf = subject_idf
+        self.event_file_ext = event_file_ext
         self.prewhiten = prewhiten
         self.derivs = derivs
 
@@ -72,9 +92,15 @@ class FsfCrawler(object):
         self.sub_dirs = None
         self.run_paths = None
 
+        if mvpa_type != 'trial_wise':
+            sort_by_onset = False
+
+        self.sort_by_onset = sort_by_onset
+
         if mat_suffix is None:
-            mat_suffix = ''
-        self.mat_suffix = '_' + mat_suffix
+            self.mat_suffix = ''
+        else:
+            self.mat_suffix = '_' + mat_suffix
 
     def crawl(self):
         """ Crawls subject-directories and spits out subject-specific fsf. """
@@ -92,7 +118,7 @@ class FsfCrawler(object):
 
         shell_script = op.join(op.dirname(self.output_dir), 'batch_fsf%s.sh' %
                                self.mat_suffix)
-        with open(shell_script, 'wb') as fout:
+        with open(shell_script, 'w') as fout:
 
             for i, fsf in enumerate(fsf_paths):
 
@@ -111,7 +137,7 @@ class FsfCrawler(object):
         else:
             template = self.template
 
-        with open(template, 'rb') as f:
+        with open(template, 'r') as f:
             template = f.readlines()
 
         template = [txt.replace('\n', '') for txt in template if txt != '\n']
@@ -141,9 +167,21 @@ class FsfCrawler(object):
 
         hdr = nib.load(func_file).header
 
+        if self.event_file_ext == 'tsv':
+            probable_df = glob(op.join(sub_dir, '*.tsv'))
+            if len(probable_df) != 1:
+                raise ValueError("Found %i event-files for subject %s" %
+                                 (len(probable_df), sub_dir))
+            else:
+                event_file = probable_df[0]
+            events = self._tsv2event_files(event_file)
+        else:
+            search_str = '*%s*.%s' % (self.run_idf, self.event_file_ext)
+            events = sorted(glob(op.join(sub_dir, search_str)))
+
         arg_dict = {'tr': hdr['pixdim'][4],
                     'npts': hdr['dim'][4],
-                    'custom': sorted(glob(op.join(sub_dir, '*.bfsl'))),
+                    'custom': events,
                     'feat_files': "\"%s\"" % func_file,
                     'outputdir': "\"%s\"" % feat_dir,
                     'prewhiten_yn': str(int(self.prewhiten)),
@@ -164,62 +202,96 @@ class FsfCrawler(object):
 
             if any(key in line for key in arg_dict.keys()):
                 parts = [txt for txt in line.split(' ') if txt]
-                keys = [key for key in arg_dict.keys() if key in line][0]
-                values = arg_dict[keys]
+                this_key = [key for key in arg_dict.keys() if key in line][0]
+                values = arg_dict[this_key]
 
-                if not isinstance(values, list):
+                if this_key != 'custom':
                     parts[-1] = values
-                elif len(values) > 1:
+                elif this_key == 'custom':
                     ev = line.split(os.sep)[-1].replace("\"", '')
                     bfsls = sorted(glob(op.join(sub_dir, '*.bfsl')))
                     to_set = [bfsl for bfsl in bfsls if ev in bfsl]
 
                     if len(to_set) == 1:
                         parts[-1] = "\"%s\"" % to_set[0]
+                    else:
+                        raise ValueError("Ambiguous ev (%s) for event-files "
+                                         "(%r)" % (ev, bfsls))
 
                 parts = [str(p) for p in parts]
-
                 fsf_out.append(" ".join(parts))
             else:
                 fsf_out.append(line)
 
         if self.template == 'mvpa':
-            fsf_out = self._append_single_trial_info(
-                sorted(glob(op.join(sub_dir, '*.bfsl'))), fsf_out)
+            fsf_out = self._append_single_trial_info(events, fsf_out)
 
         to_write = op.join(sub_dir, 'design%s.fsf' % self.mat_suffix)
-        with open(to_write, 'wb') as fsfout:
+        with open(to_write, 'w') as fsfout:
             print("Writing fsf to %s" % sub_dir)
             fsfout.write("\n".join(fsf_out))
 
         return to_write
 
-    def _append_single_trial_info(self, bfsls, fsf_out):
+    def _tsv2event_files(self, tsv_file):
+
+        ev_files_dir = op.join(op.dirname(tsv_file), 'ev_files')
+        if not op.isdir(ev_files_dir):
+            os.makedirs(ev_files_dir)
+
+        df = pd.read_csv(tsv_file, sep='\t')
+        ev_files = []
+        if self.mvpa_type == 'trial_wise':
+
+            iters = {con: 0 for con in np.unique(df.trial_type)}
+            for i in range(len(df)):
+                info_event = df.iloc[i][['onset', 'duration', 'weight']]
+                name_event = df.iloc[i].trial_type
+                iters[name_event] += 1
+                fn = '%s_%i.txt' % (name_event, iters[name_event])
+                fn = op.join(ev_files_dir, fn)
+                np.savetxt(fn, np.array(info_event), delimiter=' ', fmt='%.3f')
+                ev_files.append(fn)
+
+        else:  # assume run-wise estimation
+            evs = np.unique(df.trial_type)
+            for ev in evs:
+                info_event = df[df.trial_type == ev]
+                info_event = info_event[['onset', 'duration', 'weight']]
+                fn = op.join(ev_files_dir, '%s.txt' % ev)
+                np.savetxt(fn, np.array(info_event))
+                ev_files.append(fn)
+        return ev_files
+
+    def _append_single_trial_info(self, events, fsf_out):
         """ Does some specific 'single-trial' (mvpa) stuff. """
-        n_evs = len(bfsls)
 
-        for i, bfsl in enumerate(bfsls):
+        if self.sort_by_onset and self.mvpa_type == 'trial_wise':
+            events = sorted(events, key=lambda x: np.loadtxt(x)[0])
 
-            basename = op.basename(bfsl).split('.')[0]
-            fsf_out.append('set fmri(evtitle%i) \"%s\"' % ((i + 1), basename))
+        for i, ev in enumerate(events):
+
+            ev_name = op.basename(ev).split('.')[0]
+
+            fsf_out.append('set fmri(evtitle%i) \"%s\"' % ((i + 1), ev_name))
             fsf_out.append('set fmri(shape%i) 3' % (i + 1))
             fsf_out.append('set fmri(convolve%i) 3' % (i + 1))
             fsf_out.append('set fmri(convolve_phase%i) 0' % (i + 1))
             fsf_out.append('set fmri(tempfilt_yn%i) 0' % (i + 1))
             fsf_out.append('set fmri(deriv_yn%i) %i' % ((i + 1), self.derivs))
-            fsf_out.append('set fmri(custom%i) %s' % ((i + 1), bfsl))
+            fsf_out.append('set fmri(custom%i) %s' % ((i + 1), ev))
 
-            for x in range(n_evs + 1):
+            for x in range(len(events) + 1):
                 fsf_out.append('set fmri(ortho%i.%i) 0' % ((i + 1), x))
 
             fsf_out.append('set fmri(conpic_real.%i) 0' % (i + 1))
             fsf_out.append('set fmri(conname_real.%i) \"%s\"' % ((i + 1),
-                                                                 basename))
+                                                                 ev_name))
             fsf_out.append('set fmri(conpic_orig.%i) 0' % (i + 1))
             fsf_out.append('set fmri(conname_orig.%i) \"%s\"' % ((i + 1),
-                                                                 basename))
+                                                                 ev_name))
 
-            for x in range(n_evs):
+            for x in range(len(events)):
                 to_set = "1" if (x + 1) == (i + 1) else "0"
 
                 fsf_out.append('set fmri(con_real%i.%i) %s' % (
@@ -231,9 +303,9 @@ class FsfCrawler(object):
             fsf_out.append('set fmri(ftest_real1.%i) 1' % (i + 1))
             fsf_out.append('set fmri(ftest_orig1.%i) 1' % (i + 1))
 
-        for x in range(n_evs):
+        for x in range(len(events)):
 
-            for y in range(n_evs):
+            for y in range(len(events)):
 
                 if (x + 1) == (y + 1):
                     continue

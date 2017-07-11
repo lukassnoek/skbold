@@ -137,12 +137,12 @@ meta-data associated with it, as shown below.
    read_labels = True # parse labels (targets) from design.con file!
    remove_contrast = ['nuisance_regressor_x'] # do not load nuisance regressor!
    ref_space = 'epi' # extract patterns in functional space (alternatively: 'mni')
-   beta2tstat = True # convert beta-estimates of COPEs to tstats
+   statistic = 'tstat' # use the tstat*.nii.gz files (in *.feat/stats) as patterns
    remove_zeros = True # remove voxels which are zero in each trial
 
    mvp = MvpWithin(source=feat_dir, read_labels=read_labels,
                    remove_contrast=remove_contrast, ref_space=ref_space,
-                   beta2tstat=beta2tstat, remove_zeros=remove_zeros,
+                   statistic=statistic, remove_zeros=remove_zeros,
                    mask=mask_file)
 
    mvp.create() # extracts and stores (meta)data from FEAT-directory!

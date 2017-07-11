@@ -13,7 +13,7 @@ from . import feature_selection
 from . import utils
 from os.path import dirname, join
 
-__version__ = '0.3.0'
+__version__ = '0.3.2'
 
 data_path = join(dirname(dirname(utils.__file__)), 'data')
 testdata_path = join(data_path, 'test_data')

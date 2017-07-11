@@ -43,9 +43,9 @@ class MvpWithin(Mvp):
         that a 'reg' directory is present in the .feat-directory, including
         warp-files from functional to mni space
         (i.e. example_func2standara.nii.gz).
-    beta2tstat : bool
-        Whether to convert beta-values from COPEs to t-statistics by
-        dividing them by the square-root of the res4d.
+    statistic : str
+        Which statistic (beta = (CO)PE, tstat, zstat, etc.) from FEAT
+        directories to use as patterns.
     remove_zeros : bool
         Whether to remove features (i.e. voxels) which are 0 across all
         trials (due to, e.g., being located outside the brain).
@@ -81,7 +81,7 @@ class MvpWithin(Mvp):
     """
 
     def __init__(self, source, read_labels=True, remove_contrast=[],
-                 invert_selection=None, ref_space='epi', beta2tstat=True,
+                 invert_selection=None, ref_space='epi', statistic='tstat',
                  remove_zeros=True, X=None, y=None, mask=None,
                  mask_threshold=0):
 
@@ -91,7 +91,7 @@ class MvpWithin(Mvp):
         self.source = source
         self.read_labels = read_labels
         self.ref_space = ref_space
-        self.beta2tstat = beta2tstat
+        self.statistic = statistic
         self.invert_selection = invert_selection
         self.remove_zeros = remove_zeros
         self.remove_contrast = remove_contrast
@@ -181,22 +181,17 @@ class MvpWithin(Mvp):
         else:
             transform2mni = False
 
-        copes = sort_numbered_list(glob(op.join(stat_dir, 'cope*.gz')))
-        varcopes = sort_numbered_list(glob(op.join(stat_dir, 'varcope*.gz')))
+        stat_query = op.join(stat_dir, '%s*.nii.gz' % self.statistic)
+        stat_files = sort_numbered_list(glob(stat_query))
 
-        # Transform (var)copes if ref_space is 'mni' but files are in 'epi'.
+        # Transform stat-files if ref_space is 'mni' but files are in 'epi'.
         if transform2mni:
-            copes.extend(varcopes)
             out_dir = op.join(src, 'reg_standard')
-            transformed_files = convert2mni(copes, reg_dir, out_dir)
-            half = int(len(transformed_files) / 2)
-            copes = transformed_files[:half]
-            varcopes = transformed_files[half:]
+            stat_files = convert2mni(stat_files, reg_dir, out_dir)
 
-        _ = [copes.pop(idx) for idx in sorted(self.remove_idx, reverse=True)]
-        _ = [varcopes.pop(ix) for ix in sorted(self.remove_idx, reverse=True)]
-
-        n_stat = len(copes)
+        _ = [stat_files.pop(idx)
+             for idx in sorted(self.remove_idx, reverse=True)]
+        n_stat = len(stat_files)
 
         if not n_stat == len(contrast_labels_current) and self.read_labels:
             msg = 'The number of trials (%i) do not match the number of ' \
@@ -204,7 +199,7 @@ class MvpWithin(Mvp):
             raise ValueError(msg)
 
         if self.common_mask is None:  # set attributes if no mask was given
-            tmp = nib.load(copes[0])
+            tmp = nib.load(stat_files[0])
             self.affine = tmp.affine
             self.nifti_header = tmp.header
             # maybe a call to _update_mask_info here?
@@ -213,23 +208,16 @@ class MvpWithin(Mvp):
         # Pre-allocate
 
         mvp_data = np.zeros((n_stat, self.voxel_idx.size))
-
-        # Load in data (COPEs)
-        for i, path in enumerate(copes):
-            cope_img = nib.load(path)
-            mvp_data[i, :] = cope_img.get_data().ravel()[self.voxel_idx]
-
-        if self.beta2tstat:
-            for i, varcope in enumerate(varcopes):
-                var = nib.load(varcope).get_data()
-                var_sq = np.sqrt(var.ravel()[self.voxel_idx])
-                mvp_data[i, :] = np.divide(mvp_data[i, :], var_sq)
+        # Load in data (stat_files)
+        for i, path in enumerate(stat_files):
+            stat_img = nib.load(path)
+            mvp_data[i, :] = stat_img.get_data().ravel()[self.voxel_idx]
 
         mvp_data[np.isnan(mvp_data)] = 0
         self.X.append(mvp_data)
 
         # The following attributes are added for compatibility with MvpResults
-        self.data_shape = cope_img.shape
+        self.data_shape = stat_img.shape
         self.data_name = ['MvpWithin']
         self.featureset_id = np.zeros(mvp_data.shape[1], dtype=np.uint32)
 
