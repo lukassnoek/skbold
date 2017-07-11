@@ -11,5 +11,6 @@ Submodules
 
 .. toctree::
 
+   skbold.preproc.confounds
    skbold.preproc.label_preproc
 

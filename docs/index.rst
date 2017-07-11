@@ -5,10 +5,18 @@
 
 .. include:: ../README.rst
 
-Code documentation:
-===================
+Code documentation
+==================
+
 .. toctree::
    :maxdepth: 1
 
-   README_link
-   source/skbold.rst
+   source/skbold.core
+   source/skbold.estimators
+   source/skbold.exp_model
+   source/skbold.feature_extraction
+   source/skbold.feature_selection
+   source/skbold.pipelines
+   source/skbold.postproc
+   source/skbold.preproc
+   source/skbold.utils

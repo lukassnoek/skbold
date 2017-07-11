@@ -6,4 +6,4 @@ nibabel>=2.0
 funcsigs
 nilearn
 configparser
-future>=0.16
+future

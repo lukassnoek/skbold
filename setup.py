@@ -9,7 +9,7 @@ REQUIREMENTS = [
     'nibabel>=2.0',
     'funcsigs',
     'configparser',
-    'future>0.16'
+    'future'
 ]
 
 VERSION = skbold.__version__

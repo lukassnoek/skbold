@@ -41,15 +41,13 @@ class MvpResults(object):
 
     References
     ----------
-    .. [1] Stelzer, J., Buschmann, T., Lohmann, G., Margulies, D.S., Trampel,
-     R., and Turner, R. (2014). Prioritizing spatial accuracy in
-     high-resolution fMRI data using multivariate feature weight mapping.
-     Front. Neurosci., http://dx.doi.org/10.3389/fnins.2014.00066.
+    .. [1] Stelzer, J., Buschmann, T., Lohmann, G., Margulies, D.S., \
+       Trampel, R., and Turner, R. (2014). Prioritizing spatial accuracy in \
+       high-resolution fMRI data using multivariate feature weight mapping. \
+       Front. Neurosci., http://dx.doi.org/10.3389/fnins.2014.00066.
+    
+    .. [2] Haufe, S., Meineck, F., Gorger, K., Dahne, S., Haynes, J-D., Blankertz, B., and Biessmann, F. et al. (2014). On the interpretation of weight vectors of linear models in multivariate neuroimaging. Neuroimage, 87, 96-110.
 
-    .. [2] Haufe, S., Meineck, F., Gorger, K., Dahne, S., Haynes, J-D.,
-      Blankertz, B., and Biessmann, F. et al. (2014). On the interpretation of
-      weight vectors of linear models in multivariate neuroimaging. Neuroimage,
-      87, 96-110.
     """
 
     def __init__(self, mvp, n_iter, out_path=None, feature_scoring='',
