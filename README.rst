@@ -17,19 +17,10 @@ skbold - utilities and tools for machine learning on BOLD-fMRI data
 .. image:: https://img.shields.io/badge/python-3.5-blue.svg
     :target: https://www.python.org/downloads/release/python-350
 
-.. _scikit-learn: http://scikit-learn.org/
-.. _FSL: http://fsl.fmrib.ox.ac.uk/fsl
-.. _mlxtend: https://github.com/rasbt/mlxtend
-.. _Steven: https://github.com/StevenM1
-.. _Joost: https://github.com/y0ast
-.. _readthedocs.org: http://skbold.readthedocs.io/
-.. _NEO-FFI: https://en.wikipedia.org/wiki/Revised_NEO_Personality_Inventory
-.. _Github: https://github.com/lukassnoek
-
 The Python package ``skbold`` offers a set of tools and utilities for
 machine learning analyses of functional MRI (BOLD-fMRI) data. 
 Instead of (largely) reinventing the wheel, this package builds upon an
-existing machine learning framework in Python: scikit-learn_.
+existing machine learning framework in Python: `scikit-learn <http://scikit-learn.org/>`_.
 The modules of skbold are applicable in several 'stages' of
 typical pattern analyses (see image below), including pattern estimation,
 data representation, pattern preprocessing, feature selection/extraction,
@@ -40,7 +31,7 @@ and model evaluation/feature visualization.
 
 In what follows, we quickly summarize the main functionality of skbold.
 For more information (e.g. API documentation) and examples, check out
-the code documentation for each separate subpackage at the bottom of the page.
+the code documentation at `ReadTheDocs <skbold.readthedocs.io>`_!
 
 Mvp-objects
 -----------
@@ -228,7 +219,7 @@ In this example, each subject has three different data-sources: two FEAT-
 directories (with functional contrasts) and one VBM-file. Let's say that we'd
 like to use all of these sources of information together to predict some
 behavioral variable, neuroticism for example (as measured with e.g. the
-NEO-FFI_). The most important argument passed to MvpBetween is ``source``.
+NEO-FFI). The most important argument passed to MvpBetween is ``source``.
 This variable, a dictionary, should contain the data-types you want to extract
 and their corresponding paths (with wildcards at the place of subject-specific
 parts):
@@ -301,15 +292,16 @@ you don't have a working FSL installation.
 
 Documentation
 -------------
-For those reading this on Github, documentation can be found on readthedocs.org_!
+For those reading this on Github, documentation can be found on
+`ReadTheDocs <skbold.readthedocs.io>`_!
 
 Authos & credits
 ----------------
 This package is being develop by `Lukas Snoek <lukas-snoek.com>`_ 
-from the University of Amsterdam with contributions from Steven_ and
-help from Joost_.
+from the University of Amsterdam with contributions from 
+`Steven <https://github.com/StevenM1>`_ and help from `Joost <https://github.com/y0ast>`_.
 
 License and contact
 -------------------
 The code is BSD (3-clause) licensed. You can find my contact details on my
-Github_ profile page.
+`Github <https://github.com/lukassnoek>`_ profile page.

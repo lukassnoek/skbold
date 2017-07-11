@@ -7,10 +7,12 @@
 
 Code documentation
 ==================
+Below, the links to the documentation for each
+subpackage of skbold is listed.
 
 .. toctree::
    :maxdepth: 1
-
+   :caption: Code documentation
    source/skbold.core
    source/skbold.estimators
    source/skbold.exp_model
