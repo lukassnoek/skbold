@@ -7,8 +7,9 @@ REQUIREMENTS = [
     'scikit-learn>=0.18',
     'pandas>=0.17',
     'nibabel>=2.0',
-    'nilearn',
-    'configparser'
+    'funcsigs',
+    'configparser',
+    'future>0.16'
 ]
 
 VERSION = skbold.__version__
