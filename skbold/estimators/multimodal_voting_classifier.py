@@ -67,25 +67,6 @@ class MultimodalVotingClassifier(BaseEstimator, ClassifierMixin):
             RoiStackingClassifier instance with fitted parameters.
         """
 
-        # DOES NOTHING
-
-        # for i, fs_id in enumerate(np.unique(self.mvp_train.featureset_id)):
-        #
-        #     featuresel = SelectFeatureset(self.mvp_train, fs_id)
-        #     mvp_tmp = featuresel.fit().transform()
-        #
-        #     X = mvp_tmp.X
-        #     y = mvp_tmp.y
-        #
-        #     pipeline = []
-        #     tmp_preproc = deepcopy(self.preproc_pipeline)
-        #     pipeline.extend(tmp_preproc.steps)
-        #     pipeline.extend([('clf', copy(self.clf))])
-        #     pipeline = Pipeline(pipeline)
-        #
-        #     pipeline.fit(X, y)
-        #     self.pipes.append(pipeline)
-
         return self
 
     def predict(self, X):
