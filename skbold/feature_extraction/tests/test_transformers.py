@@ -73,10 +73,7 @@ def test_roi_indexer():
 
     for atlas in available_atlases:
         rois = parse_roi_labels(atlas).keys()
-
-        roi = None
-        while roi is None:
-            roi = random.choice(list(rois))
+        roi = random.choice(list(rois))
 
         transf = RoiIndexer(mvp=mvp_within, mask=roi, mask_threshold=0,
                             reg_dir=reg_dir,

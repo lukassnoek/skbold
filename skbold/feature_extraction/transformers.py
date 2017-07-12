@@ -389,6 +389,8 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
     mask_threshold : Optional[int, float]
         Threshold to be applied on mask-indexing (given a probabilistic
         mask).
+    kwargs : key-word arguments
+        Other arguments that will be passed to skbold's load_roi_mask function.
     """
 
     def __init__(self, mask, mask_threshold=0, mvp=None,
@@ -444,9 +446,8 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
             mask, mask_name = load_roi_mask(self.mask,
                                             threshold=self.mask_threshold,
                                             **self.load_roi_args)
-
-            if self.mask is None:
-                raise ValueError("Could not find a mask for %s" % mask)
+            if mask is None:
+                raise ValueError("Could not find a mask for %s" % maskname)
 
             self.mask = mask
             self.mask_name = mask_name

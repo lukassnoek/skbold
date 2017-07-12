@@ -74,6 +74,8 @@ def parse_roi_labels(atlas_type='Talairach', lateralized=False, debug=False):
 
     rois = [s.split('>')[1].split('<')[0] for s in raw_labels]
     rois = [r.rstrip() for r in rois]
+    rois = [r.replace('(', '').replace(')', '') for r in rois]
+    rois = [r.replace(' ', '_').replace(',', '') for r in rois]
     raw_labels = [[slab for slab in label.split(' ') if slab]
                   for label in raw_labels]
     indices = [int(si[1].split('=')[1].replace('"', ''))
