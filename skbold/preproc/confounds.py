@@ -53,7 +53,6 @@ class ConfoundRegressor(BaseEstimator, TransformerMixin):
         weights = np.zeros((X.shape[1], confound.shape[1]))
 
         for i in range(X.shape[1]):
-            print('Fitting feature %i' % i)
             b, _, _, _ = np.linalg.lstsq(confound, X[:, i])
             weights[i, :] = b
 
@@ -88,7 +87,8 @@ class ConfoundRegressor(BaseEstimator, TransformerMixin):
                 self.fit(X)
                 weights = self.weights_
 
+        X_new = np.zeros_like(X)
         for i in range(X.shape[1]):
-            X[:, i] -= np.squeeze(confound.dot(self.weights_[i, :]))
+            X_new[:, i] = X[:, i] - np.squeeze(confound.dot(self.weights_[i, :]))
 
-        return X
+        return X_new
