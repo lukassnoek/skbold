@@ -17,37 +17,38 @@ skbold - utilities and tools for machine learning on BOLD-fMRI data
 .. image:: https://img.shields.io/badge/python-3.5-blue.svg
     :target: https://www.python.org/downloads/release/python-350
 
-.. _scikit-learn: http://scikit-learn.org/
-.. _FSL: http://fsl.fmrib.ox.ac.uk/fsl
-.. _mlxtend: https://github.com/rasbt/mlxtend
-.. _Steven: https://github.com/StevenM1
-.. _Joost: https://github.com/y0ast
-.. _readthedocs.org: http://skbold.readthedocs.io/
-.. _NEO-FFI: https://en.wikipedia.org/wiki/Revised_NEO_Personality_Inventory
-.. _Github: https://github.com/lukassnoek
-
 The Python package ``skbold`` offers a set of tools and utilities for
-machine learning (and soon also RSA-type) analyses of functional MRI
-(BOLD-fMRI) data. Instead of (largely) reinventing the wheel, this
-package builds upon an existing machine learning framework in Python:
-scikit-learn_. The modules of skbold are applicable in several 'stages' of
-typical pattern analyses, including data loading/organization, feature
-selection/extraction, model evaluation, and feature visualization.
+machine learning analyses of functional MRI (BOLD-fMRI) data. 
+Instead of (largely) reinventing the wheel, this package builds upon an
+existing machine learning framework in Python: `scikit-learn <http://scikit-learn.org/>`_.
+The modules of skbold are applicable in several 'stages' of
+typical pattern analyses (see image below), including pattern estimation,
+data representation, pattern preprocessing, feature selection/extraction,
+and model evaluation/feature visualization.
 
-An important feature of ``skbold`` is the data-structure ``Mvp``
-(Multivoxel pattern), that allows for an efficient way to store and access data
-and metadata necessary for multivoxel analyses of fMRI data.
-A novel feature of this data-structure is that it is able to easily load data
-from FSL_-FEAT output directories. As the ``Mvp`` object is available in two
-'options', they are explained in more detail below.
+.. image:: img/scope.png
+    :align: center
+
+In what follows, we quickly summarize the main functionality of skbold.
+For more information (e.g. API documentation) and examples, check out
+the code documentation at `ReadTheDocs <skbold.readthedocs.io>`_!
 
 Mvp-objects
 -----------
-At the core, an ``Mvp``-object is simply a collection of data - a 2D array
+One of skbold's main features is the data-structure ``Mvp`` (an abbreviation
+of MultiVoxel Pattern). This custom object allows for an efficient way
+to store and access data and metadata necessary for multivoxel analyses of fMRI data.
+A nice feature of this ``Mvp`` objects is that they can easily load data
+(i.e., sets of nifti-files) from disk and automatically organize it in 
+a format that is used in ML-analyses (i.e., a sample-by-feature matrix).
+
+So, at the core, an ``Mvp``-object is simply a collection of data - a 2D array
 of samples by features - and fMRI-specific metadata necessary to perform
 customized preprocessing and feature engineering. However, machine learning
 analyses, or more generally any type of multivoxel-type analysis (i.e. MVPA),
-can be done in two basic ways.
+can be done in two basic ways, which provide the basis of the two 'flavors'
+of ``Mvp``-objects: ``MvpWithin`` and ``MvpBetween``, as explained in more
+detail below.
 
 MvpWithin
 ~~~~~~~~~
@@ -56,23 +57,24 @@ fit on each subjects' data separately. Data, in this context, often refers to
 single-trial data, in which each trial comprises a sample in our data-matrix and
 the values per voxel constitute our features. This type of analysis is
 alternatively called *single-trial decoding*, and is often performed as an
-alternative to massively (whole-brain) univariate analysis.
+alternative to (whole-brain) univariate analysis.
 
 .. image:: img/MvpWithin.png
    :align: center
 
 Ultimately, this type of analysis aims to predict some kind of attribute of the
 trials (for example condition/class membership in classification analyses or some
-continuous feature in regression analyses). Ultimately, group-analyses may
-be done on subject-specific analysis metrics (such as classification accuracy
-or R2-score) and group-level feature-importance maps may be calculated to
-draw conclusions about the model's predictive power and the spatial
-distribution of informative features, respectively.
+continuous feature in regression analyses), which skbold calls ``y``, based
+on a model trained on the samples-by-features matrix, which skbold calls ``X``.
+After obtaining model performance scores (such as accuracy, F1-score, or R-squared)
+for each subject, a group-level random effects (RFX) analysis can be done on 
+these scores. Skbold does not offer any functionality in terms of group-level
+analyses; we advise researchers to look into the `prevalance inference <http://www.sciencedirect.com/science/article/pii/S1053811916303470>`_ method of Allefeld and colleagues.
 
 MvpBetween
 ~~~~~~~~~~
-With the apparent increase in large-sample neuroimaging datasets, another
-type of analysis starts to become feasible, which we'll call *between subject*
+With the increase in large-sample neuroimaging datasets, another
+type of MVPA starts to become feasible, which we'll call *between subject*
 analyses. In this type of analysis, single subjects constitute the data's
 samples and a corresponding single multivoxel pattern constitutes the data's
 features. The type of multivoxel pattern, or 'feature-set', can be any set
@@ -103,8 +105,8 @@ automatically calculates a set of model evaluation metrics (accuracy,
 precision, recall, etc.) and keeps track of which features are used and how
 'important' these features are (in terms of the value of their weights).
 
-feature selection/extraction
----------------------------------------------------
+Feature selection/extraction
+----------------------------
 The ``feature_selection`` and ``feature_extraction`` modules in skbold contain
 a set of scikit-learn type transformers that can perform various types of
 feature selection and extraction specific to multivoxel fMRI-data.
@@ -117,8 +119,13 @@ To get a better idea of the package's functionality - including the use of
 Mvp-objects, transformers, and MvpResults - a typical analysis workflow using
 ``skbold`` is described below.
 
+Examples
+--------
+For some example usages of the ``Mvp``-objects and how to incorporate them
+in a ``scikit-learn``-based ML-pipeline, check the examples below:
+
 An example workflow: MvpWithin
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Suppose you have data from an fMRI-experiment for a set of subjects who were
 presented with images which were either emotional or neutral in terms of their
 content. You've modelled them using a single-trial GLM (i.e. each trial is
@@ -196,8 +203,9 @@ Now, we have an Mvp-object on which machine learning pipeline can be applied:
    mvp_results.compute_scores() # compute!
    mvp_results.write() # write file with metrics and niftis with feature-scores!
 
+
 An example workflow: MvpBetween
--------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Suppose you have MRI data from a large set of subjects (let's say >50),
 including (task-based) functional MRI, structural MRI (T1-weighted images,
 DTI), and behavioral data (e.g. questionnaires, behavioral tasks). Such a
@@ -211,7 +219,7 @@ In this example, each subject has three different data-sources: two FEAT-
 directories (with functional contrasts) and one VBM-file. Let's say that we'd
 like to use all of these sources of information together to predict some
 behavioral variable, neuroticism for example (as measured with e.g. the
-NEO-FFI_). The most important argument passed to MvpBetween is ``source``.
+NEO-FFI). The most important argument passed to MvpBetween is ``source``.
 This variable, a dictionary, should contain the data-types you want to extract
 and their corresponding paths (with wildcards at the place of subject-specific
 parts):
@@ -255,8 +263,8 @@ writes out a summarizing nifti file for each feature-set. Transformers also
 work the same for MvpBetween objects/data, with the exception of the
 cluster-threshold transformer.
 
-Installing skbold
------------------
+Installation & dependencies
+---------------------------
 
 Although the package is very much in development, it can be installed using *pip*::
 
@@ -267,24 +275,33 @@ most up to date version, use git::
 
 	$ pip install git+https://github.com/lukassnoek/skbold.git@master
 
-Or, alternatively, download the package as a zip-file from Github, unzip, and run::
+Skbold is largely Python-only (both Python2.7 and Python3) and is built
+around the "PyData" stack, including:
 
-	$ python setup.py install
+* Numpy
+* Scipy
+* Pandas
+* Scikit-learn
+
+And it uses the awesome `nibabel <http://nipy.org/nibabel/>`_ package
+for reading/writing nifti-files. Also, skbold uses `FSL <https://fsl.fmrib.ox.ac.uk>`_
+(primarily the ``FLIRT`` and ``applywarp`` functions) to transform files from functional
+(native) to standard (here: MNI152 2mm) space. These FSL-calls are embedded in the
+``convert2epi`` and ``convert2mni`` functions, so avoid this functionality if
+you don't have a working FSL installation. 
 
 Documentation
 -------------
-For those reading this on Github, documentation can be found on readthedocs.org_!
+For those reading this on Github, documentation can be found on
+`ReadTheDocs <skbold.readthedocs.io>`_!
 
-Credits
--------
-When I started writingthis package, I knew next to nothing about Python
-programming in general and packaging in specific. The mlxtend_ package has been
-a great 'template' and helped a great deal in structuring the current package.
-Also, Steven_ has contributed some very nice features as part of his internship.
-Lastly, Joost_ has beena major help in virtually every single phase of this
-package!
+Authos & credits
+----------------
+This package is being develop by `Lukas Snoek <lukas-snoek.com>`_ 
+from the University of Amsterdam with contributions from 
+`Steven <https://github.com/StevenM1>`_ and help from `Joost <https://github.com/y0ast>`_.
 
 License and contact
 -------------------
-The code is BSD (3-clause) licensed. You can find my contact details at my
-Github_ profile page.
+The code is BSD (3-clause) licensed. You can find my contact details on my
+`Github <https://github.com/lukassnoek>`_ profile page.

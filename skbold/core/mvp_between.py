@@ -123,7 +123,7 @@ class MvpBetween(Mvp):
         self.subject_list = subject_list
         self.ref_space = 'mni'
         self.common_subjects = None
-        self.y = None
+        self.y = y
         self.X = []
         self.fs_masks = []  # featureset-specific masks
         self.featureset_id = []
