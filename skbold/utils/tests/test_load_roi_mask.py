@@ -13,12 +13,11 @@ reg_files = ['example_func.nii.gz', 'example_func2standard.mat',
 
 
 @pytest.mark.parametrize("atlas_name", available_atlases)
-@pytest.mark.parametrize("resolution", ['2mm'])  # Testing 1mm takes too long
 @pytest.mark.parametrize("lateralized", [False, True])
 @pytest.mark.parametrize("threshold", [0, 25])
 @pytest.mark.parametrize("reg_dir", [None, reg_dir_test])
 # @pytest.mark.parametrize("maxprob", [True, False])  # TAKES VERY LONG
-def test_load_roi_mask_from_atlas(atlas_name, resolution, lateralized,
+def test_load_roi_mask_from_atlas(atlas_name, lateralized,
                                   threshold, reg_dir):
     maxprob = False  # Hardcoded to test
     info_dict = parse_roi_labels(atlas_type=atlas_name,
@@ -27,7 +26,6 @@ def test_load_roi_mask_from_atlas(atlas_name, resolution, lateralized,
 
     for roi in rois:
         mask, name = load_roi_mask(roi, atlas_name=atlas_name,
-                                   resolution=resolution,
                                    lateralized=lateralized,
                                    which_hemifield='left',
                                    threshold=threshold, maxprob=maxprob,

@@ -15,10 +15,10 @@ from .roi_globals import available_atlases, other_rois
 from ..core import convert2epi
 
 roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs')
-lat_subcort_rois_to_skip = ['Brain-Stem', 'Cerebral Cortex',
-                            'Cerebral White Matter',
-                            'Lateral Ventricle',
-                            'Lateral Ventrical']  # sic
+lat_subcort_rois_to_skip = ['Brain-Stem', 'Cerebral_Cortex',
+                            'Cerebral_White_Matter',
+                            'Lateral_Ventricle',
+                            'Lateral_Ventrical']  # sic
 
 
 def print_mask_options(atlas_name='HarvardOxford-Cortical'):
@@ -28,18 +28,16 @@ def print_mask_options(atlas_name='HarvardOxford-Cortical'):
     ----------
     atlas_name : str
         Name of the atlas. Availabel: 'HarvardOxford-Cortical',
-        'HarvardOxford-Subcortical', 'JHU-labels', 'JHU-tracts',
-        'Yeo2011', and 'Talairach' (experimental).
+        'HarvardOxford-Subcortical', 'Yeo2011'.
     """
     rois = sorted(parse_roi_labels(atlas_name).keys())
-    rois = [r for r in rois if r not in lat_subcort_rois_to_skip]
-
-    print('The hardvard oxford atlas contains the following ROIs:\n%s' %
-          '\n'.join(rois))
+    
+    print('The %s atlas contains the following ROIs:\n%s' %
+          (atlas_name, '\n'.join(rois)))
 
 
 def load_roi_mask(roi_name, atlas_name='HarvardOxford-Cortical',
-                  resolution='2mm', lateralized=False, which_hemifield=None,
+                  lateralized=False, which_hemifield=None,
                   threshold=0, maxprob=False, yeo_conservative=False,
                   reg_dir=None, verbose=False):
     """ Loads a mask (from an atlas).
@@ -50,10 +48,7 @@ def load_roi_mask(roi_name, atlas_name='HarvardOxford-Cortical',
         Name of the ROI (as specified in the FSL XML-files)
     atlas_name : str
         Name of the atlas. Choose from: 'HarvardOxford-Cortical',
-        'HarvardOxford-Subcortical', 'MNI', 'JHU-labels', 'JHU-tracts',
-        'Talairach', 'Yeo2011'.
-    resolution : str
-        Resolution of the mask/atlas ('1mm' or '2mm')
+        'HarvardOxford-Subcortical', 'Yeo2011'.
     lateralized : bool
         Whether to use lateralized masks (only available for Harvard-
         Oxford atlases). If this variable is specified, you have to specify
@@ -102,9 +97,6 @@ def load_roi_mask(roi_name, atlas_name='HarvardOxford-Cortical',
         else:
             roi_name = sorted(parse_roi_labels(atlas_name,
                                                lateralized=lateralized).keys())
-        # If doing all ROIs, no need to look for L/R
-        if 'JHU' in atlas_name:
-            lateralized = False
 
         # Just set something, otherwise it'll crash
         which_hemifield = 'left'
@@ -124,7 +116,7 @@ def load_roi_mask(roi_name, atlas_name='HarvardOxford-Cortical',
             else:
                 atlas_name_tmp = atlas_name
 
-            to_return.append(load_roi_mask(roi_n, atlas_name_tmp, resolution,
+            to_return.append(load_roi_mask(roi_n, atlas_name_tmp,
                              lateralized, which_hemifield, threshold, maxprob,
                              yeo_conservative, reg_dir))
 
@@ -148,29 +140,21 @@ def load_roi_mask(roi_name, atlas_name='HarvardOxford-Cortical',
         return mask, roi_name
 
     # Stupid hack to find correct atlas file when filenames vary too much
-    lat_str = ''
     if 'HarvardOxford' in atlas_name and lateralized:
         lat_str = 'lateralized'
     elif 'HarvardOxford' in atlas_name and not lateralized:
         lat_str = 'bilateral'
+    else:
+        lat_str = ''
 
-    cons_str = ''
     if 'Yeo' in atlas_name:
         cons_str = 'conservative' if yeo_conservative else 'liberal'
+    else:
+        cons_str = ''
 
     # Try to find the atlas with wildcards
-    atlas = glob(op.join(roi_dir, atlas_name, '*%s*%s*%s.nii.gz' %
-                         (lat_str, cons_str, resolution)))
-
-    # Another hack to get the lateralized atlas if queried
-    JHU_atlas = 'JHU' in atlas_name
-    if lateralized:
-        if JHU_atlas and roi_name.split(' ')[-1] not in ['L', 'R']:
-            roi_name = roi_name + ' L' if which_hemifield == 'left' else ' R'
-
-        elif not JHU_atlas and roi_name.split(' ')[0] not in ['Left', 'Right']:
-            roi_name = '%s %s' % (which_hemifield[0].upper() +
-                                  which_hemifield[1:].lower(), roi_name)
+    atlas = glob(op.join(roi_dir, atlas_name, '*%s*%s*.nii.gz' %
+                         (lat_str, cons_str)))
 
     if len(atlas) > 1:
         msg = "Found more than one atlas, namely: %r" % atlas
@@ -191,23 +175,13 @@ def load_roi_mask(roi_name, atlas_name='HarvardOxford-Cortical',
 
     info_dict = parse_roi_labels(atlas_name, lateralized=lateralized,
                                  debug=False)
-
-    if roi_name.split(" ")[0] in ['Left', 'Right']:
-        if " ".join(roi_name.split(' ')[1:]) in lat_subcort_rois_to_skip:
-            return None, None
-    else:
-        if roi_name in lat_subcort_rois_to_skip:
-            return None, None
-
+     
     # Trying to find the index corresponding to the roi-name
     try:
         idx = info_dict[roi_name][0]
     except KeyError:  # Hack to check for non-lateralized masks in atlas
-
-        if roi_name.split(' ')[0] in ['Left', 'Right']:
-            idx = info_dict[roi_name.split(' ', 1)[1]][0]
-        elif roi_name[-1] in ['L', 'R']:
-            idx = info_dict[roi_name[:-2]][0]
+        if roi_name.split('_')[0] in ['Left', 'Right']:
+            idx = info_dict["_".join(roi_name.split('_')[1:])][0]
         else:
             raise KeyError('Mask %s does not exist!' % roi_name)
 
@@ -248,12 +222,7 @@ def _check_cfg(roi_name, atlas_name, lateralized, which_hemifield):
 
 def load_nifti_and_check_space(nifti, reg_dir, return_array=True, **kwargs):
 
-    is_img_file = op.basename(nifti).split('.')[-1] == 'img'
-
-    if is_img_file:
-        print('Cannot transform img-type file, skipping ...')
-
-    if reg_dir is not None and not is_img_file:
+    if reg_dir is not None:
 
         nifti = convert2epi(nifti, reg_dir=reg_dir, out_dir=reg_dir,
                             interpolation='nearestneighbour', suffix=None)

@@ -435,19 +435,18 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
         # If it's not an existing file, it's meant as a query for the internal
         # atlases
         if not op.isfile(self.mask):
-            maskname = self.mask
-
+            
             # Remove spaces because otherwise fsl might crash
-            basename = op.basename(maskname).replace(' ', '_')
-            basename = basename.replace('(', '_')
-            basename = basename.replace(')', '_')
+            basename = self.mask.replace(' ', '_').replace(',', '')
+            basename = basename.replace('(', '_').replace(')', '_')
+            basename = basename.replace("'", '')
 
-            maskname = op.join(op.dirname(maskname), basename)
-            mask, mask_name = load_roi_mask(self.mask,
+            mask, mask_name = load_roi_mask(basename,
                                             threshold=self.mask_threshold,
                                             **self.load_roi_args)
             if mask is None:
-                raise ValueError("Could not find a mask for %s" % maskname)
+                raise ValueError("Could not find a mask for %s (given mask %s)" % 
+                                 (basename, self.mask))
 
             self.mask = mask
             self.mask_name = mask_name
@@ -456,7 +455,7 @@ class RoiIndexer(BaseEstimator, TransformerMixin):
         if self.ref_space == 'epi':
 
             if not isinstance(self.mask, str):
-                fn = op.join(self.reg_dir, maskname + '.nii.gz')
+                fn = op.join(self.reg_dir, self.mask_name + '.nii.gz')
                 img = nib.Nifti1Image(self.mask.astype(int),
                                       affine=self.affine)
                 nib.save(img, fn)

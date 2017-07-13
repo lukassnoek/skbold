@@ -75,7 +75,6 @@ class ConfoundRegressor(BaseEstimator, TransformerMixin):
 
         if X.shape[0] == len(self.fit_idx):
             confound = self.confound[self.fit_idx]
-            weights = self.weights_
         else:
             tmp_idx = np.ones(self.confound.shape[0], dtype=bool)
             tmp_idx[self.fit_idx] = False
@@ -85,8 +84,7 @@ class ConfoundRegressor(BaseEstimator, TransformerMixin):
                 print("Fitting separately on test")
                 self.fit_idx = tmp_idx
                 self.fit(X)
-                weights = self.weights_
-
+        
         X_new = np.zeros_like(X)
         for i in range(X.shape[1]):
             X_new[:, i] = X[:, i] - np.squeeze(confound.dot(self.weights_[i, :]))

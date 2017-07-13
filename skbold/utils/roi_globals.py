@@ -5,7 +5,6 @@ roi_dir = op.join(op.dirname(skbold.__file__), 'data', 'ROIs')
 
 available_atlases = ['HarvardOxford-Cortical',
                      'HarvardOxford-Subcortical',
-                     'MNI', 'JHU-labels', 'JHU-tracts',
                      # 'Talairach',
                      'Yeo2011']
 
