@@ -114,7 +114,7 @@ class MvpResults(object):
                 param = [param]
             return {p: getattr(model, p) for p in param}
 
-    def write(self, feature_viz=True, confmat=True, to_tstat=True,
+    def write(self, out_path, feature_viz=True, confmat=True, to_tstat=True,
               multiclass='ovr'):
         """ Writes results to disk.
 
@@ -124,8 +124,13 @@ class MvpResults(object):
             Whether to convert averaged coefficients to t-tstats (by dividing
             them by sqrt(coefs.std(axis=0)).
         """
+
         self._check_mvp_attributes()
         values = self.voxel_values
+
+        if self.df is None:
+            raise ValueError("Cannot write out results; "
+                             "call compute_scores() first!")
 
         self.df.loc[len(self.df)] = [np.nan] * self.df.shape[1]
         self.df.loc[len(self.df)] = self.df.mean()
@@ -183,7 +188,7 @@ class MvpResults(object):
                     img[tmp_idx] = subset[:, ii]
                     img = nib.Nifti1Image(img.reshape(
                         self.data_shape[pos_idx]), affine=self.affine[pos_idx])
-                    img.to_filename(op.join(self.out_path,
+                    img.to_filename(op.join(out_path,
                                             self.data_name[pos_idx] +
                                             '_%i.nii.gz' % ii))
                     img = np.zeros(self.data_shape[pos_idx]).ravel()
@@ -193,7 +198,7 @@ class MvpResults(object):
                 img[self.voxel_idx[self.featureset_id == i]] = subset
                 img = nib.Nifti1Image(img.reshape(self.data_shape[pos_idx]),
                                       affine=self.affine[pos_idx])
-                img.to_filename(op.join(self.out_path,
+                img.to_filename(op.join(out_path,
                                         self.data_name[pos_idx] + '.nii.gz'))
 
     def _check_mvp_attributes(self):
@@ -480,9 +485,8 @@ class MvpAverageResults(object):
         Absolute path to directory where the results will be saved.
     """
 
-    def __init__(self, out_dir, type='classification'):
+    def __init__(self, type='classification'):
 
-        self.out_dir = out_dir
         self.type = type
 
     def compute(self, mvp_list, identifiers, metric='f1', h0=0.5):

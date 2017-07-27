@@ -12,8 +12,15 @@ from . import feature_extraction
 from . import feature_selection
 from . import utils
 from os.path import dirname, join
+import os
 
 __version__ = '0.3.2'
+
+fsl = 'FSLDIR' in os.environ.keys()
+if not fsl:
+    msg = ("FSL does not seem to be installed. Skbold cannot "
+           "perform any EPI/MNI transformations of patterns or masks!")
+    print(msg)
 
 data_path = join(dirname(dirname(utils.__file__)), 'data')
 testdata_path = join(data_path, 'test_data')

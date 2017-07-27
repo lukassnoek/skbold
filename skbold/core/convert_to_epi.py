@@ -42,6 +42,9 @@ def convert2epi(file2transform, reg_dir, out_dir=None,
         Absolute path(s) to newly transformed file(s).
     """
 
+    if not 'FSLDIR' in os.environ.keys():
+        raise OSError("FSL is not installed! Cannot transform images!")
+
     if not isinstance(file2transform, list):
         file2transform = [file2transform]
 

@@ -97,6 +97,7 @@ class MvpWithin(Mvp):
         self.remove_contrast = remove_contrast
         self.remove_idx = None
         self.directory = None
+        self.data_shape = None
         self.y = []
         self.contrast_labels = []
         self.X = []
@@ -141,6 +142,7 @@ class MvpWithin(Mvp):
             idx = np.invert((self.X == 0)).all(axis=0)
             self.X = self.X[:, idx]
             self.voxel_idx = self.voxel_idx[idx]
+            self.featureset_id = self.featureset_id[idx]
 
     def _load_fsl(self, src):
 
@@ -227,10 +229,11 @@ class MvpWithin(Mvp):
             raise IOError('There is no design.con file for %s' % design_file)
 
         # Find number of contrasts and read in accordingly
-        contrasts = sum(1 if 'ContrastName' in line else 0
-                        for line in open(design_file))
-
-        n_lines = sum(1 for line in open(design_file))
+        with open(design_file, 'r') as dfile:
+            lines = dfile.readlines()
+            contrasts = sum(1 if 'ContrastName' in line else 0
+                            for line in lines)
+            n_lines = sum(1 for line in lines)
 
         df = pd.read_csv(design_file, delimiter='\t', header=None,
                          skipfooter=n_lines - contrasts, engine='python')

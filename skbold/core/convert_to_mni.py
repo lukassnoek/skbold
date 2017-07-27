@@ -44,6 +44,9 @@ def convert2mni(file2transform, reg_dir, out_dir=None,
         Absolute path(s) to newly transformed file(s).
     """
 
+    if not 'FSLDIR' in os.environ.keys():
+        raise OSError("FSL is not installed! Cannot transform images!")
+
     if type(file2transform) == str:
         file2transform = [file2transform]
 

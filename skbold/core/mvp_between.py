@@ -12,14 +12,7 @@ from io import open
 from glob import glob
 from fnmatch import fnmatch
 from .mvp import Mvp
-from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.preprocessing import Imputer
-
-try:
-    from nilearn.decoding import SearchLight
-except ImportError as e:
-    print("Skbold's searchlight functionality not available.")
-
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from ..preproc import MajorityUndersampler, LabelBinarizer
 
