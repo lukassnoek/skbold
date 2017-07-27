@@ -32,8 +32,7 @@ def test_mvp_results(method):
 
     folds = StratifiedKFold(n_splits=2)
     mvpr = MvpResultsClassification(mvp=mvp, n_iter=2,
-                                    feature_scoring=method,
-                                    out_path=testdata_path)
+                                    feature_scoring=method)
 
     for train_idx, test_idx in folds.split(mvp.X, mvp.y):
         train_X, test_X = mvp.X[train_idx, :], mvp.X[test_idx, :]
@@ -43,7 +42,7 @@ def test_mvp_results(method):
         mvpr.update(test_idx, pred, pipeline=pipe)
 
     mvpr.compute_scores()
-    mvpr.write(feature_viz=True)
+    mvpr.write(feature_viz=True, out_path=testdata_path)
 
     for f in ['Contrast1.nii.gz', 'results.tsv', 'confmat.npy']:
         assert(op.isfile(op.join(testdata_path, f)))

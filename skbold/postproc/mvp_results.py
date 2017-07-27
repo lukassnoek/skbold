@@ -28,8 +28,6 @@ class MvpResults(object):
         Necessary to extract some metadata from.
     n_iter : int
         Number of folds that will be kept track of.
-    out_path : str
-        Path to save results to.
     feature_scoring : str
         Which method to use to calculate feature-scores with. Can be:
         1) 'fwm': feature weight mapping [1]_ - keep track of
@@ -51,7 +49,7 @@ class MvpResults(object):
        Neuroimage, 87, 96-110.
     """
 
-    def __init__(self, mvp, n_iter, out_path=None, feature_scoring='',
+    def __init__(self, mvp, n_iter, feature_scoring='',
                  verbose=False):
 
         self.mvp = mvp
@@ -70,15 +68,7 @@ class MvpResults(object):
         self.voxel_values = None
         self.df = None
 
-        if out_path is None:
-            out_path = os.getcwd()
-
-        if not op.exists(out_path):
-            os.makedirs(out_path)
-
-        self.out_path = out_path
-
-    def save_model(self, model):
+    def save_model(self, model, out_path):
         """ Method to serialize model(s) to disk.
 
         Parameters
@@ -92,7 +82,7 @@ class MvpResults(object):
             model = model.steps
 
         for step in model:
-            fn = op.join(self.out_path, step[0] + '.jl')
+            fn = op.join(out_path, step[0] + '.jl')
             joblib.dump(step[1], fn, compress=3)
 
     def load_model(self, path, param=None):
@@ -135,11 +125,11 @@ class MvpResults(object):
         self.df.loc[len(self.df)] = [np.nan] * self.df.shape[1]
         self.df.loc[len(self.df)] = self.df.mean()
 
-        self.df.to_csv(op.join(self.out_path, 'results.tsv'),
+        self.df.to_csv(op.join(out_path, 'results.tsv'),
                        sep='\t', index=False)
 
         if hasattr(self, 'confmat') and confmat:
-            np.save(op.join(self.out_path, 'confmat'), self.confmat)
+            np.save(op.join(out_path, 'confmat'), self.confmat)
 
         if not feature_viz:
             return None
@@ -311,8 +301,6 @@ class MvpResultsRegression(MvpResults):
         Necessary to extract some metadata from.
     n_iter : int
         Number of folds that will be kept track of.
-    out_path : str
-        Path to save results to.
     feature_scoring : str
         Which method to use to calculate feature-scores with. Can be:
         1) 'coef': keep track of raw voxel-weights (coefficients)
@@ -325,14 +313,12 @@ class MvpResultsRegression(MvpResults):
     .. warning:: Has not been tested with MvpWithin!
 
     """
-    def __init__(self, mvp, n_iter, feature_scoring='', verbose=False,
-                 out_path=None):
+    def __init__(self, mvp, n_iter, feature_scoring='', verbose=False):
 
         super(MvpResultsRegression,
               self).__init__(mvp=mvp, n_iter=n_iter,
                              feature_scoring=feature_scoring,
-                             verbose=verbose,
-                             out_path=out_path)
+                             verbose=verbose)
 
         self.R2 = np.zeros(self.n_iter)
         self.mse = np.zeros(self.n_iter)
@@ -385,8 +371,6 @@ class MvpResultsClassification(MvpResults):
         Necessary to extract some metadata from.
     n_iter : int
         Number of folds that will be kept track of.
-    out_path : str
-        Path to save results to.
     feature_scoring : str
         Which method to use to calculate feature-scores with. Can be:
         1) 'coef': keep track of raw voxel-weights (coefficients)
@@ -397,13 +381,12 @@ class MvpResultsClassification(MvpResults):
         Whether to print extra output.
     """
 
-    def __init__(self, mvp, n_iter, feature_scoring='fwm', verbose=False,
-                 out_path=None):
+    def __init__(self, mvp, n_iter, feature_scoring='fwm', verbose=False):
 
         super(MvpResultsClassification,
               self).__init__(mvp=mvp, n_iter=n_iter,
                              feature_scoring=feature_scoring,
-                             verbose=verbose, out_path=out_path)
+                             verbose=verbose)
 
         if np.unique(self.y)[0] != 0:
             msg = ('Your class-labels (y) should be coded {0, 1, 2 ... P}, '
