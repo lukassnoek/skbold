@@ -228,7 +228,7 @@ class MvpResults(object):
                 if len(fscore.shape) > 3:
 
                     for ii in range(subset.ndim + 1):
-        
+
                         fscore.to_filename(op.join(out_path,
                                            self.data_name[pos_idx] +
                                            '_%i.nii.gz' % ii))
@@ -270,8 +270,8 @@ class MvpResults(object):
             values = values.mean(axis=0) / ((values.std(axis=0)) / np.sqrt(n))
         else:
             values = values.mean(axis=0)
-        values[np.isnan(values)] = 
-0c        fids = np.unique(self.featureset_id)
+        values[np.isnan(values)] = 0
+        fids = np.unique(self.featureset_id)
 
         to_return = []
         for i in fids:
