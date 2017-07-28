@@ -13,6 +13,7 @@ All comply with the scikit-learn API, using fit() and transform() methods.
 
 from .filters import GenericUnivariateSelect, SelectAboveCutoff
 from .selectors import fisher_criterion_score
+from .transformers import RoiIndexer, IncrementalFeatureCombiner
 
 __all__ = ['GenericUnivariateSelect', 'SelectAboveCutoff',
-           'fisher_criterion_score']
+           'fisher_criterion_score', 'IncrementalFeatureCombiner']

@@ -164,6 +164,7 @@ Now, we have an Mvp-object on which machine learning pipeline can be applied:
    from sklearn.svm import SVC
    from sklearn.pipeline import Pipeline
    from sklearn.model_selection import StratifiedKFold
+   from sklearn.metrics import accuracy_score, f1_score
    from skbold.feature_selection import fisher_criterion_score, SelectAboveCutoff
    from skbold.feature_extraction import RoiIndexer
    from skbold.utils import MvpResultsClassification
@@ -187,8 +188,8 @@ Now, we have an Mvp-object on which machine learning pipeline can be applied:
    # Initialization of MvpResults; 'forward' indicates that it keeps track of
    # the forward model corresponding to the weights of the backward model
    # (see Haufe et al., 2014, Neuroimage)
-   mvp_results = MvpResultsClassification(mvp=mvp, n_iter=len(cv),
-                                          out_path='~/', feature_scoring='forward')
+   mvp_results = MvpResults(mvp=mvp, n_iter=len(cv), feature_scoring='forward',
+                            f1=f1_score, accuracy=accuracy_score)
 
    for train_idx, test_idx in cv.split(mvp.X, mvp.y):
 
@@ -201,7 +202,7 @@ Now, we have an Mvp-object on which machine learning pipeline can be applied:
        mvp_results.update(test_idx, pred, pipe) # update after each fold!
 
    mvp_results.compute_scores() # compute!
-   mvp_results.write() # write file with metrics and niftis with feature-scores!
+   mvp_results.write(out_path) # write file with metrics and niftis with feature-scores!
 
 
 An example workflow: MvpBetween

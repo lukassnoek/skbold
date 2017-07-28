@@ -16,8 +16,8 @@ from copy import copy, deepcopy
 import skbold
 import os.path as op
 from ..core import convert2epi
-from ..feature_extraction import RoiIndexer, IncrementalFeatureCombiner
-from ..feature_selection import fisher_criterion_score, SelectAboveCutoff
+from ..feature_selection import (RoiIndexer, IncrementalFeatureCombiner,
+                                 fisher_criterion_score, SelectAboveCutoff)
 from sklearn.externals.joblib import Parallel, delayed, dump, load
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.svm import SVC

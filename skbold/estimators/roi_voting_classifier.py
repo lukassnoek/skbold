@@ -15,8 +15,7 @@ import numpy as np
 import os.path as op
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.svm import SVC
-from skbold.feature_extraction import RoiIndexer
-from ..feature_selection import fisher_criterion_score, SelectAboveCutoff
+from ..feature_selection import fisher_criterion_score, SelectAboveCutoff, RoiIndexer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from copy import copy, deepcopy

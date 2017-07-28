@@ -37,10 +37,9 @@ weight vectors of linear models in multivariate neuroimaging. Neuroimage,
 """
 
 from .extract_roi_info import extract_roi_info
-from .mvp_results import MvpResultsClassification, MvpResultsRegression
-from .mvp_results import MvpAverageResults
+from .mvp_results import MvpResults, MvpAverageResults
 from .cluster_size_threshold import cluster_size_threshold
 
-__all__ = ['extract_roi_info', 'MvpResultsClassification',
-           'MvpResultsRegression', 'MvpAverageResults',
-           'cluster_size_threshold']
+__all__ = ['extract_roi_info', 'MvpResults',
+           'MvpAverageResults', 'cluster_size_threshold']
+

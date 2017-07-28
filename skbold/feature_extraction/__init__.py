@@ -6,11 +6,9 @@
 This module contains some feature-extraction methods/transformers.
 """
 
-from .transformers import (PCAfilter, ArrayPermuter, PatternAverager,
-                           AverageRegionTransformer, RoiIndexer, RowIndexer,
-                           ClusterThreshold, SelectFeatureset,
-                           IncrementalFeatureCombiner)
+from .transformers import (PCAfilter, PatternAverager,
+                           AverageRegionTransformer, 
+                           ClusterThreshold)
 
-__all__ = ['PatternAverager', 'ArrayPermuter', 'AverageRegionTransformer',
-           'PCAfilter', 'RoiIndexer', 'RowIndexer', 'ClusterThreshold',
-           'SelectFeatureset', 'IncrementalFeatureCombiner']
+__all__ = ['PatternAverager', 'AverageRegionTransformer',
+           'PCAfilter', 'ClusterThreshold']

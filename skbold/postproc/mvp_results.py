@@ -12,6 +12,7 @@ from itertools import combinations
 from scipy.misc import comb
 from copy import copy
 from sklearn.metrics import (accuracy_score, precision_score, recall_score,
+                             cohen_kappa_score, roc_auc_score,
                              confusion_matrix, r2_score, mean_squared_error,
                              f1_score)
 
@@ -28,14 +29,23 @@ class MvpResults(object):
         Necessary to extract some metadata from.
     n_iter : int
         Number of folds that will be kept track of.
+    type_model : str
+        Either 'classification' or 'regression'
     feature_scoring : str
         Which method to use to calculate feature-scores with. Can be:
         1) 'fwm': feature weight mapping [1]_ - keep track of
         raw voxel-weights (coefficients)
         2) 'forward': transform raw voxel-weights to corresponding forward-
         model [2]_.
+    confmat : bool
+        Whether to keep track of the confusion-matrix across folds (only
+        relevant for `type_model='classification'`)
     verbose : bool
         Whether to print extra output.
+    **metrics : keyword-arguments
+        Keyword arguments of the form: `name_metric: metric_function`;
+        any metric from scikit-learn works (or other metrics, as long as
+        they have two input args, `y_true` and `y_pred`).
 
     References
     ----------
@@ -49,12 +59,19 @@ class MvpResults(object):
        Neuroimage, 87, 96-110.
     """
 
-    def __init__(self, mvp, n_iter, feature_scoring='',
-                 verbose=False):
+    def __init__(self, mvp, n_iter, type_model='classification', feature_scoring=None,
+                 confmat=False, verbose=False, **metrics):
 
-        self.mvp = mvp
+        for name, metric in metrics.items():
+            setattr(self, name, np.zeros(n_iter))
+
+        if type_model != 'classification':
+            confmat = False
+
+        self.n_class = len(np.unique(mvp.y))
         self.n_iter = n_iter
         self.n_vox = np.zeros(self.n_iter)
+        self.mvp = mvp
         self.fs = feature_scoring
         self.verbose = verbose
         self.X = mvp.X
@@ -67,6 +84,20 @@ class MvpResults(object):
         self.iter = 0
         self.voxel_values = None
         self.df = None
+        self.metrics = metrics
+
+        if type_model == 'classification':
+            if self.n_class < 3 or self.fs == 'ufs':
+                self.voxel_values = np.zeros((self.n_iter, mvp.X.shape[1]))
+            else:
+                self.voxel_values = np.zeros((self.n_iter, mvp.X.shape[1],
+                                              self.n_class))
+        else:
+            self.voxel_values = np.zeros((self.n_iter, mvp.X.shape[1]))
+
+        if confmat:
+            self.metrics['confmat'] = confusion_matrix
+            self.confmat = np.zeros((self.n_iter, self.n_class, self.n_class))        
 
     def save_model(self, model, out_path):
         """ Method to serialize model(s) to disk.
@@ -104,19 +135,72 @@ class MvpResults(object):
                 param = [param]
             return {p: getattr(model, p) for p in param}
 
-    def write(self, out_path, feature_viz=True, confmat=True, to_tstat=True,
+    def update(self, test_idx, y_pred, pipeline=None):
+        """ Updates with information from current fold.
+
+        Parameters
+        ----------
+        test_idx : ndarray
+            Indices of current test-trials.
+        y_pred : ndarray
+            Predictions of current test-trials.
+        pipeline : scikit-learn Pipeline object
+            pipeline from which relevant scores/coefficients will be
+            extracted.
+        """
+        i = self.iter
+        y_true = self.y[test_idx]
+
+        for name, metric in self.metrics.items():
+            tmp = getattr(self, name)
+            tmp[i] = metric(y_true, y_pred)
+            setattr(self, name, tmp)
+            if self.verbose:
+                print("%s: %.3f" % (name, tmp[i]))
+
+        if pipeline is not None and self.fs is not None:
+            self._update_voxel_values(pipeline)
+
+        self.iter += 1
+
+    def compute_scores(self, multiclass='ovr', maps_to_tstat=True):
+        """ Computes scores across folds. """
+
+        self._check_mvp_attributes()
+
+        df = {name: getattr(self, name, values) for name, values in self.metrics.items()
+              if name != 'confmat'}
+        df['n_voxels'] = self.n_vox
+        self.df = pd.DataFrame(df)
+        print(self.df.describe().loc[['mean', 'std']])
+
+        if self.fs is not None:
+            feature_scores = self._calculate_feature_scores(multiclass, maps_to_tstat)
+            if len(feature_scores) == 1:
+                feature_scores = feature_scores[0]
+                self.feature_scores = feature_scores
+            return(self.df, feature_scores)
+        else:    
+            return(self.df)
+
+    def write(self, out_path, confmat=True, to_tstat=True,
               multiclass='ovr'):
         """ Writes results to disk.
 
         Parameters
         ----------
+        out_path : str
+            Where to save the results to
+        feature_viz : bool
+            Whether to write out (and optionally return) feature-visualization
+            information
+        confmat : bool
+            Whether to write out (and optionally return) the confusion-matrix
+            (across folds).
         to_tstat : bool
-            Whether to convert averaged coefficients to t-tstats (by dividing
-            them by sqrt(coefs.std(axis=0)).
+            Whether to convert averaged feature-scores to t-tstats (by dividing
+            them by sqrt(score.std(axis=0)).
         """
-
-        self._check_mvp_attributes()
-        values = self.voxel_values
 
         if self.df is None:
             raise ValueError("Cannot write out results; "
@@ -128,11 +212,34 @@ class MvpResults(object):
         self.df.to_csv(op.join(out_path, 'results.tsv'),
                        sep='\t', index=False)
 
-        if hasattr(self, 'confmat') and confmat:
+        if hasattr(self, 'confmat'):
             np.save(op.join(out_path, 'confmat'), self.confmat)
 
-        if not feature_viz:
-            return None
+        if self.fs is not None:
+
+            if not isinstance(self.feature_scores, list):
+                fscores = [self.feature_scores]
+            else:
+                fscore = self.feature_scores
+
+            for i, fscore in enumerate(fscores):
+                pos_idx = np.where(i == self.featureset_id)[0][0]
+
+                if len(fscore.shape) > 3:
+
+                    for ii in range(subset.ndim + 1):
+        
+                        fscore.to_filename(op.join(out_path,
+                                           self.data_name[pos_idx] +
+                                           '_%i.nii.gz' % ii))
+                else:
+                    fscore.to_filename(op.join(out_path,
+                                       self.data_name[pos_idx] +
+                                       '.nii.gz'))
+
+    def _calculate_feature_scores(self, multiclass, to_tstat):
+
+        values = self.voxel_values
 
         if multiclass == 'ovo':
             # in scikit-learn 'ovo', Positive labels are reversed
@@ -163,9 +270,10 @@ class MvpResults(object):
             values = values.mean(axis=0) / ((values.std(axis=0)) / np.sqrt(n))
         else:
             values = values.mean(axis=0)
+        values[np.isnan(values)] = 
+0c        fids = np.unique(self.featureset_id)
 
-        fids = np.unique(self.mvp.featureset_id)
-
+        to_return = []
         for i in fids:
 
             pos_idx = np.where(i == fids)[0][0]
@@ -178,9 +286,7 @@ class MvpResults(object):
                     img[tmp_idx] = subset[:, ii]
                     img = nib.Nifti1Image(img.reshape(
                         self.data_shape[pos_idx]), affine=self.affine[pos_idx])
-                    img.to_filename(op.join(out_path,
-                                            self.data_name[pos_idx] +
-                                            '_%i.nii.gz' % ii))
+                    to_return.append(img)
                     img = np.zeros(self.data_shape[pos_idx]).ravel()
 
             else:
@@ -188,8 +294,9 @@ class MvpResults(object):
                 img[self.voxel_idx[self.featureset_id == i]] = subset
                 img = nib.Nifti1Image(img.reshape(self.data_shape[pos_idx]),
                                       affine=self.affine[pos_idx])
-                img.to_filename(op.join(out_path,
-                                        self.data_name[pos_idx] + '.nii.gz'))
+                to_return.append(img)
+                
+        return to_return
 
     def _check_mvp_attributes(self):
 
@@ -291,172 +398,6 @@ class MvpResults(object):
         return A
 
 
-class MvpResultsRegression(MvpResults):
-    """
-    MvpResults class specifically for Regression analyses.
-
-    Parameters
-    ----------
-    mvp : mvp-object
-        Necessary to extract some metadata from.
-    n_iter : int
-        Number of folds that will be kept track of.
-    feature_scoring : str
-        Which method to use to calculate feature-scores with. Can be:
-        1) 'coef': keep track of raw voxel-weights (coefficients)
-        2) 'forward': transform raw voxel-weights to corresponding forward-
-        model (see Haufe et al. (2014). On the interpretation of weight vectors
-        of linear models in multivariate neuroimaging. Neuroimage, 87, 96-110.)
-    verbose : bool
-        Whether to print extra output.
-
-    .. warning:: Has not been tested with MvpWithin!
-
-    """
-    def __init__(self, mvp, n_iter, feature_scoring='', verbose=False):
-
-        super(MvpResultsRegression,
-              self).__init__(mvp=mvp, n_iter=n_iter,
-                             feature_scoring=feature_scoring,
-                             verbose=verbose)
-
-        self.R2 = np.zeros(self.n_iter)
-        self.mse = np.zeros(self.n_iter)
-        self.n_vox = np.zeros(self.n_iter)
-        self.voxel_values = np.zeros((self.n_iter, mvp.X.shape[1]))
-
-    def update(self, test_idx, y_pred, pipeline=None):
-        """ Updates with information from current fold.
-
-        Parameters
-        ----------
-        test_idx : ndarray
-            Indices of current test-trials.
-        y_pred : ndarray
-            Predictions of current test-trials.
-        pipeline : scikit-learn Pipeline object
-            pipeline from which relevant scores/coefficients will be
-            extracted.
-        """
-        i = self.iter
-        y_true = self.y[test_idx]
-
-        self.R2[i] = r2_score(y_true, y_pred)
-        self.mse = mean_squared_error(y_true, y_pred)
-
-        if self.verbose:
-            print('R2: %f' % self.R2[i])
-
-        if pipeline is not None:
-            self._update_voxel_values(pipeline)
-
-        self.iter += 1
-
-    def compute_scores(self):
-        """ Computes scores across folds. """
-        df = pd.DataFrame({'R2': self.R2,
-                           'MSE': self.mse,
-                           'n_voxels': self.n_vox})
-        self.df = df
-        print(df.describe().loc[['mean', 'std']])
-
-
-class MvpResultsClassification(MvpResults):
-    """
-    MvpResults class specifically for classification analyses.
-
-    Parameters
-    ----------
-    mvp : mvp-object
-        Necessary to extract some metadata from.
-    n_iter : int
-        Number of folds that will be kept track of.
-    feature_scoring : str
-        Which method to use to calculate feature-scores with. Can be:
-        1) 'coef': keep track of raw voxel-weights (coefficients)
-        2) 'forward': transform raw voxel-weights to corresponding forward-
-        model (see Haufe et al. (2014). On the interpretation of weight vectors
-        of linear models in multivariate neuroimaging. Neuroimage, 87, 96-110.)
-    verbose : bool
-        Whether to print extra output.
-    """
-
-    def __init__(self, mvp, n_iter, feature_scoring='fwm', verbose=False):
-
-        super(MvpResultsClassification,
-              self).__init__(mvp=mvp, n_iter=n_iter,
-                             feature_scoring=feature_scoring,
-                             verbose=verbose)
-
-        if np.unique(self.y)[0] != 0:
-            msg = ('Your class-labels (y) should be coded {0, 1, 2 ... P}, '
-                   'not {-1, 0, ... P} or {1, 2, 3 ... P}')
-            raise ValueError(msg)
-
-        self.accuracy = np.zeros(self.n_iter)
-        self.recall = np.zeros(self.n_iter)
-        self.precision = np.zeros(self.n_iter)
-        self.f1 = np.zeros(self.n_iter)
-        self.n_class = np.unique(self.mvp.y).size
-        self.confmat = np.zeros((self.n_iter, self.n_class, self.n_class))
-        self.n_class = len(np.unique(mvp.y))
-        if self.n_class < 3 or self.fs == 'ufs':
-            self.voxel_values = np.zeros((self.n_iter, mvp.X.shape[1]))
-        else:
-            self.voxel_values = np.zeros((self.n_iter, mvp.X.shape[1],
-                                          self.n_class))
-
-    def update(self, test_idx, y_pred, pipeline=None):
-        """ Updates with information from current fold.
-
-        Parameters
-        ----------
-        test_idx : ndarray
-            Indices of current test-trials.
-        y_pred : ndarray
-            Predictions of current test-trials.
-        values : ndarray
-            Values of features for model in the current fold. This can be the
-            entire pipeline (in this case, it is extracted automaticlly). When
-            a pipeline is passed, the idx-parameter does not have to be passed.
-        idx : ndarray
-            Index mapping the 'values' back to whole-brain space.
-        """
-
-        i = self.iter
-        y_true = self.y[test_idx]
-
-        self.accuracy[i] = accuracy_score(y_true, y_pred)
-        self.precision[i] = precision_score(y_true, y_pred, average='macro')
-        self.recall[i] = recall_score(y_true, y_pred, average='macro')
-        self.f1[i] = f1_score(y_true, y_pred, average='macro')
-        self.confmat[i, :, :] = confusion_matrix(y_true, y_pred)
-
-        if self.verbose:
-            print('Accuracy: %f' % self.accuracy[i])
-
-        if pipeline is not None:
-            self._update_voxel_values(pipeline)
-
-        self.iter += 1
-
-    def compute_scores(self):
-        """ Computes scores across folds. """
-        df = pd.DataFrame({'Accuracy': self.accuracy,
-                           'Precision': self.precision,
-                           'Recall': self.recall,
-                           'F1': self.f1,
-                           'n_voxels': self.n_vox})
-
-        self.df = df
-
-        print('\n')
-        print(df.describe().loc[['mean', 'std']])
-        print('\nConfusion matrix:')
-        print(self.confmat.sum(axis=0))
-        print('\n')
-
-
 class MvpAverageResults(object):
     """
     Averages results from MVPA analyses on, for example, different subjects
@@ -468,25 +409,27 @@ class MvpAverageResults(object):
         Absolute path to directory where the results will be saved.
     """
 
-    def __init__(self, type='classification'):
+    def __init__(self, type_model='classification'):
 
-        self.type = type
+        self.type_model = type_model
 
-    def compute(self, mvp_list, identifiers, metric='f1', h0=0.5):
+    def compute_statistics(self, mvpr_list, identifiers=None, metric='accuracy', h0=0.5):
 
-        identifiers = [op.basename(p).split('.')[0] for p in identifiers]
-        scores = np.array([getattr(mvp, metric) for mvp in mvp_list])
+        if identifiers is None:
+            identifiers = np.arange(len(mvpr_list))
+        
+        scores = np.array([getattr(mvpr, metric) for mvpr in mvpr_list])
         n = scores.shape[1]
         df = {}
         df['mean'] = scores.mean(axis=1)
         df['std'] = scores.std(axis=1)
         df['t'] = (df['mean'] - h0) / (df['std'] / np.sqrt(n - 1))
         df['p'] = [stats.t.sf(abs(tt), n - 1) for tt in df['t']]
-        df['n_vox'] = np.array([mvp.n_vox for mvp in mvp_list]).mean(axis=1)
+        df['n_vox'] = np.array([mvp.n_vox for mvp in mvpr_list]).mean(axis=1)
         df = pd.DataFrame(df, index=identifiers)
         df = df.sort_values(by='t', ascending=False)
         self.df = df
-        print(self.df)
+        return df
 
     def write(self, path, name='average_results'):
 

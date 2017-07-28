@@ -5,14 +5,6 @@
 # Contact: lukassnoek@gmail.com
 # License: 3 clause BSD
 
-
-# Class to select features based on their mean euclidean distance between
-# average class values.
-
-# Author: Lukas Snoek [lukassnoek.github.io]
-# Contact: lukassnoek@gmail.com
-# License: 3 clause BSD
-
 from __future__ import print_function, division, absolute_import
 from builtins import range
 import numpy as np

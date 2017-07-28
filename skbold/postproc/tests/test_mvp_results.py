@@ -3,11 +3,12 @@ import os.path as op
 from ...core import MvpBetween
 from ... import testdata_path, roidata_path
 import os
-from ...postproc import MvpResultsClassification
+from ...postproc import MvpResults
 from sklearn.model_selection import StratifiedKFold
 from sklearn.feature_selection import f_classif, SelectKBest
 from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
+from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 import pytest
 
 dpath = op.join(testdata_path, 'mock_subjects', 'sub*', 'run1.feat', 'stats')
@@ -22,7 +23,7 @@ mvp.create()
 fpath = op.join(testdata_path, 'sample_behav.tsv')
 mvp.add_y(fpath, col_name='var_categorical', index_col=0, remove=999)
 
-
+@pytest.mark.mvpresults
 @pytest.mark.parametrize("method", ['fwm', 'forward', 'ufs'])
 def test_mvp_results(method):
 
@@ -31,8 +32,8 @@ def test_mvp_results(method):
     pipe = Pipeline([('ufs', ufs), ('clf', clf)])
 
     folds = StratifiedKFold(n_splits=2)
-    mvpr = MvpResultsClassification(mvp=mvp, n_iter=2,
-                                    feature_scoring=method)
+    mvpr = MvpResults(mvp=mvp, n_iter=2, feature_scoring=method, confmat=True,
+                      f1=f1_score, accuracy=accuracy_score, roc_auc=roc_auc_score)
 
     for train_idx, test_idx in folds.split(mvp.X, mvp.y):
         train_X, test_X = mvp.X[train_idx, :], mvp.X[test_idx, :]
@@ -42,7 +43,7 @@ def test_mvp_results(method):
         mvpr.update(test_idx, pred, pipeline=pipe)
 
     mvpr.compute_scores()
-    mvpr.write(feature_viz=True, out_path=testdata_path)
+    mvpr.write(out_path=testdata_path)
 
     for f in ['Contrast1.nii.gz', 'results.tsv', 'confmat.npy']:
         assert(op.isfile(op.join(testdata_path, f)))
