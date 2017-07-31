@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+Version 0.3.3
+-------------
+Refactoring of `postproc` and `feature_selection`/`feature_extraction` modules.
+
+- ENH: refactoring `MvpResults`, no subclasses anymore, one consistent class with variable metrics
+- ENH: proper distinction between feature-selection and feature-extraction functionality
+
 Version 0.3.2
 -------------
 Minor bugfixes and extend MvpWithin functionality.

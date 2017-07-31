@@ -14,7 +14,7 @@ from . import utils
 from os.path import dirname, join
 import os
 
-__version__ = '0.3.2'
+__version__ = '0.3.3'
 
 fsl = 'FSLDIR' in os.environ.keys()
 if not fsl:
