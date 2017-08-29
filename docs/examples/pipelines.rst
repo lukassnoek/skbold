@@ -1,22 +1,3 @@
-Feature selection/extraction
-----------------------------
-The ``feature_selection`` and ``feature_extraction`` modules in skbold contain
-a set of scikit-learn type transformers that can perform various types of
-feature selection and extraction specific to multivoxel fMRI-data.
-For example, the RoiIndexer-transformer takes a (partially masked) whole-brain
-pattern and indexes it with a specific region-of-interest defined in a
-nifti-file. The transformer API conforms to scikit-learn transformers, and as
-such, (almost all of them) can be used in scikit-learn pipelines.
-
-To get a better idea of the package's functionality - including the use of
-Mvp-objects, transformers, and MvpResults - a typical analysis workflow using
-``skbold`` is described below.
-
-Examples
---------
-For some example usages of the ``Mvp``-objects and how to incorporate them
-in a ``scikit-learn``-based ML-pipeline, check the examples below:
-
 MvpResults: model evaluation and feature visualization
 ------------------------------------------------------
 Given that an appropriate ``Mvp``-object exists, it is really easy to
@@ -35,8 +16,25 @@ automatically calculates a set of model evaluation metrics (accuracy,
 precision, recall, etc.) and keeps track of which features are used and how
 'important' these features are (in terms of the value of their weights).
 
+Feature selection/extraction
+----------------------------
+The ``feature_selection`` and ``feature_extraction`` modules in skbold contain
+a set of scikit-learn type transformers that can perform various types of
+feature selection and extraction specific to multivoxel fMRI-data.
+For example, the RoiIndexer-transformer takes a (partially masked) whole-brain
+pattern and indexes it with a specific region-of-interest defined in a
+nifti-file. The transformer API conforms to scikit-learn transformers, and as
+such, (almost all of them) can be used in scikit-learn pipelines.
+
+To get a better idea of the package's functionality - including the use of
+Mvp-objects, transformers, and MvpResults - a typical analysis workflow using
+``skbold`` is described below.
+
+For some example usages of the ``Mvp``-objects and how to incorporate them
+in a ``scikit-learn``-based ML-pipeline, check the examples below:
+
 An example workflow: MvpWithin
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------
 Suppose you have data from an fMRI-experiment for a set of subjects who were
 presented with images which were either emotional or neutral in terms of their
 content. You've modelled them using a single-trial GLM (i.e. each trial is
@@ -119,7 +117,7 @@ Now, we have an Mvp-object on which machine learning pipeline can be applied:
 
 
 An example workflow: MvpBetween
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------
 Suppose you have MRI data from a large set of subjects (let's say >50),
 including (task-based) functional MRI, structural MRI (T1-weighted images,
 DTI), and behavioral data (e.g. questionnaires, behavioral tasks). Such a
