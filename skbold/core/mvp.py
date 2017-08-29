@@ -1,4 +1,4 @@
-# Basic Mvp class, from which first-level specific (e.g. FSL or, perhaps in the
+    # Basic Mvp class, from which first-level specific (e.g. FSL or, perhaps in the
 # future, SPM) containers/converters are subclassed.
 
 # Author: Lukas Snoek [lukassnoek.github.io]
