@@ -1,7 +1,6 @@
 from __future__ import division, print_function, absolute_import
 
 from builtins import range
-import os
 import os.path as op
 import numpy as np
 import nibabel as nib
@@ -11,10 +10,7 @@ from scipy import stats
 from itertools import combinations
 from scipy.misc import comb
 from copy import copy
-from sklearn.metrics import (accuracy_score, precision_score, recall_score,
-                             cohen_kappa_score, roc_auc_score,
-                             confusion_matrix, r2_score, mean_squared_error,
-                             f1_score)
+from sklearn.metrics import confusion_matrix
 
 
 class MvpResults(object):
@@ -59,8 +55,9 @@ class MvpResults(object):
        Neuroimage, 87, 96-110.
     """
 
-    def __init__(self, mvp, n_iter, type_model='classification', feature_scoring=None,
-                 confmat=False, verbose=False, **metrics):
+    def __init__(self, mvp, n_iter, type_model='classification',
+                 feature_scoring=None, confmat=False, verbose=False,
+                 **metrics):
 
         for name, metric in metrics.items():
             setattr(self, name, np.zeros(n_iter))
@@ -97,7 +94,7 @@ class MvpResults(object):
 
         if confmat:
             self.metrics['confmat'] = confusion_matrix
-            self.confmat = np.zeros((self.n_iter, self.n_class, self.n_class))        
+            self.confmat = np.zeros((self.n_iter, self.n_class, self.n_class))
 
     def save_model(self, model, out_path):
         """ Method to serialize model(s) to disk.
@@ -168,19 +165,23 @@ class MvpResults(object):
 
         self._check_mvp_attributes()
 
-        df = {name: getattr(self, name, values) for name, values in self.metrics.items()
-              if name != 'confmat'}
-        df['n_voxels'] = self.n_vox
+        df = {name: getattr(self, name, values)
+              for name, values in self.metrics.items() if name != 'confmat'}
+
+        if self.fs is not None:
+            df['n_voxels'] = self.n_vox
+
         self.df = pd.DataFrame(df)
         print(self.df.describe().loc[['mean', 'std']])
 
         if self.fs is not None:
-            feature_scores = self._calculate_feature_scores(multiclass, maps_to_tstat)
+            feature_scores = self._calculate_feature_scores(multiclass,
+                                                            maps_to_tstat)
             if len(feature_scores) == 1:
                 feature_scores = feature_scores[0]
                 self.feature_scores = feature_scores
             return(self.df, feature_scores)
-        else:    
+        else:
             return(self.df)
 
     def write(self, out_path, confmat=True, to_tstat=True,
@@ -220,14 +221,14 @@ class MvpResults(object):
             if not isinstance(self.feature_scores, list):
                 fscores = [self.feature_scores]
             else:
-                fscore = self.feature_scores
+                fscores = self.feature_scores
 
             for i, fscore in enumerate(fscores):
                 pos_idx = np.where(i == self.featureset_id)[0][0]
 
                 if len(fscore.shape) > 3:
 
-                    for ii in range(subset.ndim + 1):
+                    for ii in range(fscore.ndim + 1):
 
                         fscore.to_filename(op.join(out_path,
                                            self.data_name[pos_idx] +
@@ -295,7 +296,7 @@ class MvpResults(object):
                 img = nib.Nifti1Image(img.reshape(self.data_shape[pos_idx]),
                                       affine=self.affine[pos_idx])
                 to_return.append(img)
-                
+
         return to_return
 
     def _check_mvp_attributes(self):
@@ -405,28 +406,44 @@ class MvpAverageResults(object):
 
     Parameters
     ----------
-    out_dir : str
-        Absolute path to directory where the results will be saved.
+    mvp_results_list : list
+        List with MvpResults objects (after updating across folds)
+    identifiers : list of str
+        List of identifiers (e.g. subject-name) that correspond to the
+        different MvpResults objects
     """
 
-    def __init__(self, type_model='classification'):
+    def __init__(self, mvp_results_list, identifiers=None):
 
-        self.type_model = type_model
+        self.mvp_results_list = mvp_results_list
+        self.identifiers = identifiers
 
-    def compute_statistics(self, mvpr_list, identifiers=None, metric='accuracy', h0=0.5):
+    def compute_statistics(self, metric='accuracy', h0=0.5):
+        """ Computes statistics across MvpResults objects
 
-        if identifiers is None:
-            identifiers = np.arange(len(mvpr_list))
-        
-        scores = np.array([getattr(mvpr, metric) for mvpr in mvpr_list])
+        Parameters
+        ----------
+        metric : str
+            Which metric should be used in the MvpResults dataframes
+        h0 : float
+            The null-hypothesis in terms of model performance (e.g. accuracy
+            equals 1 / n_classes)
+        """
+        if self.identifiers is None:
+            self.identifiers = np.arange(len(self.mvp_results_list))
+
+        scores = np.array([getattr(mvpr, metric)
+                           for mvpr in self.mvp_results_list])
+
         n = scores.shape[1]
-        df = {}
-        df['mean'] = scores.mean(axis=1)
-        df['std'] = scores.std(axis=1)
+        df = dict(mean=scores.mean(axis=1),
+                  std=scores.std(axis=1))
         df['t'] = (df['mean'] - h0) / (df['std'] / np.sqrt(n - 1))
         df['p'] = [stats.t.sf(abs(tt), n - 1) for tt in df['t']]
-        df['n_vox'] = np.array([mvp.n_vox for mvp in mvpr_list]).mean(axis=1)
-        df = pd.DataFrame(df, index=identifiers)
+        df['n_vox'] = np.mean([mvp.n_vox
+                               for mvp in self.mvp_results_list])
+
+        df = pd.DataFrame(df, index=self.identifiers)
         df = df.sort_values(by='t', ascending=False)
         self.df = df
         return df
