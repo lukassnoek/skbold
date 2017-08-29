@@ -5,11 +5,3 @@ skbold.pipelines package
     :members:
     :undoc-members:
     :show-inheritance:
-
-Submodules
-----------
-
-.. toctree::
-
-   skbold.pipelines.mvpa_pipelines
-

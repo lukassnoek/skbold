@@ -5,12 +5,3 @@ skbold.feature_selection package
     :members:
     :undoc-members:
     :show-inheritance:
-
-Submodules
-----------
-
-.. toctree::
-
-   skbold.feature_selection.filters
-   skbold.feature_selection.selectors
-

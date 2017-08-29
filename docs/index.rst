@@ -47,6 +47,7 @@ The documentation of skbold is split up into three sections:
    :caption: Getting started
 
    getting-started/installation
+   getting-started/data_organization
 
 .. _examples:
 
@@ -54,7 +55,8 @@ The documentation of skbold is split up into three sections:
    :maxdepth: 2
    :caption: Examples
 
-   exapmles/examples
+   examples/mvp
+   examples/pipelines
 
 .. _API:
 
@@ -63,7 +65,6 @@ The documentation of skbold is split up into three sections:
    :caption: API
 
    source/skbold.core
-   source/skbold.estimators
    source/skbold.exp_model
    source/skbold.feature_extraction
    source/skbold.feature_selection
