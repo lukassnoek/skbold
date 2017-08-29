@@ -18,7 +18,7 @@ skbold - utilities and tools for machine learning on BOLD-fMRI data
     :target: https://www.python.org/downloads/release/python-350
 
 The Python package ``skbold`` offers a set of tools and utilities for
-machine learning analyses of functional MRI (BOLD-fMRI) data. 
+machine learning analyses of functional MRI (BOLD-fMRI) data.
 Instead of (largely) reinventing the wheel, this package builds upon an
 existing machine learning framework in Python: `scikit-learn <http://scikit-learn.org/>`_.
 The modules of skbold are applicable in several 'stages' of
@@ -39,7 +39,7 @@ One of skbold's main features is the data-structure ``Mvp`` (an abbreviation
 of MultiVoxel Pattern). This custom object allows for an efficient way
 to store and access data and metadata necessary for multivoxel analyses of fMRI data.
 A nice feature of this ``Mvp`` objects is that they can easily load data
-(i.e., sets of nifti-files) from disk and automatically organize it in 
+(i.e., sets of nifti-files) from disk and automatically organize it in
 a format that is used in ML-analyses (i.e., a sample-by-feature matrix).
 
 So, at the core, an ``Mvp``-object is simply a collection of data - a 2D array
@@ -67,7 +67,7 @@ trials (for example condition/class membership in classification analyses or som
 continuous feature in regression analyses), which skbold calls ``y``, based
 on a model trained on the samples-by-features matrix, which skbold calls ``X``.
 After obtaining model performance scores (such as accuracy, F1-score, or R-squared)
-for each subject, a group-level random effects (RFX) analysis can be done on 
+for each subject, a group-level random effects (RFX) analysis can be done on
 these scores. Skbold does not offer any functionality in terms of group-level
 analyses; we advise researchers to look into the `prevalance inference <http://www.sciencedirect.com/science/article/pii/S1053811916303470>`_ method of Allefeld and colleagues.
 
@@ -167,10 +167,12 @@ Now, we have an Mvp-object on which machine learning pipeline can be applied:
    from sklearn.metrics import accuracy_score, f1_score
    from skbold.feature_selection import fisher_criterion_score, SelectAboveCutoff
    from skbold.feature_extraction import RoiIndexer
-   from skbold.utils import MvpResultsClassification
+   from skbold.postproc import MvpResults
 
    mvp = joblib.load('~/mvp_sub001.jl')
-   roiindex = RoiIndexer(mvp=mvp, mask='Amygdala', atlas_name='HarvardOxford-Subcortical',
+   roiindex = RoiIndexer(mvp=mvp,
+                         mask='Amygdala',
+                         atlas_name='HarvardOxford-Subcortical',
                          lateralized=False)  # loads in bilateral mask
 
    # Extract amygdala patterns from whole-brain
@@ -199,7 +201,7 @@ Now, we have an Mvp-object on which machine learning pipeline can be applied:
        pipe.fit(train, train_y)
        pred = pipe.predict(test)
 
-       mvp_results.update(test_idx, pred, pipe) # update after each fold!
+       mvp_results.update(test_idx, pred, pipeline=pipe) # update after each fold!
 
    mvp_results.compute_scores() # compute!
    mvp_results.write(out_path) # write file with metrics and niftis with feature-scores!
@@ -231,11 +233,11 @@ parts):
    from skbold import roidata_path
    gm_mask = os.path.join(roidata_path, 'GrayMatter.nii.gz')
 
-   source = {}
-   source['Contrast_t1cope1'] = {'path': '~/Project_dir/sub*/Task1.feat/cope1.nii.gz'}
-   source['Contrast_t2cope2'] = {'path': '~/Project_dir/sub*/Task2.feat/cope2.nii.gz'}
-   source['VBM'] = {'path': '~/Project_dir/sub*/vbm.nii.gz', 'mask': gm_mask}
-
+   source = dict(
+       Contrast_t1cope1={'path': '~/Project_dir/sub*/Task1.feat/cope1.nii.gz'},
+       Contrast_t2cope2={'path': '~/Project_dir/sub*/Task2.feat/cope2.nii.gz'},
+       VBM={'path': '~/Project_dir/sub*/vbm.nii.gz', 'mask': gm_mask}
+   )
 Now, to initialize the MvpBetween object, we need some more info:
 
 .. code:: python
@@ -244,6 +246,7 @@ Now, to initialize the MvpBetween object, we need some more info:
 
    subject_idf='sub-0??' # this is needed to extract the subject names to
                          # cross-reference across data-sources
+
    subject_list=None     # can be a list of subject-names to include
 
    mvp = MvpBetween(source=source, subject_idf=subject_idf, mask=None,
@@ -289,18 +292,19 @@ for reading/writing nifti-files. Also, skbold uses `FSL <https://fsl.fmrib.ox.ac
 (primarily the ``FLIRT`` and ``applywarp`` functions) to transform files from functional
 (native) to standard (here: MNI152 2mm) space. These FSL-calls are embedded in the
 ``convert2epi`` and ``convert2mni`` functions, so avoid this functionality if
-you don't have a working FSL installation. 
+you don't have a working FSL installation.
 
 Documentation
 -------------
 For those reading this on Github, documentation can be found on
 `ReadTheDocs <skbold.readthedocs.io>`_!
 
-Authos & credits
-----------------
-This package is being develop by `Lukas Snoek <lukas-snoek.com>`_ 
-from the University of Amsterdam with contributions from 
-`Steven <https://github.com/StevenM1>`_ and help from `Joost <https://github.com/y0ast>`_.
+Authors & credits
+-----------------
+This package is being develop by `Lukas Snoek <lukas-snoek.com>`_
+from the University of Amsterdam with contributions from
+`Steven Miletic<https://github.com/StevenM1>`_ and help from
+`Joost van Amersfoort <https://github.com/y0ast>`_.
 
 License and contact
 -------------------
