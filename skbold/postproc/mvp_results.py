@@ -266,12 +266,18 @@ class MvpResults(object):
 
             values = scores / n_class
 
+        nonzero_idx = values.sum(axis=0) != 0
         if to_tstat:
             n = values.shape[0]
-            values = values.mean(axis=0) / ((values.std(axis=0)) / np.sqrt(n))
+            m_values = values[:, nonzero_idx].mean(axis=0)
+            se_values = values[:, nonzero_idx].std(axis=0) / np.sqrt(n - 1)
+            values = values.sum(axis=0)
+            values[nonzero_idx] = m_values / se_values
         else:
-            values = values.mean(axis=0)
-        values[np.isnan(values)] = 0
+            m_values = values[:, nonzero_idx].mean(axis=0)
+            values = values.sum(axis=0)
+            values[nonzero_idx] = m_values
+
         fids = np.unique(self.featureset_id)
 
         to_return = []
