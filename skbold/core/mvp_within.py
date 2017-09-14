@@ -96,8 +96,8 @@ class MvpWithin(Mvp):
         self.remove_zeros = remove_zeros
         self.remove_contrast = remove_contrast
         self.remove_idx = None
-        self.directory = None
         self.data_shape = None
+        self.directories = []
         self.y = []
         self.contrast_labels = []
         self.X = []
@@ -122,7 +122,6 @@ class MvpWithin(Mvp):
         for src in self.source:
 
             if '.feat' in src:
-                self.directory = src
                 self._load_fsl(src)
             else:
                 msg = "Loading 'within-data' from other sources than " \
@@ -208,12 +207,13 @@ class MvpWithin(Mvp):
             self.voxel_idx = np.arange(np.prod(tmp.shape))
 
         # Pre-allocate
-
         mvp_data = np.zeros((n_stat, self.voxel_idx.size))
+
         # Load in data (stat_files)
         for i, path in enumerate(stat_files):
             stat_img = nib.load(path)
             mvp_data[i, :] = stat_img.get_data().ravel()[self.voxel_idx]
+            self.directories.append(src)
 
         mvp_data[np.isnan(mvp_data)] = 0
         self.X.append(mvp_data)
