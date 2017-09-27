@@ -8,7 +8,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class ConfoundRegressor(BaseEstimator, TransformerMixin):
-    """ Fits a confound onto y and regresses it out X. """
+    """ Fits a confound onto each feature in X and returns residuals."""
 
     def __init__(self, confound, fit_idx, cross_validate=True,
                  stack_intercept=True):
@@ -57,7 +57,7 @@ class ConfoundRegressor(BaseEstimator, TransformerMixin):
             weights[i, :] = b
 
         self.weights_ = weights
-
+        self.X_used_for_fit = X
         return self
 
     def transform(self, X):
@@ -73,7 +73,7 @@ class ConfoundRegressor(BaseEstimator, TransformerMixin):
             ndarray with confound-regressed features
         """
 
-        if X.shape[0] == len(self.fit_idx):
+        if np.all(self.X_used_for_fit == X):
             confound = self.confound[self.fit_idx]
         else:
             tmp_idx = np.ones(self.confound.shape[0], dtype=bool)
@@ -81,7 +81,6 @@ class ConfoundRegressor(BaseEstimator, TransformerMixin):
             confound = self.confound[tmp_idx]
 
             if not self.cross_validate:
-                print("Fitting separately on test")
                 self.fit_idx = tmp_idx
                 self.fit(X)
         
