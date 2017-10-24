@@ -118,11 +118,11 @@ class FsfCrawler(object):
 
         shell_script = op.join(op.dirname(self.output_dir), 'batch_fsf%s.sh' %
                                self.mat_suffix)
-        with open(shell_script, 'w') as fout:
+        with open(shell_script, 'wb') as fout:
 
             for i, fsf in enumerate(fsf_paths):
 
-                fout.write('feat %s &\n' % fsf)
+                fout.write(str('feat %s &\n' % fsf))
                 if (i+1) % self.n_cores == 0:
                     fout.write('wait\n')
 
@@ -137,7 +137,7 @@ class FsfCrawler(object):
         else:
             template = self.template
 
-        with open(template, 'r') as f:
+        with open(template, 'rb') as f:
             template = f.readlines()
 
         template = [txt.replace('\n', '') for txt in template if txt != '\n']
@@ -227,9 +227,9 @@ class FsfCrawler(object):
             fsf_out = self._append_single_trial_info(events, fsf_out)
 
         to_write = op.join(sub_dir, 'design%s.fsf' % self.mat_suffix)
-        with open(to_write, 'w') as fsfout:
+        with open(to_write, 'wb') as fsfout:
             print("Writing fsf to %s" % sub_dir)
-            fsfout.write("\n".join(fsf_out))
+            fsfout.write(str("\n".join(fsf_out)))
 
         return to_write
 
