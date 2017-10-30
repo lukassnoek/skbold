@@ -44,7 +44,7 @@ class ConfoundRegressor(BaseEstimator, TransformerMixin):
 
     def fit(self, X, y=None):
 
-        if self.confound.ndim == 1 and self.stack_intercept:
+        if self.confound.squeeze().ndim == 1 and self.stack_intercept:
             intercept = np.ones(self.confound.shape[0])
             self.confound = np.column_stack((intercept, self.confound))
 
