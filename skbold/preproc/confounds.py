@@ -8,7 +8,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class ConfoundRegressor(BaseEstimator, TransformerMixin):
-    """ Fits a confound onto each feature in X and returns residuals."""
+    """ Fits a confound onto each feature in X and returns their residuals."""
 
     def __init__(self, confound, X, cross_validate=True,
                  stack_intercept=True):
@@ -16,19 +16,22 @@ class ConfoundRegressor(BaseEstimator, TransformerMixin):
 
         Parameters
         ----------
-        confound : list or numpy array
-            Array of length n_samples to regress out of each feature;
-            May have multiple columns for multiple confounds.
-        fit_idx : numpy array of int or bool
-            On which samples the confound regressor will be fit
-            (this is needed to cross-validate on samples != fit_idx)samples
+        confound : numpy array
+            Array of length (n_samples, n_confounds) to regress out of each
+            feature; May have multiple columns for multiple confounds.
+        X : numpy array
+            Array of length (n_samples, n_features), from which the confound
+            will be regressed. This is used to determine how the
+            confound-models should be cross-validated (which is necessary
+            to use in in scikit-learn Pipelines).
         cross_validate : bool
             Whether to cross-validate the confound-parameters (y~confound)
-            on the test set (cross_validate=True) or whether to fit
-            the confound regressor separately on the test-set
-            (cross_validate=False)
+            estimated from the train-set to the test set (cross_validate=True)
+            or whether to fit the confound regressor separately on the test-set
+            (cross_validate=False); we recommend setting this to True to get
+            an unbiased estimate.
         stack_intercept : bool
-            Whether to stack an intercept to the confound.
+            Whether to stack an intercept to the confound (default is True)
 
         Attributes
         ----------
@@ -43,7 +46,16 @@ class ConfoundRegressor(BaseEstimator, TransformerMixin):
         self.weights_ = None
 
     def fit(self, X, y=None):
+        """ Fits the confound-regressor to X.
 
+        Parameters
+        ----------
+        X : numpy array
+            An array of shape (n_samples, n_features), which should correspond
+            to your train-set only!
+        y : None
+            Included for compatibility; does nothing.
+        """
         if self.confound.squeeze().ndim == 1 and self.stack_intercept:
             intercept = np.ones(self.confound.shape[0])
             self.confound = np.column_stack((intercept, self.confound))
@@ -64,8 +76,10 @@ class ConfoundRegressor(BaseEstimator, TransformerMixin):
 
         Parameters
         ----------
-        X : ndarray
-            Numeric (float) array of shape = [n_samples, n_features]
+        X : numpy array
+            An array of shape (n_samples, n_features), which should correspond
+            to your train-set only!
+
         Returns
         -------
         X_new : ndarray
@@ -82,21 +96,3 @@ class ConfoundRegressor(BaseEstimator, TransformerMixin):
             X_new[:, i] = X[:, i] - np.squeeze(confound.dot(self.weights_[i, :]))
 
         return X_new
-
-
-if __name__ == '__main__':
-
-    from sklearn.pipeline import Pipeline
-    from sklearn.svm import SVC
-    from sklearn.model_selection import cross_val_score, StratifiedKFold
-    import numpy as np
-
-    X = np.random.normal(0, 1, (100, 500))
-    y = np.repeat([0, 1], 50)
-    c = np.random.normal(0, 1, 100)
-    skf = StratifiedKFold(10)
-
-    pipeline = [('cr', ConfoundRegressor(c, X, cross_validate=False)),
-                ('clf', SVC(kernel='linear'))]
-    pipeline = Pipeline(pipeline)
-    cross_val_score(pipeline, X, y, cv=skf)
