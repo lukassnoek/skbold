@@ -17,6 +17,9 @@ skbold - utilities and tools for machine learning on BOLD-fMRI data
 .. image:: https://img.shields.io/badge/python-3.5-blue.svg
     :target: https://www.python.org/downloads/release/python-350
 
+.. image:: https://zenodo.org/badge/101659508.svg
+   :target: https://zenodo.org/badge/latestdoi/101659508
+
 The Python package ``skbold`` offers a set of tools and utilities for
 machine learning analyses of functional MRI (BOLD-fMRI) data.
 Instead of (largely) reinventing the wheel, this package builds upon an
@@ -68,7 +71,13 @@ from the University of Amsterdam with contributions from
 `Steven Miletic <https://github.com/StevenM1>`_ and help from
 `Joost van Amersfoort <https://github.com/y0ast>`_.
 
-License and contact
--------------------
-The code is BSD (3-clause) licensed. You can find my contact details on my
-`Github <https://github.com/lukassnoek>`_ profile page.
+License and citing skbold
+-------------------------
+The code is BSD (3-clause) licensed. If you use 'skbold' in your research, I would appreciate if you'd
+reference the following:
+
+Snoek, L. (2017). Skbold: utilities and tools for machine learning on BOLD-fMRI data (version 0.4.0). https://doi.org/10.5281/zenodo.1064090.
+
+Suggestions, issues, and contributing
+-------------------------------------
+I would love contributions
