@@ -62,13 +62,10 @@ class ConfoundRegressor(BaseEstimator, TransformerMixin):
 
         confound = self.confound
         fit_idx = np.in1d(self.X, X).reshape(self.X.shape).sum(axis=1) == self.X.shape[1]
-        confound = confound[fit_idx, :]
-        weights = np.zeros((X.shape[1], confound.shape[1]))
-        for i in range(X.shape[1]):
-            b, _, _, _ = np.linalg.lstsq(confound, X[:, i])
-            weights[i, :] = b
+        c = confound[fit_idx, :]
 
-        self.weights_ = weights
+        # Vectorized implementation estimating weights for all voxels simultaneously
+        self.weights_ = np.linalg.pinv(c.T.dot(c)).dot(c.T).dot(X)
         return self
 
     def transform(self, X):
@@ -90,9 +87,6 @@ class ConfoundRegressor(BaseEstimator, TransformerMixin):
             self.fit(X)
 
         fit_idx = np.in1d(self.X, X).reshape(self.X.shape).sum(axis=1) == self.X.shape[1]
-        confound = self.confound[fit_idx]
-        X_new = np.zeros_like(X)
-        for i in range(X.shape[1]):
-            X_new[:, i] = X[:, i] - np.squeeze(confound.dot(self.weights_[i, :]))
-
+        c = self.confound[fit_idx]
+        X_new = X - c.dot(self.weights_)
         return X_new
