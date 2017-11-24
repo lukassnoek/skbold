@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+Version 0.4.0
+-------------
+First official release (in order to create DOI/Zenodo badge); minor changes
+
+- ENH: refactor of `ConfoundRegressor` such that it works in sklearn Pipelines
+
 Version 0.3.3
 -------------
 Refactoring of `postproc` and `feature_selection`/`feature_extraction` modules.

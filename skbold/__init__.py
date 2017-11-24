@@ -13,7 +13,7 @@ from . import utils
 from os.path import dirname, join
 import os
 
-__version__ = '0.3.3'
+__version__ = '0.4.0'
 
 fsl = 'FSLDIR' in os.environ.keys()
 if not fsl:
