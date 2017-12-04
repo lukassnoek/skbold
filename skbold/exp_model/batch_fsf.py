@@ -137,7 +137,7 @@ class FsfCrawler(object):
         else:
             template = self.template
 
-        with open(template, 'rb') as f:
+        with open(template, 'r') as f:
             template = f.readlines()
 
         template = [txt.replace('\n', '') for txt in template if txt != '\n']
