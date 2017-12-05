@@ -32,7 +32,7 @@ set fmri(sscleanup_yn) 0
 set fmri(outputdir) ""
 
 # TR(s)
-set fmri(tr) 2.000000 
+set fmri(tr) 2.000000
 
 # Total volumes
 set fmri(npts) 523
@@ -253,7 +253,7 @@ set fmri(regstandard_dof) 12
 set fmri(regstandard_nonlinear_yn) 1
 
 # Control nonlinear warp field resolution
-set fmri(regstandard_nonlinear_warpres) 10 
+set fmri(regstandard_nonlinear_warpres) 10
 
 # High pass filter cutoff
 set fmri(paradigm_hp) 0
@@ -269,6 +269,8 @@ set feat_files(1) ""
 
 # Add confound EVs text file
 set fmri(confoundevs) 0
+
+set highres_files(1) ""
 
 set fmri(con_mode_old) orig
 set fmri(con_mode) orig

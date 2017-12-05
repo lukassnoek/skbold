@@ -7,7 +7,6 @@ import os.path as op
 from glob import glob
 import nibabel as nib
 import multiprocessing
-import warnings
 import pandas as pd
 
 
@@ -18,70 +17,69 @@ class FsfCrawler(object):
 
     Parameters
     ----------
+    data_dir : str
+        Absolute path to directory with BIDS-formatted data.
+    run_idf : str
+        Identifier for run to apply template fsf to.
     template : str
         Absolute path to template fsf-file. Default is 'mvpa', which models
-        each bfsl-file as a separate regressor (and contrast against baseline).
+        each event as a separate regressor (and contrast against baseline).
+    preprocess : bool
+        Whether to apply preprocessing (as specified in template) or whether to
+        only run statistics/GLM.
+    register : bool
+        Whether to calculate registration (func -> highres, highres -> standard)
     mvpa_type : str
         Whether to estimate patterns per trial (mvpa_type='trial_wise') or
         to estimate patterns per condition (or per run, mvpa_type='run_wise')
-    preproc_dir : str
-        Absolute path to directory with preprocessed files.
-    run_idf : str
-        Identifier for run to apply template fsf to.
     output_dir : str
         Path to desired output dir of first-levels.
     subject_idf : str
         Identifier for subject-directories.
     event_file_ext : str
-        Extension for event-file; if 'bfsl' (default, for legacy reasons),
+        Extension for event-file; if 'bfsl/txt' (default, for legacy reasons),
         then assumes single event-file per predictor. If 'tsv' (cf. BIDS),
         then assumes a single tsv-file with all predictors.
-    func_idf : str
-        Identifier for which functional should be use.
-    prewhiten : bool
-        Whether the data should be prewhitened in model fitting
-    derivs : bool
-        Whether to model derivatives of original regressors
-    mat_suffix : str
-        Identifier (suffix) for design.mat and batch.fsf file (such that it
-        does not overwrite older files).
     sort_by_onset : bool
         Whether to sort predictors by onset (first trial = first predictor),
         or, when False, sort by condition (all trials condition A, all trials
         condition B, etc.).
     n_cores : int
         How many CPU cores should be used for the batch-analysis.
+    feat_options : key-word arguments
+        Which preprocessing options to set (only relevant if template='mvpa' or
+        if you want to deviate from template). Examples:
+            mc='1' (apply motion correction),
+            st='1' (apply regular-up slice-time correction),
+            bet_yn='1' (do brain extraction of func-file),
+            smooth='5.0' (smooth with 5 mm FWHM),
+            temphp_yn='1' (do HP-filtering),
+            paradigm_hp='100' (set HP-filter to 100 seconds),
+            prewhiten_yn='1' (do prewhitening),
+            motionevs='1' (add motion-params as nuisance regressors)
     """
 
-    def __init__(self, preproc_dir, run_idf, template='mvpa',
-                 mvpa_type='trial_wise',
-                 output_dir=None, subject_idf='sub',
-                 event_file_ext='bfsl', func_idf='func',
-                 prewhiten=True, derivs=False, mat_suffix=None,
-                 sort_by_onset=False, n_cores=1):
+    def __init__(self, data_dir, run_idf=None, template='mvpa', preprocess=True,
+                 register=True, mvpa_type='trial_wise', output_dir=None,
+                 subject_idf='sub', event_file_ext='txt', sort_by_onset=False,
+                 prewhiten=True, n_cores=1, **feat_options):
 
         self.template = template
-        self.preproc_dir = preproc_dir
+        self.data_dir = data_dir
         self.mvpa_type = mvpa_type
-
+        self.preprocess = preprocess
+        self.register = register
         if output_dir is None:
-            output_dir = op.join(op.dirname(preproc_dir), 'Firstlevels')
+            output_dir = op.join(op.dirname(data_dir), 'firstlevel')
 
         if not op.isdir(output_dir):
             os.makedirs(output_dir)
 
         self.output_dir = output_dir
-
-        if run_idf is None:
-            self.run_idf = ''
-        else:
-            self.run_idf = run_idf
-
-        self.func_idf = func_idf
+        self.run_idf = '' if run_idf is None else run_idf
         self.subject_idf = subject_idf
         self.event_file_ext = event_file_ext
-        self.prewhiten = prewhiten
-        self.derivs = derivs
+        self.feat_options = feat_options
 
         if n_cores < 0:
             n_cores = multiprocessing.cpu_count() - n_cores
@@ -90,35 +88,27 @@ class FsfCrawler(object):
         self.clean_fsf = None
         self.out_fsf = []
         self.sub_dirs = None
-        self.run_paths = None
 
         if mvpa_type != 'trial_wise':
             sort_by_onset = False
 
         self.sort_by_onset = sort_by_onset
 
-        if mat_suffix is None:
-            self.mat_suffix = ''
-        else:
-            self.mat_suffix = '_' + mat_suffix
-
     def crawl(self):
         """ Crawls subject-directories and spits out subject-specific fsf. """
-        self._read_fsf()
 
-        run_paths = op.join(self.preproc_dir, '*%s*' % self.subject_idf,
-                            '*%s*' % self.run_idf)
-        self.sub_dirs = sorted(glob(run_paths))
+        self._read_fsf()
+        search_cmd = op.join(self.data_dir, '*%s*' % self.subject_idf)
+        self.sub_dirs = sorted(glob(search_cmd))
 
         if not self.sub_dirs:
-            msg = "Could not find any subdirs with command: %s" % run_paths
+            msg = "Could not find any subdirs with command: %s" % search_cmd
             raise ValueError(msg)
 
         fsf_paths = [self._write_fsf(sub) for sub in self.sub_dirs]
 
-        shell_script = op.join(op.dirname(self.output_dir), 'batch_fsf%s.sh' %
-                               self.mat_suffix)
-        with open(shell_script, 'wb') as fout:
+        shell_script = op.join(op.dirname(self.output_dir), 'batch_fsf.sh')
+        with open(shell_script, 'w') as fout:
 
             for i, fsf in enumerate(fsf_paths):
 
@@ -137,7 +127,7 @@ class FsfCrawler(object):
         else:
             template = self.template
 
-        with open(template, 'rb') as f:
+        with open(template, 'r') as f:
             template = f.readlines()
 
         template = [txt.replace('\n', '') for txt in template if txt != '\n']
@@ -147,7 +137,8 @@ class FsfCrawler(object):
 
     def _write_fsf(self, sub_dir):
         """ Creates and writes out subject-specific fsf. """
-        func_file = glob(op.join(sub_dir, '*%s*nii.gz' % self.func_idf))
+        sub_name = op.basename(sub_dir)
+        func_file = glob(op.join(sub_dir, 'func', '*%s*.nii.gz' % self.run_idf))
 
         if len(func_file) == 0:
             msg = "Found no func-file for sub %s" % sub_dir
@@ -159,16 +150,23 @@ class FsfCrawler(object):
         else:
             func_file = func_file[0]
 
-        out_dir = op.join(self.output_dir, op.basename(op.dirname(sub_dir)))
-        if not op.isdir(out_dir):
-            os.makedirs(out_dir)
+        highres_file = glob(op.join(sub_dir, 'anat', '*_brain.nii.gz'))
+        if len(highres_file) == 0:
+            msg = "Found no highres-file for sub %s" % sub_dir
+            raise IOError(msg)
+        elif len(highres_file) > 1:
+            msg = ("Found more than one highres-file for sub "
+                   "%s: %r" % (sub_dir, highres_file))
+            raise IOError(msg)
+        else:
+            highres_file = highres_file[0]
 
-        feat_dir = op.join(out_dir, '%s.feat' % self.run_idf)
-
+        feat_dir = sub_name + '_%s' % self.run_idf if self.run_idf else sub_dir
+        out_dir = op.join(self.output_dir, feat_dir)
         hdr = nib.load(func_file).header
 
         if self.event_file_ext == 'tsv':
-            probable_df = glob(op.join(sub_dir, '*.tsv'))
+            probable_df = glob(op.join(sub_dir, 'func', '*%s*.tsv' % self.run_idf))
             if len(probable_df) != 1:
                 raise ValueError("Found %i event-files for subject %s" %
                                  (len(probable_df), sub_dir))
@@ -179,13 +177,20 @@ class FsfCrawler(object):
             search_str = '*%s*.%s' % (self.run_idf, self.event_file_ext)
             events = sorted(glob(op.join(sub_dir, search_str)))
 
-        arg_dict = {'tr': hdr['pixdim'][4],
+        arg_dict = {'analysis': '7' if self.preprocess else '2',
+                    'filtering_yn': '1' if self.preprocess else '0',
+                    'reghighres_yn': '1' if self.register else '0',
+                    'regstandard_yn': '1' if self.register else '0',
+                    'tr': hdr['pixdim'][4],
                     'npts': hdr['dim'][4],
                     'custom': events,
                     'feat_files': "\"%s\"" % func_file,
-                    'outputdir': "\"%s\"" % feat_dir,
-                    'prewhiten_yn': str(int(self.prewhiten)),
+                    'outputdir': "\"%s\"" % out_dir,
+                    'highres_files': "\"%s\"" % highres_file,
                     'totalVoxels': np.prod(hdr['dim'][1:5])}
+
+        if self.feat_options:
+            arg_dict.update(self.feat_options)
 
         if self.template == 'mvpa':
             arg_dict['ncon_orig'] = str(len(arg_dict['custom']))
@@ -209,14 +214,17 @@ class FsfCrawler(object):
                     parts[-1] = values
                 elif this_key == 'custom':
                     ev = line.split(os.sep)[-1].replace("\"", '')
-                    bfsls = sorted(glob(op.join(sub_dir, '*.bfsl')))
-                    to_set = [bfsl for bfsl in bfsls if ev in bfsl]
+                    search_str = op.join(sub_dir, 'func',
+                                         '*%s*.%s' % (self.run_idf,
+                                                      self.event_file_ext))
+                    event_files = sorted(glob(search_str))
+                    to_set = [e for e in event_files if ev in e]
 
                     if len(to_set) == 1:
                         parts[-1] = "\"%s\"" % to_set[0]
                     else:
                         raise ValueError("Ambiguous ev (%s) for event-files "
-                                         "(%r)" % (ev, bfsls))
+                                         "(%r)" % (ev, event_files))
 
                 parts = [str(p) for p in parts]
                 fsf_out.append(" ".join(parts))
@@ -226,8 +234,8 @@ class FsfCrawler(object):
         if self.template == 'mvpa':
             fsf_out = self._append_single_trial_info(events, fsf_out)
 
-        to_write = op.join(sub_dir, 'design%s.fsf' % self.mat_suffix)
-        with open(to_write, 'wb') as fsfout:
+        to_write = op.join(sub_dir, 'design.fsf')
+        with open(to_write, 'w') as fsfout:
             print("Writing fsf to %s" % sub_dir)
             fsfout.write(str("\n".join(fsf_out)))
 
@@ -278,7 +286,7 @@ class FsfCrawler(object):
             fsf_out.append('set fmri(convolve%i) 3' % (i + 1))
             fsf_out.append('set fmri(convolve_phase%i) 0' % (i + 1))
             fsf_out.append('set fmri(tempfilt_yn%i) 0' % (i + 1))
-            fsf_out.append('set fmri(deriv_yn%i) %i' % ((i + 1), self.derivs))
+            fsf_out.append('set fmri(deriv_yn%i) 0' % ((i + 1)))
             fsf_out.append('set fmri(custom%i) %s' % ((i + 1), ev))
 
             for x in range(len(events) + 1):
@@ -314,204 +322,3 @@ class FsfCrawler(object):
                                                              (y + 1)))
 
         return fsf_out
-
-
-class MelodicCrawler(object):
-
-    def __init__(self, preproc_dir, run_idf, template=None, output_dir=None,
-                 subject_idf='sub', func_idf='func', copy_reg=True,
-                 copy_mc=True, varnorm=True, n_cores=1):
-        """
-        Given an fsf-template (Melodic), this crawler creates subject-
-        specific fsf-melodic files and (optionally) copies the corresponding
-        registration and mc directories to the out-directory.
-
-        Parameters
-        ----------
-        template : str
-            Absolute path to template fsf-file
-        preproc_dir : str
-            Absolute path to the directory with preprocessed files
-        run_idf : str
-            Identifier for run to apply template fsf to
-        output_dir : str
-            Path to desired output dir of Melodic-ica results.
-        subject_idf : str
-            Identifier for subject-directories.
-        func_idf : str
-            Identifier for which functional should be use.
-        copy_reg : bool
-            Whether to copy the subjects' registration directory
-        copy_mc : bool
-            Whether to copy the subjects' mc directory
-        varnorm : bool
-            Whether to apply variance-normalization (melodic option)
-        n_cores : int
-            How many CPU cores should be used for the batch-analysis.
-        """
-
-        self.template = template
-        self.preproc_dir = preproc_dir
-        self.copy_reg = copy_reg
-        self.copy_mc = copy_mc
-
-        if output_dir is None:
-            output_dir = op.join(op.dirname(template), 'Melodic')
-
-        if not op.isdir(output_dir):
-            os.makedirs(output_dir)
-
-        self.output_dir = output_dir
-        self.run_idf = run_idf
-        self.func_idf = func_idf
-        self.subject_idf = subject_idf
-        self.varnorm = "1" if varnorm else "0"
-
-        if n_cores == -1:
-            n_cores = multiprocessing.cpu_count() - 1
-
-        self.n_cores = n_cores
-        self.clean_fsf = None
-        self.out_fsf = []
-        self.sub_dirs = None
-
-    def crawl(self):
-        """ Crawls subject-directories and spits out subject-specific fsf. """
-        self._read_fsf()
-        run_paths = op.join(self.preproc_dir, '%s*' % self.subject_idf,
-                            '*%s*' % self.run_idf)
-        self.sub_dirs = sorted(glob(run_paths))
-        out_f = [self._write_fsf(sub) for sub in self.sub_dirs]
-
-        shell_script = op.join(op.dirname(self.template), 'batch_melodic.sh')
-        with open(shell_script, 'wb') as fout:
-
-            for i, (fsf, reg_cmd, mc_cmd) in enumerate(out_f):
-
-                fout.write('feat %s' % fsf)
-
-                if reg_cmd or mc_cmd:
-                    fout.write('\n')
-                else:
-                    fout.write(' &\n')
-
-                if reg_cmd is not None:
-                    fout.write(reg_cmd + ' &\n')
-
-                if mc_cmd is not None:
-                    fout.write(mc_cmd + ' &\n')
-
-                if (i+1) % self.n_cores == 0:
-                    fout.write('wait\n')
-
-    def _copy_reg(self, sub_dir, ica_dir):
-        """ Tries to find reg-dir and returns copy command"""
-        dst = op.join(ica_dir, 'reg')
-        if op.isdir(dst):
-            return None
-
-        regdir = glob(op.join(op.dirname(sub_dir), '*reg*'))
-        msg = "Found multiple (or no) registration directories in %s (%r)"
-
-        if len(regdir) != 1:
-            warnings.warn(msg % (sub_dir, regdir))
-            return None
-        else:
-            if regdir[0] == 'reg':
-                to_copy = regdir[0]
-            else:
-                regdir_ch = op.join(regdir[0], 'reg')
-                if not op.isdir(regdir_ch):
-                    warnings.warn(msg % (sub_dir, regdir_ch))
-                else:
-                    to_copy = regdir_ch
-
-            cmd = 'cp -r %s %s' % (to_copy, dst)
-            # print('Copying %s to %s' % (to_copy, dst))
-            # shutil.copytree(to_copy, dst)
-            return cmd
-
-    def _copy_mc(self, sub_dir, ica_dir):
-        """ Tries to find mc-dir and returns copy command."""
-        dst = op.join(ica_dir, 'mc')
-        if op.isdir(dst):
-            return None
-
-        mc_dir = op.join(sub_dir, 'mc')
-        if not op.isdir(mc_dir):
-            warnings.warn("Could not find mc dir in %s" % sub_dir)
-        else:
-            # print("Copying %s to %s" % (mc_dir, op.join(ica_dir, 'mc')))
-            # shutil.copytree(mc_dir, op.join(ica_dir, 'mc'))
-            cmd = 'cp -r %s %s' % (mc_dir, dst)
-            return cmd
-
-    def _read_fsf(self):
-        """ Reads in template-fsf and does some cleaning. """
-
-        if self.template is None:
-            self.template = op.join(op.dirname(skbold.__file__), 'data',
-                                    'Melodic_template.fsf')
-
-        with open(self.template, 'rb') as f:
-            template = f.readlines()
-
-        template = [txt.replace('\n', '') for txt in template if txt != '\n']
-        template = [txt for txt in template if txt[0] != '#']  # remove commnts
-
-        self.clean_fsf = template
-
-    def _write_fsf(self, sub_dir):
-        """ Creates and writes out subject-specific fsf. """
-        func_file = glob(op.join(sub_dir, '*%s*.nii.gz' % self.func_idf))
-
-        if len(func_file) == 0:
-            msg = "Found no func-file for sub %s" % sub_dir
-            raise IOError(msg)
-        elif len(func_file) > 1:
-            msg = "Found more than one func-file for sub %s: %r" % (sub_dir,
-                                                                    func_file)
-            raise IOError(msg)
-        else:
-            func_file = func_file[0]
-
-        out_dir = op.join(self.output_dir, op.basename(op.dirname(sub_dir)))
-        if not op.isdir(out_dir):
-            os.makedirs(out_dir)
-
-        ica_dir = op.join(out_dir, '%s.ica' % self.run_idf)
-        hdr = nib.load(func_file).header
-
-        arg_dict = {'tr': hdr['pixdim'][4],
-                    'npts': hdr['dim'][4],
-                    'feat_files': "\"%s\"" % func_file,
-                    'outputdir': "\"%s\"" % ica_dir,
-                    'varnorm': self.varnorm,
-                    'totalVoxels': np.prod(hdr['dim'][1:5])}
-
-        fsf_out = []
-        # Loop over lines in cleaned template-fsf
-        for line in self.clean_fsf:
-
-            if any(key in line for key in arg_dict.keys()):
-                parts = [txt for txt in line.split(' ') if txt]
-                keys = [key for key in arg_dict.keys() if key in line][0]
-                values = arg_dict[keys]
-
-                parts[-1] = values
-                parts = [str(p) for p in parts]
-                fsf_out.append(" ".join(parts))
-            else:
-                fsf_out.append(line)
-
-        with open(op.join(sub_dir, 'melodic.fsf'), 'wb') as fsfout:
-            print("Writing fsf to %s" % sub_dir)
-            fsfout.write("\n".join(fsf_out))
-
-        if self.copy_reg:
-            reg_cmd = self._copy_reg(sub_dir, ica_dir)
-
-        if self.copy_mc:
-            mc_cmd = self._copy_mc(sub_dir, ica_dir)
-
-        return op.join(sub_dir, 'melodic.fsf'), reg_cmd, mc_cmd
