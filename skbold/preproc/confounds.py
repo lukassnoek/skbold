@@ -61,7 +61,10 @@ class ConfoundRegressor(BaseEstimator, TransformerMixin):
             self.confound = np.column_stack((intercept, self.confound))
 
         confound = self.confound
-        fit_idx = np.in1d(self.X, X).reshape(self.X.shape).sum(axis=1) == self.X.shape[1]
+
+        # fit_idx = np.in1d(self.X, X).reshape(self.X.shape).sum(axis=1) == self.X.shape[1]
+        fit_idx = np.in1d(self.X.sum(axis=1), X.sum(axis=1))  # not guaranteed to work
+
         c = confound[fit_idx, :]
 
         # Vectorized implementation estimating weights for all voxels simultaneously
@@ -86,7 +89,9 @@ class ConfoundRegressor(BaseEstimator, TransformerMixin):
         if not self.cross_validate:
             self.fit(X)
 
-        fit_idx = np.in1d(self.X, X).reshape(self.X.shape).sum(axis=1) == self.X.shape[1]
+        #fit_idx = np.in1d(self.X, X).reshape(self.X.shape).sum(axis=1) == self.X.shape[1]
+        fit_idx = np.in1d(self.X.sum(axis=1), X.sum(axis=1))  # not guaranteed to work
+
         c = self.confound[fit_idx]
         X_new = X - c.dot(self.weights_)
         return X_new
