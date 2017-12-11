@@ -80,4 +80,4 @@ Snoek, L. (2017). Skbold: utilities and tools for machine learning on BOLD-fMRI 
 
 Suggestions, issues, and contributing
 -------------------------------------
-I would love contributions
+If you have suggestions or issues, please submit an issue to the issue-tracker. Also, I would love contributions to skbold from others! In case you want to contribute, fork this repository and submit a pull-request with your contribution!
