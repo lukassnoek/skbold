@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+Version 0.4.1 (upcoming)
+------------------------
+Minor updates.
+
+- ENH: Add PrevalenceInference class to postproc module based on paper by Allefeld et al., Neuroimage (2016)
+
 Version 0.4.0
 -------------
 First official release (in order to create DOI/Zenodo badge); minor changes
