@@ -6,3 +6,4 @@ nibabel>=2.0
 funcsigs
 configparser
 future
+tqdm
