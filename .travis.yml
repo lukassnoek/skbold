@@ -26,7 +26,7 @@ before_install:
   - conda info -a
   - conda config --add channels conda-forge
   - conda install --yes python=$TRAVIS_PYTHON_VERSION pip scipy numpy pandas scikit-learn
-  - pip install nibabel nilearn pytest pytest-cov coveralls pytest-pep8 future pytz
+  - pip install nibabel nilearn pytest pytest-cov coveralls pytest-pep8 future pytz tqdm
 
 install:
   # Replace dep1 dep2 ... with your dependencies
