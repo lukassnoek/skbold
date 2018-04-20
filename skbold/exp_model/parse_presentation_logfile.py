@@ -6,11 +6,9 @@
 
 from __future__ import division, print_function, absolute_import
 from builtins import range
-import os
 import os.path as op
 import pandas as pd
 import numpy as np
-from glob import glob
 
 
 class PresentationLogfileCrawler(object):
@@ -50,9 +48,9 @@ class PresentationLogfileCrawler(object):
         Dataframe with cleaned and parsed logfile.
     """
 
-    def __init__(self, in_file, con_names, con_codes, con_design=None,
-                 con_duration=None, pulsecode=30, write_bfsl=False,
-                 verbose=True):
+    def __init__(self, in_file, con_names, con_codes,
+                 con_duration=None, pulsecode=30, write_tsv=True,
+                 verbose=True, write_code=False):
 
         if isinstance(in_file, str):
             in_file = [in_file]
@@ -60,6 +58,8 @@ class PresentationLogfileCrawler(object):
         self.in_file = in_file
         self.con_names = con_names
         self.con_codes = con_codes
+        self.write_tsv = write_tsv
+        self.write_code = write_code
 
         if con_duration is not None:
 
@@ -70,29 +70,7 @@ class PresentationLogfileCrawler(object):
                 con_duration *= len(con_names)
 
         self.con_duration = con_duration
-
-        design_params = ['univar', 'multivar', None]
-        msg = 'Unknown design-parameter; please choose from: %r' % \
-              design_params
-        if isinstance(con_design, str):
-            if con_design not in design_params:
-                raise ValueError(msg)
-
-        elif isinstance(con_design, list):
-
-            if not all(d in design_params for d in con_design):
-                raise ValueError(msg)
-
-        else:
-            msg = 'Unknown type for con_design; please specify list or str.'
-            raise ValueError(msg)
-
-        if con_design is None:
-            con_design = ['univar'] * len(con_names)
-
-        self.con_design = con_design
         self.pulsecode = pulsecode
-        self.write_bfsl = write_bfsl
         self.verbose = verbose
         self.df = None
         self.to_write = None
@@ -103,9 +81,7 @@ class PresentationLogfileCrawler(object):
         if self.verbose:
             print('Processing %s' % f)
 
-        # Remove existing .bfsl files
         self.base_dir = op.dirname(f)
-        _ = [os.remove(x) for x in glob(op.join(self.base_dir, '*.bfsl'))]
 
         if self.df is not None:
             df = self.df
@@ -133,10 +109,7 @@ class PresentationLogfileCrawler(object):
         df['Time'] = (df['Time'] - float(pulse_t)) / 10000.0
         df['Duration'] /= 10000.0
 
-        trial_names = []
-        trial_onsets = []
-        trial_durations = []
-
+        to_write_list = []
         # Loop over condition-codes to find indices/times/durations
         for i, code in enumerate(self.con_codes):
 
@@ -147,7 +120,7 @@ class PresentationLogfileCrawler(object):
 
             if len(code) > 1:
                 # Code is list of possibilities
-                if all(isinstance(c, int) for c in code):
+                if all(isinstance(c, (int, np.int64)) for c in code):
                     idx = df['Code'].isin(code)
 
                 elif all(isinstance(c, str) for c in code):
@@ -168,72 +141,34 @@ class PresentationLogfileCrawler(object):
                 raise ValueError('No entries found for code: %r' % code)
 
             # Generate dataframe with time, duration, and weight given idx
-            to_write['Time'] = df['Time'][idx]
+            to_write['onset'] = df['Time'][idx]
 
             if self.con_duration is None:
-                to_write['Duration'] = df['Duration'][idx]
-                n_nan = np.sum(np.isnan(to_write['Duration']))
+                to_write['duration'] = df['Duration'][idx]
+                n_nan = np.sum(np.isnan(to_write['duration']))
                 if n_nan > 1:
                     msg = ('In total, %i NaNs found for Duration. '
                            'Specify duration manually.' % n_nan)
                     raise ValueError(msg)
-                to_write['Duration'] = [np.round(x, decimals=2)
-                                        for x in to_write['Duration']]
+                to_write['duration'] = [np.round(x, decimals=2)
+                                        for x in to_write['duration']]
             else:
-                to_write['Duration'] = [self.con_duration[i]] * idx.sum()
+                to_write['duration'] = [self.con_duration[i]] * idx.sum()
 
-            to_write['Weight'] = np.ones((np.sum(idx), 1))
-            to_write['Name'] = [self.con_names[i] + '_%i' % (j + 1)
-                                for j in range(idx.sum())]
+            to_write['trial_type'] = [self.con_names[i] for j in range(idx.sum())]
 
-            if self.con_design[i] == 'univar':
-                trial_names.append(to_write['Name'].tolist())
-                trial_onsets.append(to_write['Time'].tolist())
-                trial_durations.append(to_write['Duration'].tolist())
-            elif self.con_design[i] == 'multivar':
-                _ = [trial_names.append([x])
-                     for x in to_write['Name'].tolist()]
-                _ = [trial_onsets.append([x])
-                     for x in to_write['Time'].tolist()]
-                _ = [trial_durations.append([x])
-                     for x in to_write['Duration'].tolist()]
+            if self.write_code:
+                to_write['code'] = df['Code'][idx]
 
-            self.to_write = to_write
+            to_write_list.append(to_write)
 
-            if self.write_bfsl:
-                self._write_bfsl(i)
+        events_df = pd.concat(to_write_list).sort_values(by='onset')
 
-        subject_info = {'conditions': self.con_names,
-                        'onsets': trial_onsets,
-                        'durations': trial_durations,
-                        'amplitudes': None,
-                        'regressor_names': self.con_names,
-                        'regressors': None}
+        if self.write_tsv:
+            outname = op.join(self.base_dir, op.basename(f).split('.')[0] + '.tsv')
+            events_df.to_csv(outname, sep='\t', index=False)
 
-        # For nipype: convert subject-info to Bunch instance.
-
-        return subject_info
-
-    def _write_bfsl(self, i):
-
-        to_write = self.to_write
-
-        if self.con_design[i] == 'univar':
-            to_write.drop('Name', axis=1, inplace=True)
-            name = op.join(self.base_dir, '%s.bfsl' % self.con_names[i])
-            to_write = to_write[['Time', 'Duration', 'Weight']]
-            to_write.to_csv(name, sep='\t', index=False, header=False)
-
-        elif self.con_design[i] == 'multivar':
-
-            for ii, (index, row) in enumerate(to_write.iterrows()):
-                ev_name = '%s.bfsl' % row['Name']
-                name = os.path.join(self.base_dir, ev_name)
-                df_tmp = pd.DataFrame({'Time': row['Time'],
-                                       'Duration': row['Duration'],
-                                       'Weight': row['Weight']}, index=[0])
-                df_tmp = df_tmp[['Time', 'Duration', 'Weight']]
-                df_tmp.to_csv(name, index=False, sep='\t', header=False)
+        return events_df
 
     def parse(self):
         """
@@ -252,8 +187,8 @@ class PresentationLogfileCrawler(object):
             return subject_info_list
 
 
-def parse_presentation_logfile(in_file, con_names, con_codes, con_design=None,
-                               con_duration=None, pulsecode=30):
+def parse_presentation_logfile(in_file, con_names, con_codes, con_duration=None,
+                               write_tsv=True, write_code=False, pulsecode=30):
     """
     Function-interface for PresentationLogfileCrawler. Can be used to create
     a Nipype node.
@@ -284,9 +219,9 @@ def parse_presentation_logfile(in_file, con_names, con_codes, con_design=None,
 
     plc = PresentationLogfileCrawler(in_file=in_file, con_names=con_names,
                                      con_codes=con_codes,
-                                     con_design=con_design,
                                      con_duration=con_duration,
-                                     pulsecode=pulsecode, write_bfsl=True,
+                                     pulsecode=pulsecode, write_tsv=write_tsv,
+                                     write_code=write_code,
                                      verbose=False)
 
     subject_info_files = plc.parse()
