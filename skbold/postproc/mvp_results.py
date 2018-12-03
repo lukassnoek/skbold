@@ -111,7 +111,8 @@ class MvpResults(object):
 
         for step in model:
             fn = op.join(out_path, step[0] + '.jl')
-            joblib.dump(step[1], fn, compress=3)
+            joblib.dump(s) and (10,) not aligned: 41900 (dim 1) != 10 (dim 0)
+Plot features scores¶tep[1], fn, compress=3)
 
     def load_model(self, path, param=None):
         """ Load model or pipeline from disk.
@@ -366,8 +367,9 @@ class MvpResults(object):
             msg = 'Found more than one index in pipeline!'
             raise ValueError(msg)
         else:
-            msg = 'Found no index in pipeline!'
-            raise ValueError(msg)
+            msg = 'Found no index in pipeline! Assuming no voxel selection.'
+            print(msg)
+            idx = np.ones(self.X.shape[1], dtype=bool)
 
         val = np.squeeze(val)
         if val.shape[0] != idx.sum():
