@@ -111,8 +111,7 @@ class MvpResults(object):
 
         for step in model:
             fn = op.join(out_path, step[0] + '.jl')
-            joblib.dump(s) and (10,) not aligned: 41900 (dim 1) != 10 (dim 0)
-Plot features scores¶tep[1], fn, compress=3)
+            joblib.dump(s)
 
     def load_model(self, path, param=None):
         """ Load model or pipeline from disk.

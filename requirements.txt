@@ -7,3 +7,4 @@ funcsigs
 configparser
 future
 tqdm
+nilearn
