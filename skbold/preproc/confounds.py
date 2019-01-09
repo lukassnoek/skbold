@@ -29,7 +29,7 @@ class ConfoundRegressor(BaseEstimator, TransformerMixin):
             estimated from the train-set to the test set (cross_validate=True)
             or whether to fit the confound regressor separately on the test-set
             (cross_validate=False). Setting this parameter to True is equivalent
-            to "foldwise confound regression" (FwCR) as described in our paper
+            to "Cross-validated confound regression" (CVCR) as described in our paper
             (https://www.biorxiv.org/content/early/2018/03/28/290684). Setting
             this parameter to False, however, is NOT equivalent to "whole
             dataset confound regression" (WDCR) as it does not apply confound
@@ -53,16 +53,19 @@ class ConfoundRegressor(BaseEstimator, TransformerMixin):
         Attributes
         ----------
         weights_ : numpy array
-            Array with weights for the confound(s).
+            Array with weights for the confound(s)
+        nz_idx_ : numpy array
+            Array with indices indicating non-zero voxels
         """
 
         self.confound = confound
         self.cross_validate = cross_validate
-        self.X = X
+        self.Xo = X
         self.precise = precise
         self.stack_intercept = stack_intercept
+        self.Xo_nz = None
         self.weights_ = None
-        self.nonzero_X_ = None
+        self.nz_idx_ = None
 
     def fit(self, X, y=None):
         """ Fits the confound-regressor to X.
@@ -82,18 +85,20 @@ class ConfoundRegressor(BaseEstimator, TransformerMixin):
 
         # Find nonzero voxels (i.e., voxels which have not all zero
         # values across samples)
-        if self.nonzero_X_ is None:
-            self.nonzero_X_ = np.sum(self.X, axis=0) != 0
-            self.X = self.X[:, self.nonzero_X_]
-
-        X_nz = X[:, self.nonzero_X_]
+        if self.nz_idx_ is None:
+            self.nz_idx_ = np.sum(self.Xo, axis=0) != 0
+            self.Xo_nz = self.Xo[:, self.nz_idx_]
+        
+        X_nz = X[:, self.nz_idx_]
         confound = self.confound
 
         if self.precise:
-            tmp = np.in1d(self.X, X_nz).reshape(self.X.shape)
-            fit_idx = tmp.sum(axis=1) == self.X.shape[1]
+            # Find indices of this X relative to original X (Xo)
+            tmp = np.in1d(self.Xo_nz, X_nz).reshape(self.Xo_nz.shape)
+            fit_idx = tmp.sum(axis=1) == self.Xo_nz.shape[1]
         else:
-            fit_idx = np.in1d(self.X.sum(axis=1), X_nz.sum(axis=1))
+            # Faster than above (but potentially less accurate)
+            fit_idx = np.in1d(self.Xo_nz.sum(axis=1), X_nz.sum(axis=1))
 
         confound_fit = confound[fit_idx, :]
 
@@ -116,19 +121,20 @@ class ConfoundRegressor(BaseEstimator, TransformerMixin):
             ndarray with confound-regressed features
         """
 
+        # Refit if not cross-validated (i.e., using existing weights)
         if not self.cross_validate:
             self.fit(X)
 
-        X_nz = X[:, self.nonzero_X_]
+        X_nz = X[:, self.nz_idx_]
 
         if self.precise:
-            tmp = np.in1d(self.X, X_nz).reshape(self.X.shape)
-            transform_idx = tmp.sum(axis=1) == self.X.shape[1]
+            tmp = np.in1d(self.Xo_nz, X_nz).reshape(self.Xo_nz.shape)
+            transform_idx = tmp.sum(axis=1) == self.Xo_nz.shape[1]
         else:
-            transform_idx = np.in1d(self.X.sum(axis=1), X_nz.sum(axis=1))
+            transform_idx = np.in1d(self.Xo_nz.sum(axis=1), X_nz.sum(axis=1))
 
         confound_transform = self.confound[transform_idx]
-        X_new = X - confound_transform.dot(self.weights_)
+        X_new = X_nz - confound_transform.dot(self.weights_)
         X_corr = np.zeros_like(X)
-        X_corr[:, self.nonzero_X_] = X_new
+        X_corr[:, self.nz_idx_] = X_new
         return X_corr
